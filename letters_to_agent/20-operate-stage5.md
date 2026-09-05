@@ -8,7 +8,7 @@ an extractor release.
 
 ## Read
 
-`spec.md` §8 stage 5, §5 (init reconfiguration), §9 row for stage 5, §11.
+`spec.md` §8 stage 5, §5 (init reconfiguration), §9 row for stage 5.
 Rules from letter 16 apply.
 
 `ROLLOUT` is the rollout id from letter 16's `done` line. The engineer

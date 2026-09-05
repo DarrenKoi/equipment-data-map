@@ -8,7 +8,7 @@ instead of retrying.
 
 ## Read
 
-`spec.md` §8 stage 3 and stage 5, §4.4 (engineer inputs), §6, §11 (out of scope).
+`spec.md` §8 stage 3 and stage 5, §4.4 (engineer inputs), §6.
 
 ## Build
 

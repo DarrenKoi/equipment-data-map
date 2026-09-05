@@ -38,7 +38,7 @@ and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
 | Verification scenarios against fake FTP/SMB | §7 |
 | Rollout stages 1–5 | §8 |
 | Skill suite layout and per-skill allowed commands | §9 |
-| Done criteria and explicit out-of-scope list | §10, §11 |
+| Done criteria | §10 |
 
 ## Invariants that cut across every file
 
