@@ -7,27 +7,36 @@ engineer the finished data map.
 
 ## Read
 
-`spec.md` §8 stage 4, §4.7, §1 (questions the map must answer). Rules from
-letter 16 apply.
+`spec.md` §8 stage 4, §4.7, §1 (questions the map must answer), §5 outbound
+summary paragraph. Rules from letter 16 apply.
+
+`ROLLOUT` is the rollout id from letter 16's `done` line. The engineer
+supplies it in your environment before this letter (for example
+`export ROLLOUT=<that id>` in the shell that launches you); you never run
+`export` yourself.
 
 ## Steps
 
-1. `preflight --stage 4 --contract 1`, `stage 4 plan`, wait for approval.
-2. `stage 4 next` until exit `0`.
-3. Ask the engineer to open `rollouts/<id>/data-map/wiki/index.md` and
+1. `equipment-map preflight --stage 4 --contract 1`, then
+   `equipment-map stage 4 plan --rollout "$ROLLOUT"`; append `waiting`
+   until `operator approve-plan`.
+2. `equipment-map stage 4 next --rollout "$ROLLOUT"` until exit `0`. It
+   writes `wiki/`, `rag/`, and `rollouts/$ROLLOUT/REPORT.md`.
+3. Ask the engineer to open `rollouts/$ROLLOUT/data-map/wiki/index.md` and
    confirm each family page answers the §1 questions or marks them
-   unconfirmed with a reason, then `operator approve-result`.
-4. Write the final report to `rollouts/<id>/REPORT.md`: rollout id, stages
-   completed, counts per stage, CLI and contract versions, model id and
-   config used at stage 2. Nothing else. This is the only summary that may
-   leave the company network.
+   unconfirmed with a reason, then run `operator approve-result`. Append
+   `waiting`.
+4. Relay `REPORT.md` to the engineer as is. It is the only summary that may
+   leave the company network; you write no other summary and add nothing
+   to it.
 
 ## Done when
 
 ```
-equipment-map status --rollout <id>
+equipment-map status --rollout "$ROLLOUT"
 ```
 
-Shows stage 4 result approved and `REPORT.md` exists. The deliverable is
-`rollouts/<id>/data-map/`. Append `done`, then stop and report to the
-engineer.
+Shows stage 4 result approved and a `REPORT.md: <sha256>` line. The
+deliverable is `rollouts/$ROLLOUT/data-map/`. Record the rollout id and the
+per-stage counts from `REPORT.md` in the `done` line, then continue to
+letter 20.

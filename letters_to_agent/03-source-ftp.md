@@ -19,9 +19,23 @@ trees).
 - `equipment_map/source/ftp.py` on `ftplib`: one connection, passive mode,
   `MDTM` when the server supports it. Reject any path that resolves outside
   the allowed roots before sending it.
-- Credential lookup by alias from the OS keystore behind one function
-  `equipment_map/secrets.py:lookup(alias)`; tests monkeypatch it. Never read
-  credentials from argv or environment.
+- Before implementing `secrets.py`, the engineer must confirm the
+  company-approved keystore per platform. Append `waiting` naming the two
+  candidates below and stop until `progress.md` holds a human line
+  `03 confirmed <UTC date> | keystore: <win32 backend>, <darwin backend>`.
+- `equipment_map/secrets.py`: `lookup(alias)` delegates to one module-level
+  backend chosen by `sys.platform` at import. Candidates: `win32` → Windows
+  Credential Manager (`ctypes` `CredReadW`, generic credential named
+  `equipment-map/<alias>`); `darwin` → login Keychain (`security
+  find-generic-password -s equipment-map -a <alias> -w` via `subprocess`);
+  every other platform → `UnsupportedKeystore`, which `next` maps to exit
+  20 before any connection. Both are stdlib; no portable fallback and no
+  file-based store exists. `set_backend(obj)` is the test seam; tests use
+  a dict-backed fake. Never read credentials from argv or environment.
+- `tests/fixtures/serve.py`: `python -m tests.fixtures.serve` starts the
+  fake FTP (and, after letter 04, fake SMB) on ephemeral ports, prints
+  `FTP_PORT=<n>` and `SMB_PORT=<n>`, and runs until Ctrl-C. Engineers use
+  it in letter 16; skills never start it.
 - `tests/fixtures/tree.py`: builds a directory tree in a temp dir with
   100 log files differing only by date and lot tokens, 20 CSVs, 5 JSON, 3
   XML, 2 PNG, 1 random-bytes "encrypted" file, 1 truncated zip, 1 nested
@@ -42,4 +56,7 @@ returns exact bytes; `download` stops at `max_bytes` and reports truncation;
 a path outside the root is refused before any request; the `Source` class
 exposes no method whose name contains `write`, `delete`, `rename`, `mkdir`,
 or `put`; the fake server logs no STOR/DELE/RNFR/MKD command during the
-test.
+test; with the platform forced to `win32` and `CredReadW` mocked, and with
+`darwin` and `subprocess.run` mocked, `lookup` issues exactly the call
+above and returns the secret without logging it; with `linux` it raises
+`UnsupportedKeystore` without touching the network.

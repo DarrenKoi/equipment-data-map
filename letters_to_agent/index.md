@@ -5,22 +5,25 @@ produce an equipment data map: a read-only, evidence-backed description of
 one FAB equipment's file store. This folder is self-contained. Everything you
 need is here; `spec.md` is the specification and the letters order the work.
 
-Letters 01–15 build the CLI. Letters 16–19 operate it with the engineer on a
+Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
-`rollouts/<id>/data-map/` with `wiki/` and `rag/`. For a new equipment type,
-start a new rollout and repeat 16–19 (see letter 13 for profiles).
+`rollouts/<id>/data-map/` with `wiki/` and `rag/`. One rollout id runs from
+stage 1 to stage 5; the engineer re-runs `init` on it at stage boundaries.
+For a new equipment type, start a new rollout and repeat 16–20 with the
+profile registered at stage 5 (see letter 13 for profiles).
 
 ## Loop
 
 1. Read `progress.md`. The first letter without a `done` line is your current
    letter. If it has `wip` lines, continue from the last one. If it has a
    `waiting` line, run the check it names; continue only when it passes.
+   A check may be `grep` for a `confirmed` line that only a human appends.
    If every letter is `done`, stop and report.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
    the source of truth; the letter only orders the work.
-3. Do the **Build** items in order. After each item, append a `wip` line and
-   commit. Work on disk plus `progress.md` is the only state you may rely on;
-   never assume you remember an earlier session.
+3. Do the **Build** items in order. After each item run the checkpoint
+   protocol below. Work on disk plus `progress.md` is the only state you
+   may rely on; never assume you remember an earlier session.
 4. Run every command under **Done when**. All must pass exactly as stated.
 5. Append a `done` line, commit with message `letter NN: <title>`, and go
    back to step 1 in the same session.
@@ -35,11 +38,32 @@ in `progress.md` with the exact failing output, one line.
 ```
 - NN wip <UTC datetime> | <build item finished> | <commit hash> | next: <the very next action>
 - NN waiting <UTC date> | <what the engineer must do> | <check command that proves it>
+- NN confirmed <UTC date> | <key>: <value the human confirmed>   (human-written only)
 - NN blocked <UTC date> | <what is missing> | <failing output, one line>
 - NN done <UTC date> | <test or status command> | <result, e.g. 12 passed>
 ```
 
 Append only. Never edit or delete earlier lines.
+
+## Checkpoint protocol (two commits per Build item)
+
+The `wip` line names the commit that holds the work, so the work is
+committed first and the line second:
+
+```
+git status --short                       # inspect; list the paths this item created or edited
+git add -- PATH...                       # template: substitute those exact paths, nothing else
+git diff --cached --stat                 # must list only those paths
+git commit -q -m "letter NN wip: <build item>"
+HASH=$(git rev-parse --short HEAD)
+printf -- '- NN wip %s | <build item> | %s | next: <next action>\n' "$(date -u +%FT%TZ)" "$HASH" >> letters_to_agent/progress.md
+git add letters_to_agent/progress.md && git commit -q -m "letter NN: progress"
+```
+
+`waiting`, `blocked`, and `done` lines carry no hash; append them and commit
+with the message `letter NN: progress`. A session may end after either
+commit; a `wip` line without its work commit never exists. Changes you did
+not make stay unstaged and untouched.
 
 ## Context budget
 
@@ -122,3 +146,4 @@ disposable: disk plus `progress.md` is the state, your memory is not.
 | 17 | Operate: stage 2 with the local LLM | 2 |
 | 18 | Operate: stage 3 pilot on one equipment | 3 |
 | 19 | Operate: stage 4 publish, the deliverable | 4 |
+| 20 | Operate: stage 5 register the next profile | 5 |

@@ -142,6 +142,8 @@ LLM 호출 전에 파일군을 만든다.
 
 실행 파일은 실행하지 않으며 매크로도 활성화하지 않는다. 압축 파일은 해제 출력 바이트 상한을 적용하고 중첩 압축은 1단계까지만 읽는다. XML 외부 엔티티는 비활성화한다. 1차 범위에서는 암호화 파일을 해독하지 않고 `unreadable: encrypted`로 기록한다.
 
+**Extractor workbench.** 미지원 형식은 엔지니어가 승인된 대표 샘플 하나를 `rollouts/` 밖의 로컬 복사본 디렉터리에 두고 엔지니어 전용 명령 `equipment-map workbench <copy-dir> --method <name>`으로 추가 방법을 시도한다. 시도마다 `<copy-dir>/attempts.jsonl`에 `{ts, input_sha256, method, method_config, result_sha256|null, failure_reason|null, next_safe_action}`을 append만 한다. `hermes-gui` 방법은 추출을 실행하지 않고 `<copy-dir>/handoff.json`(입력 hash, 엔지니어가 지정한 승인 GUI 도구, 허용 출력 경로)만 쓰며, 사람이 감독하는 Hermes 세션의 결과는 엔지니어가 `--record`로 기록한다. workbench는 `rollouts/`와 `data-map/`에 쓰지 않으며, 성공한 방법은 별도 검토·테스트를 거친 CLI 릴리스의 새 extractor 모듈로만 승격한다. 그 전까지 해당 파일군은 `unsupported-format` 보고로 남는다.
+
 ### 4.6 Local LLM Analysis
 
 CLI는 회사 내부의 승인된 OpenAI 호환 endpoint를 직접 호출한다. 에이전트 도구의 대화 모델에는 원본이나 추출 내용을 전달하지 않는다. 내부 로컬 LLM에는 원본 전체가 아니라 다음 묶음을 전달한다.
@@ -151,7 +153,7 @@ CLI는 회사 내부의 승인된 OpenAI 호환 endpoint를 직접 호출한다.
 - extractor가 만든 구조
 - 이미 알려진 장비·공정 용어집
 
-LLM에는 파일군 설명, 필드 의미, 생성 주체, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 필드당 최대 시도는 2회다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다.
+LLM에는 파일군 설명, 필드 의미, 생성 주체, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 신뢰도(`confidence`: `high`|`medium`|`low`)와 근거 샘플(`evidence`: 해당 파일군 evidence 디렉터리에 실제로 존재하는 SHA-256 목록)도 각각 별도 요청과 검증기를 거치는 필드다. 필드당 최대 시도는 2회다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다.
 
 ### 4.7 Data Map
 
@@ -195,11 +197,26 @@ equipment-map stage <N> next --rollout <ID>
 equipment-map status --rollout <ID>
 ```
 
-`init`은 엔지니어가 직접 실행하는 대화형 명령이다. 허용 루트, 실시간 데이터 후보 경로, 샘플 allow/deny 패턴, 요청·다운로드 budget, 자격 증명 별칭과 장비 접근 허용 시간대를 `rollout.json`에 저장한다. `plan`은 이 파일만 입력으로 사용하며 모델이 장비 경로와 budget을 command flag로 만들 수 없게 한다.
+`init`은 엔지니어가 직접 실행하는 대화형 명령이다. 다음을 `rollout.json`에 저장한다.
+
+- 장비 식별자, 프로토콜, 접속 정보(host, port, SMB share)
+- 허용 루트, 실시간 데이터 후보 경로, 샘플 allow/deny 패턴
+- 4.4절의 모든 budget과 LLM 요청 수 budget
+- 자격 증명 별칭, 장비 접근 허용 시간대(`always` 또는 UTC 구간)
+- 장비 프로필 이름(`profile`)
+- LLM endpoint URL, 키 별칭, 용어집 경로와 버전(2단계 `plan`부터 필수)
+- prompt/response 보존 위치 식별자(선택, `rollouts/` 밖의 접근 제어된 경로)
+- 5단계에서 등록할 다음 프로필 이름(`next_profile`, 5단계 `plan`부터 필수)
+
+`plan`은 이 파일만 입력으로 사용하며 모델이 장비 경로와 budget을 command flag로 만들 수 없게 한다. 각 단계의 `plan`은 그 단계에 필요한 필드가 없으면 거부한다.
+
+하나의 rollout ID는 1단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(1단계 가짜 트리에서 3단계 실장비로 전환, LLM endpoint 추가, 5단계 프로필 등록) 엔지니어가 같은 ID로 `init`을 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
+
+현재 단계는 결과 승인된 가장 높은 단계의 다음 단계다. 각 `init` 기록은 현재 단계의 새 **epoch**을 연다. `status`는 현재 단계의 `plan`, `approve-plan`, `next-*` 기록 중 최신 `init`보다 앞선 것을 stale로 보고 무시하므로, 재설정 뒤에는 그 단계의 `plan`, 계획 승인, `next`를 다시 거친다. 결과 승인된 단계는 어떤 `init`으로도 무효가 되지 않는다. 승인된 범위를 넓히려면 새 rollout을 시작한다.
 
 실행 전 계획 승인과 실행 후 결과 승인은 엔지니어가 직접 수행한다. 승인·결과 승인·stale lock 해제 명령은 어떤 `SKILL.md`에도 넣지 않고 CLI의 다음 명령으로도 출력하지 않는다. 비대화형 stdin에서는 거부하며 OS 사용자, 호스트, UTC 시각, 계획 hash 또는 결과 manifest hash를 감사 기록에 남긴다. 이는 전자서명이 아니라 운영자 자기확인임을 명시한다.
 
-엔지니어 전용 명령은 `equipment-map operator approve-plan`, `equipment-map operator approve-result`, `equipment-map operator unlock`이다. 이 명령은 LLM에 대한 보안 경계가 아니라 사람의 운영 절차다. 스킬이 대신 호출하면 시나리오 검증 실패로 처리한다.
+엔지니어 전용 명령은 `equipment-map operator approve-plan`, `equipment-map operator approve-result`, `equipment-map operator unlock`과 4.5절의 `equipment-map workbench`다. 이 명령은 LLM에 대한 보안 경계가 아니라 사람의 운영 절차다. 스킬이 대신 호출하면 시나리오 검증 실패로 처리한다.
 
 `next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다.
 
@@ -212,11 +229,11 @@ CLI 종료 코드와 마지막 출력 행은 고정한다.
 30  설치·계약 preflight 실패     NEXT: INSTALL-OR-UPGRADE
 ```
 
-stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다.
+stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. `status`는 `REPORT.md`의 존재 여부와 SHA-256도 한 줄로 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다.
 
 초기 검증은 한 엔지니어의 PC와 로컬 rollout 디렉터리에서 수행한다. Skill Market 배포 후에도 rollout 하나는 한 엔지니어가 자기 PC에서 1~5단계를 끝까지 수행한다. 다른 엔지니어는 자기 장비와 별도 rollout ID로 독립 실행한다.
 
-회사망 밖으로 전달할 수 있는 상태 요약은 rollout ID, 단계 번호, 성공·생략·실패 건수와 CLI·계약 버전으로 제한한다. 장비 식별자, 경로, 파일명, 파일군명, 오류 원문과 분석 내용은 포함하지 않는다.
+회사망 밖으로 전달할 수 있는 상태 요약은 rollout ID, 단계 번호, 성공·생략·실패 건수와 CLI·계약 버전으로 제한한다. 장비 식별자, 경로, 파일명, 파일군명, 오류 원문, 분석 내용, 모델 ID와 serving 설정은 포함하지 않는다. 이 요약은 4단계 `next`가 `rollouts/<rollout-id>/REPORT.md`로 생성하며 사람이나 스킬이 직접 쓰지 않는다. 모델 ID와 설정은 `data-map/`의 LLM 유래 필드에만 남는다.
 
 ### 5.1 Rollout 상태
 
@@ -229,10 +246,11 @@ rollouts/<rollout-id>/
   audit.jsonl             # 승인 포함 append-only 상태 원장
   result-manifest.json    # data-map/ 파일의 정렬된 상대 경로와 SHA-256
   data-map/               # 구조화 결과와 허용된 evidence
+  REPORT.md               # 4단계 next가 생성하는 반출 가능 요약, manifest에서 제외
   .lock                   # 실행 중에만 존재, manifest에서 제외
 ```
 
-상태의 진실 원천은 `audit.jsonl`이며 `status`는 이를 읽어 현재 단계를 계산한다. 별도 가변 `state.json`은 두지 않는다. `result-manifest.json`은 `data-map/`만 대상으로 하고 `/` 구분자의 정렬된 상대 경로와 원시 바이트 SHA-256을 기록한다. 모든 기록 시각은 UTC ISO-8601 형식을 사용한다.
+상태의 진실 원천은 `audit.jsonl`이며 `status`는 이를 읽어 현재 단계를 계산한다. 별도 가변 `state.json`은 두지 않는다. `result-manifest.json`은 `data-map/`만 대상으로 하고 `/` 구분자의 정렬된 상대 경로와 원시 바이트 SHA-256을 기록한다. `data-map/`을 바꾸는 모든 단계의 `next`는 종료 직전에 이 파일을 다시 생성하며, 결과 승인은 그 시점의 manifest hash에 결합한다. 모든 기록 시각은 UTC ISO-8601 형식을 사용한다.
 
 자격 증명, LLM 비밀 설정과 허용 범위를 넘는 원본 파일은 rollout 디렉터리에 넣지 않는다. 자격 증명은 `rollout.json`의 별칭으로만 참조하며 CLI가 OS의 승인된 비밀 저장소에서 직접 조회한다. command argument, 환경 변수와 stdout으로 전달하지 않는다. 민감한 대표 샘플을 포함해야 하면 회사 내부 접근 권한과 보존 기간이 적용되는 로컬 위치만 사용한다. Skill Market은 rollout 데이터를 배포하지 않는다.
 
@@ -297,17 +315,19 @@ LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한
 
 ### 3단계: 승인된 장비 1대에서 읽기 전용 시범 운영
 
-엔지니어가 입력한 좁은 허용 루트와 작은 budget으로 시작한다. 실시간 데이터 후보 경로가 있으면 함께 입력한다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
+엔지니어가 같은 rollout ID로 `init`을 다시 실행해 실장비 접속 정보, 좁은 허용 루트와 작은 budget을 입력한다. 실시간 데이터 후보 경로가 있으면 함께 입력한다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
+
+3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
 
 방화벽과 접속 승인은 스킬 외부의 선행조건이다. 스킬은 방화벽 변경이나 승인 시스템 조회를 시도하지 않는다. 연결되지 않으면 원인을 단정하거나 우회하지 않고 진단 결과를 남긴 후 중단한다.
 
 ### 4단계: Wiki와 RAG 생성
 
-검토가 끝난 `data-map/`만 사용해 Wiki와 RAG 문서를 만든다. 답변에는 항상 장비 경로와 근거 샘플을 표시한다.
+검토가 끝난 `data-map/`만 사용해 Wiki와 RAG 문서를 만든다. 답변에는 항상 장비 경로와 근거 샘플을 표시한다. 4단계 `next`는 `wiki/`, `rag/`와 함께 `rollouts/<rollout-id>/REPORT.md`를 생성한다. 5단계 `next`는 5단계 건수를 포함한 `REPORT.md`를 임시 파일에 쓰고 원자적으로 교체한 뒤에 `next-stop`을 기록한다. 완료 기록과 오래된 보고서가 공존하지 않는다.
 
 ### 5단계: 장비 종류 확장
 
-새 장비 프로필에 허용 경로, 파일명 규칙과 기존 extractor 매핑을 등록한 뒤 1~4단계를 새 rollout으로 다시 실행한다. 새 extractor 코드가 필요하면 이 단계에서 즉석 생성하지 않고 별도 CLI 릴리스 절차로 넘긴다. 한 장비의 예외를 공통 로직에 억지로 넣지 않는다.
+엔지니어가 새 장비 프로필 파일에 허용 경로, 파일명 규칙과 기존 extractor 매핑을 작성하고, 같은 rollout ID로 `init`을 다시 실행해 `next_profile`로 등록한다. 5단계 `plan`은 `next_profile`이 등록된 프로필 파일을 가리키고 현재 `profile`과 다를 때만 허용한다. 5단계 `next`는 그 프로필의 스키마와 extractor 매핑(기존 extractor 이름만 허용)을 검증하고, 현재 지도에서 `unsupported-format`으로 남은 파일군을 `data-map/extractor-requests.json`에 정리한 뒤 manifest를 다시 생성한다. 결과 승인으로 rollout이 끝나며, 새 장비는 이 프로필로 새 rollout을 1단계부터 시작한다. 새 extractor 코드가 필요하면 이 단계에서 즉석 생성하지 않고 별도 CLI 릴리스 절차로 넘긴다. 한 장비의 예외를 공통 로직에 억지로 넣지 않는다.
 
 ## 9. Skill Market 배포 구조
 
