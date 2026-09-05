@@ -16,8 +16,10 @@ deduplicated by content, honouring allow/deny and `active_candidate`.
   `active_candidate` = the newest file of a family after a single pass, or
   any member flagged `actively_changing` across passes (letter 05): metadata
   only, never downloaded, reason recorded.
-- SHA-256 of downloaded bytes; `truncated: true/false`; duplicates share
-  one evidence file.
+- SHA-256 of downloaded bytes; duplicates share one evidence file. Every
+  sample is a whole file — nothing is truncated (spec §4.1) — so a member
+  over the per-file byte budget is skipped with reason `oversize` and
+  recorded as metadata only, beside the deny-pattern members.
 - Budgets: per-equipment file count, per-file bytes, total bytes, wall
   time. Any breach stops downloading at once and records the reason.
 - Family-level checkpoint; resume skips completed families.
@@ -38,7 +40,10 @@ python -m pytest -q tests/test_sampling.py tests/test_budgets.py
 ```
 
 Covers: 100-file family yields 3–5 samples; total-bytes budget stops
-before the next download; deny pattern produces no evidence file; newest
+before the next download; the over-budget fixture file produces no
+evidence file and a metadata-only row with reason `oversize`, and no
+evidence file anywhere is a partial copy of its source; deny pattern
+produces no evidence file; newest
 file is `active_candidate` with no download; a file that changed between
 two passes is `active_candidate` even when it is not the newest; identical files produce one
 evidence file; interrupted sampling resumes without re-downloading finished

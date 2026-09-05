@@ -45,7 +45,9 @@ metadata stays out of the shared skill body.
   `14 confirmed <UTC date> | discovery: <four values>`.
 - `install/install.sh` and `install/install.ps1`, same behaviour: read the
   roots from `VERSION.json`, copy each skill to `<root>/<skill-name>/` and
-  write `VERSION.json` beside `SKILL.md`; install the CLI once on PATH. Flags:
+  write `VERSION.json` beside `SKILL.md`; install the CLI once on PATH with
+  `python -m pip install -e ".[dev]"` — pip, never uv, on both scripts.
+  Flags:
   `--dry-run` prints every target path and touches nothing; `--verify`
   exits non-zero unless every target exists and its `SKILL.md` SHA-256
   matches the suite copy. Record suite version and supported contract

@@ -12,6 +12,9 @@ code and `NEXT:` contract, with a working `preflight` and an empty `status`.
 ## Build
 
 - `pyproject.toml` with the console script and dev extras (`pytest`).
+  Install it with pip, never uv: `python -m pip install -e ".[dev]"`.
+  Record that exact line in `progress.md`; every later letter's
+  **Done when** assumes this editable install is in place.
 - `equipment_map/cli.py`: argparse with subcommands `init`, `preflight`,
   `stage <N> plan`, `stage <N> next`, `status`, `operator approve-plan`,
   `operator approve-result`, `operator unlock`. All but `preflight` and
@@ -30,6 +33,7 @@ code and `NEXT:` contract, with a working `preflight` and an empty `status`.
 ## Done when
 
 ```
+python -m pip install -e ".[dev]"
 python -m pytest -q tests/test_cli_contract.py
 ```
 

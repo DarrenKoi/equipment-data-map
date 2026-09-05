@@ -18,6 +18,8 @@ the bullet:
 - repeated names group into one family
 - format outliers are captured separately
 - budget breach stops downloads immediately
+- an over-budget file stays metadata-only with none of its bytes fetched
+- the FTP transport follows the machine (Windows → proxy, else direct)
 - resume from checkpoint after interruption
 - encrypted and corrupt files survive as `unreadable`
 - byte-identical `data-map/` on fixed input without LLM
@@ -38,5 +40,6 @@ than duplicating. Fix any gap found in the earlier modules; note the fix in
 python -m pytest -q
 ```
 
-Whole suite green. `tests/test_scenarios_stage1.py` has exactly thirteen
-test functions.
+Whole suite green. `tests/test_scenarios_stage1.py` has exactly fifteen
+test functions — one per §7 bullet. Recount §7 before you start: if the
+spec has moved, the count moves with it.

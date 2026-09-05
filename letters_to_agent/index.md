@@ -113,9 +113,22 @@ disposable: disk plus `progress.md` is the state, your memory is not.
 
 - Python 3.11+, `pyproject.toml`, package `equipment_map/`, console script
   `equipment-map`, tests in `tests/` with pytest. `python -m pytest -q` runs all.
-- Standard library first: `argparse`, `ftplib`, `sqlite3`, `hashlib`, `json`,
-  `zipfile`. Allowed third-party: `smbprotocol` (SMB client). Dev only:
-  `pytest`, `pyftpdlib` (fake FTP), `impacket` (fake SMB server on a
+- **pip, not uv.** Every install line in these letters is
+  `python -m pip install -e ".[dev]"`. The company PCs have pip and no uv, and
+  the skill installers of letter 14 must run on the same machines, so no letter
+  may introduce another installer or a lockfile format.
+- FTP goes through the vendored `ftp_handler/` at the repo root — do not write
+  an FTP client. It is copied from `skewnono_v3_nuxt` and carries two
+  transports with one surface: `direct_downloader` (stdlib) and `proxy`
+  (`requests` on the client, `flask` on the server). Which one a machine gets
+  is not a call-site choice; `ftp_handler.fleet_downloader()` decides, because
+  the Windows engineer PCs have no FTP egress and must go through the proxy.
+  Treat the package as read-only: a change to it belongs upstream, and a letter
+  that needs one records why in `progress.md` first.
+- Standard library first: `argparse`, `sqlite3`, `hashlib`, `json`, `zipfile`.
+  Allowed third-party: `smbprotocol` (SMB client), `requests` (the
+  `ftp_handler` proxy client). Dev only: `pytest`, `pyftpdlib` (fake FTP),
+  `flask` (fake proxy server in tests), `impacket` (fake SMB server on a
   non-standard port). Add nothing else without recording why in `progress.md`.
 - Every CLI exit goes through one function that prints the final `NEXT:` line
   and returns the exit code. No other code prints `NEXT:`.
