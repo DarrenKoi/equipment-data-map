@@ -10,7 +10,9 @@ model configuration.
 
 `spec.md` §7 (agent-tool checks, observable results), §10.
 
-The minimum model is the company Qwen3.8 28B class; treat it as a floor.
+The initial minimum-model profile is the engineer's dedicated Qwen3.8-27B
+deployment. Record its exact served model identifier; parameter-count
+shorthand is not a verified identity or accuracy result.
 Newer Qwen, GLM, Kimi, GPT, or other approved models are validated against
 the same scenarios, recording the exact model and serving configuration.
 
@@ -30,7 +32,10 @@ the same scenarios, recording the exact model and serving configuration.
 - `scripts/check_audit.py`: reads an `audit.jsonl` and one normalized
   transcript, fails if any `command` line is outside the skill's allowed
   set, if `next` succeeded without a prior `approve-plan`, or if
-  `llm-attempts.jsonl` shows a third attempt for any field.
+  the LLM audit view exceeds two semantic slots or the approved per-slot
+  transport limit, contains requests beyond cumulative budget, or repeats a
+  committed result. Compare it with authoritative `work/llm.sqlite`, including
+  recovery after an interrupted export.
 - `scenarios/results/<tool>-<model>.md` template with fields: tool and
   version, model id, serving config, scenario pass/fail, normalized
   transcript path.

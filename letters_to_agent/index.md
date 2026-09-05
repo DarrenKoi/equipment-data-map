@@ -1,5 +1,8 @@
 # Letters to agent
 
+Read [AGENTS.md](AGENTS.md) in this folder first: it is the office agent's
+contract. Run the commands below from the repository root.
+
 You are the agent that builds and then operates the `equipment-map` CLI to
 produce an equipment data map: a read-only, evidence-backed description of
 one FAB equipment's file store. This folder is self-contained. Everything you
@@ -11,6 +14,13 @@ fake tree, then on one approved equipment, and end with the deliverable:
 stage 1 to stage 5; the engineer re-runs `init` on it at stage boundaries.
 For a new equipment type, start a new rollout and repeat 16–20 with the
 profile registered at stage 5 (see letter 13 for profiles).
+
+The operating target is unattended execution **between** human gates: the
+engineer approves roots and budgets, the CLI completes that bounded stage,
+and the engineer reviews coverage and results. Building the CLI, installation,
+approvals, stale-lock recovery and unsupported-format workbench sessions still
+need the engineer. A completed command may report partial inventory or
+unresolved interpretations; inspect coverage before calling the map complete.
 
 ## Loop
 
@@ -94,7 +104,7 @@ disposable: disk plus `progress.md` is the state, your memory is not.
 - One CLI, thin skills. All logic lives in `equipment-map`. A skill runs only
   its allowed subcommands (`spec.md` §9 table); no branching, state, JSON
   assembly, or cross-skill calls; no `equipment-map-common` skill.
-- `audit.jsonl` is the state: append-only under `rollouts/<id>/`; `status`
+- `audit.jsonl` is the rollout stage/approval state: append-only under `rollouts/<id>/`; `status`
   derives the stage from it. No mutable `state.json`.
 - Operator commands stay human: `init`, `operator approve-plan`,
   `operator approve-result`, `operator unlock` appear in no skill, no
@@ -104,8 +114,10 @@ disposable: disk plus `progress.md` is the state, your memory is not.
 - Exit contract: `0` done or safe no-op, `10` await approval, `20` stop,
   `30` preflight failed. Last stdout line is
   `NEXT: <command | WAIT-APPROVAL | STOP | INSTALL-OR-UPGRADE>`.
-- stdout carries counts and hashes only. Paths, filenames, sample content,
-  credentials, prompts and responses go to files under the rollout directory.
+- stdout carries counts and hashes only. Equipment paths, filenames and approved samples stay in local rollout
+  files. Raw LLM prompts/responses are not retained by default; approved
+  retention is outside rollouts. Validated field values remain in the map
+  and durable work records.
 - Equipment access is read-only. Data, credentials, and analysis stay inside
   the company network.
 

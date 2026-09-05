@@ -18,7 +18,8 @@ supplies it in your environment before this letter (for example
 
 1. Ask the engineer to run `equipment-map init --rollout "$ROLLOUT"` again
    and fill the `llm` block (approved internal endpoint, key alias,
-   glossary path and version). You wait; `stage 2 plan` refuses until it
+   glossary path/version, requested model, generation limits, timeouts,
+   elapsed limit and retry settings from letter 11). You wait; `stage 2 plan` refuses until it
    is present.
 2. `equipment-map preflight --stage 2 --contract 1`, then
    `equipment-map stage 2 plan --rollout "$ROLLOUT"`; report the hash and
@@ -28,7 +29,8 @@ supplies it in your environment before this letter (for example
    `llm-provenance.json` from stdout, nothing else.
 4. Ask the engineer to check one measurement family and one log family in
    `file-families.json` against the evidence, confirm the model id and
-   config in `data-map/llm-provenance.json`, then run
+   config in `data-map/llm-provenance.json`, and resolved/unresolved coverage
+   and service failures in `data-map/coverage.json`, then run
    `operator approve-result`. Append `waiting`.
 
 ## Done when

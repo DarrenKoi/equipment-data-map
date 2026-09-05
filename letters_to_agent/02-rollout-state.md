@@ -20,7 +20,9 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
   `deny_patterns`, `budgets` (every §4.4 budget plus `llm_max_requests`),
   `credential_alias`, `access_window` (`always` or `{start, end}` UTC),
   `profile`, `llm` (`endpoint`, `key_alias`, `glossary_path`,
-  `glossary_version`, optional `retention_location`), `next_profile`
+  `glossary_version`, `model`, `temperature`, `max_tokens`,
+  `connect_timeout_seconds`, `request_timeout_seconds`, `max_elapsed_seconds`,
+  `transport_max_attempts`, `retry_backoff_seconds`, optional `retention_location`), `next_profile`
   (optional). Missing budgets fail validation (§6 "no budget, no run").
   `init` requires everything except `llm` and `next_profile`; `stage N plan`
   refuses when the fields that stage needs are absent (`llm` from stage 2,
@@ -39,7 +41,8 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
 - `audit.jsonl`: append-only records `{ts, event, ...}`. Events at minimum:
   `init`, `plan`, `approve-plan`, `next-start`, `next-stop`, `approve-result`,
   `lock`, `unlock`. `status` reads the ledger and derives current stage and
-  approval state. No `state.json` anywhere.
+  approval state. Work databases hold scoped pipeline checkpoints, not
+  stage/approval authority. No `state.json` anywhere.
 - `stage N plan --rollout <id>`: canonical JSON of the plan (sorted keys,
   stage, rollout.json content, contract) → `plan.json` with `plan_hash`.
   Refuse when stage `N-1` has no `approve-result` (`N=1` needs none).
@@ -70,6 +73,16 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
   `stage N next`, `status`, `WAIT-APPROVAL`, or `STOP`. Operator commands and
   `init` never appear.
 
+- Validate the LLM settings using spec §4.6; include every setting and the
+  profile/glossary content hashes in the approved plan. Changed referenced
+  files invalidate execution approval too. Do not silently change models.
+- Implement spec §5.1 collection scopes: collection stage + its init epoch +
+  source configuration hash. Checkpoints carry that scope. Stages 2/4 consume
+  the explicitly approved preceding collection and manifest. Starting stage 3
+  or reconfiguring it selects a fresh scope and resumably archives the old
+  data map under `work/history/<scope>/`; old audit approvals remain intact.
+  A process restart alone changes neither scope nor cumulative budgets.
+
 ## Done when
 
 ```
@@ -88,3 +101,6 @@ not result-approved) keeps stage 1 approved, makes stage 2 unplanned, removes
 `REPORT.md:` line; `plan` at
 stage 2 is refused while `llm` is absent; `retention_location` inside the
 rollouts dir fails validation.
+
+Also cover LLM setting and profile/glossary content changes invalidating the
+plan, invalid numeric limits, and restart retaining scope and usage counters.

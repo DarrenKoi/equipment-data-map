@@ -24,7 +24,9 @@ supplies it in your environment before this letter (for example
    writes `wiki/`, `rag/`, and `rollouts/$ROLLOUT/REPORT.md`.
 3. Ask the engineer to open `rollouts/$ROLLOUT/data-map/wiki/index.md` and
    confirm each family page answers the §1 questions or marks them
-   unconfirmed with a reason, then run `operator approve-result`. Append
+   unconfirmed with a reason; metadata-only pages must say content was not
+   inspected. Review inventory/sampling/interpretation coverage in the Wiki
+   index and `coverage.json`, then run `operator approve-result`. Append
    `waiting`.
 4. Relay `REPORT.md` to the engineer as is. It is the only summary that may
    leave the company network; you write no other summary and add nothing

@@ -40,6 +40,9 @@ than duplicating. Fix any gap found in the earlier modules; note the fix in
 python -m pytest -q
 ```
 
-Whole suite green. `tests/test_scenarios_stage1.py` has exactly fifteen
+Whole suite green. Include the extra download-guard, growing-file,
+collection-scope and metadata-evidence cases required by spec §7 in the
+relevant earlier test modules; the fifteen functions below cover the original
+bullet list, not the entire acceptance scope. `tests/test_scenarios_stage1.py` has exactly fifteen
 test functions — one per §7 bullet. Recount §7 before you start: if the
 spec has moved, the count moves with it.

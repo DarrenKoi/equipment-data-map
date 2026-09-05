@@ -139,6 +139,10 @@ LLM 호출 전에 파일군을 만든다.
 - 최대 목록 항목 수와 디렉터리 깊이
 - 사전 파일군별 헤더 읽기 파일 수와 전체 헤더 요청 수
 
+모든 내용 다운로드는 Grouping의 signature 조회와 Sampling 모두 같은 `download_guard`를 거친다. 사전 파일군을 메타데이터로 먼저 만들고 최신·실시간·변경 중 후보를 표시한 후에만 signature 후보를 고른다. 허용 루트, allow/deny, `active_candidate`, 파일별 크기, 남은 전체 바이트·파일 수·요청·시간 budget을 전송 전에 검사한다. 헤더용 전체 파일도 전체 다운로드 budget에 포함하고, 이미 받은 동일 입력은 Sampling에서 재사용한다. 후보가 없으면 signature 없이 메타데이터와 생략 사유를 남긴다. 두 번의 목록이 같다는 사실만으로 최신·실시간 후보가 쓰기 완료됐다고 판단하지 않는다. 안정성을 확인할 근거가 없으면 내용을 받지 않는다.
+
+크기 조회 이후 파일이 커지는 경우도 전송 계층에서 바이트 상한을 강제해야 한다. direct와 proxy 모두 수신 중 상한을 넘기기 전에 중단하고 부분 파일은 evidence로 쓰지 않는다. proxy는 장비→proxy 구간에도 같은 상한을 강제한다. 현재 라이브러리가 이를 지원하지 않으면 upstream 수정·재배포가 선행조건이며, 사전 SIZE 검사만으로 이 보장을 통과했다고 하지 않는다. 전송 예약과 사용량은 디스크에 남겨 재개 시 초기화되지 않게 한다.
+
 ### 4.5 Extraction
 
 먼저 결정론적인 도구로 내용을 추출한다.
@@ -162,8 +166,15 @@ CLI는 회사 내부의 승인된 OpenAI 호환 endpoint를 직접 호출한다.
 - 대표 샘플에서 추출한 제한된 내용
 - extractor가 만든 구조
 - 이미 알려진 장비·공정 용어집
+- 근거 인용을 위한 해당 입력 묶음의 sample SHA-256 식별자
 
-LLM에는 파일군 설명, 필드 의미, 생성 주체, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 신뢰도(`confidence`: `high`|`medium`|`low`)와 근거 샘플(`evidence`: 해당 파일군 evidence 디렉터리에 실제로 존재하는 SHA-256 목록)도 각각 별도 요청과 검증기를 거치는 필드다. 필드당 최대 시도는 2회다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다.
+LLM에는 파일군 설명, 필드 의미, 생성 주체, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 신뢰도(`confidence`: `high`|`medium`|`low`)와 근거 샘플(`evidence`: 해당 파일군 evidence 디렉터리에 실제로 존재하는 SHA-256 목록)도 각각 별도 요청과 검증기를 거치는 필드다. 필드당 의미 검증 응답 슬롯은 최대 2개다. 일시적인 전송 실패는 의미 검증 실패로 세지 않으며 아래의 별도 상한을 따른다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다.
+
+LLM 실행 설정은 `llm.model`(요청할 모델 또는 사내 alias), `temperature`, `max_tokens`, `connect_timeout_seconds`, `request_timeout_seconds`, `max_elapsed_seconds`, `transport_max_attempts`, `retry_backoff_seconds`를 포함하며 계획 hash에 결합한다. 참조한 profile·glossary 파일의 내용 hash도 계획에 포함하고 실행 전에 다시 확인한다. 시간 한도는 유한한 양수, `max_tokens`는 양의 정수, temperature와 backoff는 유한한 0 이상 값, `transport_max_attempts`는 1~3의 정수다. 운영자가 전용 Qwen 또는 승인된 HCP endpoint와 모델을 선택하며 실행 중 자동 모델 전환은 하지 않는다. 요청 alias와 서버가 반환한 모델 ID·revision·serving 설정을 구분해 기록하고, 서버가 공개하지 않은 실제 backend 정보는 `unknown`으로 남긴다.
+
+HTTP 429/502/503/504, 연결 오류와 timeout만 일시적 전송 실패로 취급한다. 각 의미 응답 슬롯당 최대 `transport_max_attempts`회 전송하고, 대기는 `retry_backoff_seconds * 2**(retry_index-1)`이다. 유효한 `Retry-After`가 더 길면 그 값을 따르되 남은 실행 시간을 넘기면 재시도하지 않는다. 매 요청과 대기는 LLM 및 rollout 시간 한도로 제한한다. 모든 전송은 보내기 전에 `llm_max_requests`에서 차감하고 디스크에 예약을 남긴다. 한도를 소진하면 `unresolved: budget`, 전송 재시도 소진은 `unresolved: service-unavailable`, 다른 HTTP 오류는 `unresolved: api-error`로 남긴다. 인증 오류는 추가 호출 없이 나머지 필드도 `api-error`로 종료한다. 의미 응답 슬롯 두 개가 모두 검증 실패하면 `unresolved: invalid-response`다. 같은 승인 실행의 재개는 횟수와 시간 사용량을 초기화하지 않는다.
+
+필드 결과는 family 종료까지 메모리에 두지 않는다. `work/llm.sqlite`의 트랜잭션에 요청 예약, 응답 처리 상태, 검증된 필드 값 또는 unresolved 사유와 provenance를 저장한다. 필드 키는 collection scope, family 입력 hash, field, 모델 설정·prompt·glossary hash다. 응답 처리와 결과 저장은 한 트랜잭션으로 커밋하고 `llm-attempts.jsonl`은 이 기록의 재생성 가능한 감사용 export다. 재개 시 커밋된 결과는 재호출하지 않으며 미완료 예약은 사용한 전송으로 세고 남은 한도 안에서만 이어간다. 원격 API의 정확히 한 번 실행은 보장하지 않는다. raw prompt/response는 기본 보존하지 않지만, 검증된 의미 필드 값은 지도와 재개를 위해 저장한다.
 
 ### 4.7 Data Map
 
@@ -174,12 +185,18 @@ data-map/
   file-families.json      # 파일군, 규칙, 통계, 해석
   paths.json              # 디렉터리 구조 요약
   unreadable.json         # 암호화/미지원/오류 파일군
+  coverage.json           # 목록/표본/의미 해석 완료 범위
+  metadata-evidence/      # 표본 없는 파일군의 관측 메타데이터 근거
   evidence/               # 허용된 대표 샘플과 추출 결과
   wiki/                   # 사람이 읽는 Markdown
   rag/                    # 근거 경로가 포함된 RAG 문서
 ```
 
-원본 자격 증명, 전체 원본 파일, LLM 비밀 설정은 저장소에 넣지 않는다. 원문을 포함할 수 있는 LLM prompt/response는 기본적으로 보존하지 않고 model·prompt·입력·출력 hash만 기록한다. 별도 보존이 승인된 경우에만 접근 제어된 로컬 위치를 사용하고 `data-map/`에는 위치 식별자와 hash만 남긴다.
+원본 자격 증명, 전체 원본 파일, LLM 비밀 설정은 저장소에 넣지 않는다. 검증된 의미 필드 값은 지도와 재개용으로 보존한다. raw LLM prompt/response는 기본적으로 보존하지 않고 model·prompt·입력·출력 hash만 기록한다. 별도 보존이 승인된 경우에만 접근 제어된 로컬 위치를 사용하고 `data-map/`에는 위치 식별자와 hash만 남긴다.
+
+내용을 받지 못한 파일군도 출력한다. `data-map/metadata-evidence/<family-key-sha256>.json`에 source scope, 경로, 크기, 시각, 관측 출처, 생략 사유를 기록하고 이 파일의 SHA-256을 `evidence_kind: metadata`로 인용한다. 대표 샘플이 없으면 LLM 내용 해석을 호출하지 않고 `unresolved: no-sample`로 둔다. Wiki와 RAG에는 관측한 메타데이터만 사실로 등록하며 내부 필드·용도에 대한 근거로 사용하지 않는다. 샘플이 있는 해석은 기존 sample SHA를 인용한다.
+
+완료와 해석 품질은 별도로 보고한다. `coverage.json`에는 허용 루트별 inventory 완료 여부와 미탐색 frontier 수, 발견한 파일·파일군 수, 표본이 있는 파일군 수와 없는 사유별 수, resolved/unresolved 의미 필드 수와 사유별 수를 남긴다. 알려지지 않은 전체 파일 수를 추측해 coverage 백분율을 만들지 않는다. budget으로 inventory가 끝나지 않았으면 `inventory_complete: false`다. 정상 종료는 승인된 실행의 종료이지 장비 전체 이해나 모든 해석 성공의 증명이 아니다. 이 coverage를 결과 검토표에 포함한다.
 
 ## 5. 실행 방식
 
@@ -214,7 +231,7 @@ equipment-map status --rollout <ID>
 - 4.4절의 모든 budget과 LLM 요청 수 budget
 - 자격 증명 별칭, 장비 접근 허용 시간대(`always` 또는 UTC 구간)
 - 장비 프로필 이름(`profile`)
-- LLM endpoint URL, 키 별칭, 용어집 경로와 버전(2단계 `plan`부터 필수)
+- LLM endpoint URL, 키 별칭, 용어집 경로와 버전 및 4.6절의 모델·생성·timeout·재시도 설정(2단계 `plan`부터 필수)
 - prompt/response 보존 위치 식별자(선택, `rollouts/` 밖의 접근 제어된 경로)
 - 5단계에서 등록할 다음 프로필 이름(`next_profile`, 5단계 `plan`부터 필수)
 
@@ -260,9 +277,11 @@ rollouts/<rollout-id>/
   .lock                   # 실행 중에만 존재, manifest에서 제외
 ```
 
-상태의 진실 원천은 `audit.jsonl`이며 `status`는 이를 읽어 현재 단계를 계산한다. 별도 가변 `state.json`은 두지 않는다. `result-manifest.json`은 `data-map/`만 대상으로 하고 `/` 구분자의 정렬된 상대 경로와 원시 바이트 SHA-256을 기록한다. `data-map/`을 바꾸는 모든 단계의 `next`는 종료 직전에 이 파일을 다시 생성하며, 결과 승인은 그 시점의 manifest hash에 결합한다. 모든 기록 시각은 UTC ISO-8601 형식을 사용한다.
+rollout 단계·승인 상태의 진실 원천은 `audit.jsonl`이며 `status`는 이를 읽어 현재 단계를 계산한다. 별도 가변 `state.json`은 두지 않는다. `result-manifest.json`은 `data-map/`만 대상으로 하고 `/` 구분자의 정렬된 상대 경로와 원시 바이트 SHA-256을 기록한다. `data-map/`을 바꾸는 모든 단계의 `next`는 종료 직전에 이 파일을 다시 생성하며, 결과 승인은 그 시점의 manifest hash에 결합한다. 모든 기록 시각은 UTC ISO-8601 형식을 사용한다.
 
 자격 증명, LLM 비밀 설정과 허용 범위를 넘는 원본 파일은 rollout 디렉터리에 넣지 않는다. 자격 증명은 `rollout.json`의 별칭으로만 참조하며 CLI가 OS의 승인된 비밀 저장소에서 직접 조회한다. command argument, 환경 변수와 stdout으로 전달하지 않는다. 민감한 대표 샘플을 포함해야 하면 회사 내부 접근 권한과 보존 기간이 적용되는 로컬 위치만 사용한다. Skill Market은 rollout 데이터를 배포하지 않는다.
+
+collection scope는 수집 단계(1 또는 3), 그 단계의 최신 `init` epoch, 정규화된 source 설정 hash로 식별한다. source 설정에는 장비·protocol·host·port·share·root·pattern·profile 내용 hash가 포함된다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트는 모두 이 scope에 속한다. 새 stage 3 수집이나 stage 3 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. stage 2와 4는 명시적으로 승인된 이전 단계의 collection scope와 manifest를 입력으로 삼는다. 새 collection을 활성화할 때 이전 `data-map/`은 `work/history/<scope>/`에 보존하고 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
 
 ## 6. 안전장치
 
@@ -301,14 +320,16 @@ rollouts/<rollout-id>/
 - CLI가 없거나 계약 버전이 맞지 않을 때 스킬이 실행을 계속하지 않는지
 - 가짜 SMB가 비표준 포트 또는 격리된 VM·컨테이너에서 검증되는지
 
+추가 필수 시나리오: signature와 sample 경로 모두에서 보호 파일 내용 요청 0건, 전송 중 성장 파일 상한, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분을 검증한다.
+
 LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한다. 근거 없는 추론은 RAG의 확정 사실로 등록하지 않는다.
 
-스킬은 Codex, Claude Code, OpenCode와 pi에서 각각 같은 시나리오로 검증한다. 최소 모델 기준은 회사의 Qwen3.8 28B 환경으로 삼는다. 문구 일치가 아니라 다음 관찰 가능한 결과를 확인한다.
+스킬은 Codex, Claude Code, OpenCode와 pi에서 각각 같은 시나리오로 검증한다. 초기 최소 모델 검증 프로필은 엔지니어의 전용 Qwen3.8-27B 배포로 삼고 정확한 served model ID와 설정을 기록한다. 크기 표기는 검증된 모델 식별자나 정확도 증명이 아니다. 문구 일치가 아니라 다음 관찰 가능한 결과를 확인한다.
 
 - 올바른 CLI subcommand를 선택하는가?
 - `plan` 이후 운영자 승인 없이 `next`가 성공하지 않는가?
 - 실패 시 임의 우회 명령을 만들지 않고 CLI의 중단 이유를 전달하는가?
-- LLM 응답이 유효하지 않을 때 필드당 최대 2회 후 `unresolved`로 남기는가?
+- LLM 의미 응답이 두 슬롯 모두 유효하지 않으면 `unresolved`로 남기며, 별도 전송 재시도와 전체 요청·시간 상한도 지키는가?
 - audit의 CLI 호출 기록과 시나리오의 shell command 목록에 허용되지 않은 명령이 없는가?
 
 ## 8. Rollout 단계별 운영
@@ -335,7 +356,7 @@ LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한
 
 ### 4단계: Wiki와 RAG 생성
 
-검토가 끝난 `data-map/`만 사용해 Wiki와 RAG 문서를 만든다. 답변에는 항상 장비 경로와 근거 샘플을 표시한다. 4단계 `next`는 `wiki/`, `rag/`와 함께 `rollouts/<rollout-id>/REPORT.md`를 생성한다. 5단계 `next`는 5단계 건수를 포함한 `REPORT.md`를 임시 파일에 쓰고 원자적으로 교체한 뒤에 `next-stop`을 기록한다. 완료 기록과 오래된 보고서가 공존하지 않는다.
+검토가 끝난 `data-map/`만 사용해 Wiki와 RAG 문서를 만든다. 답변에는 항상 장비 경로와 근거 종류·hash를 표시한다. 샘플이 없으면 4.7절의 metadata evidence만 인용하고 내부 내용은 미확인으로 남긴다. 4단계 `next`는 `wiki/`, `rag/`와 함께 `rollouts/<rollout-id>/REPORT.md`를 생성한다. 5단계 `next`는 5단계 건수를 포함한 `REPORT.md`를 임시 파일에 쓰고 원자적으로 교체한 뒤에 `next-stop`을 기록한다. 완료 기록과 오래된 보고서가 공존하지 않는다.
 
 ### 5단계: 장비 종류 확장
 
@@ -395,5 +416,5 @@ equipment-map-suite/
 - 실행 budget과 읽기 전용 제약을 자동 검사한다.
 - 검토된 지도에서 Markdown Wiki와 근거 추적 가능한 RAG 문서를 생성한다.
 - 6개 스킬이 네 지원 도구에서 같은 CLI 계약으로 동작한다.
-- Qwen3.8 28B 기준 시나리오에서 승인 우회, 자유형 JSON 작성과 대화 상태 의존 없이 rollout을 재개한다.
+- 전용 Qwen3.8-27B 배포의 정확한 모델·serving 설정으로 실행한 기준 시나리오에서 승인 우회, 자유형 JSON 작성과 대화 상태 의존 없이 rollout을 재개한다.
 - 한 엔지니어가 로컬 rollout 상태만으로 중단 후 1~5단계를 재개한다.

@@ -44,8 +44,8 @@ and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
 
 - **Two stage axes.** The 6-step runtime pipeline runs inside one CLI invocation. The 5 rollout stages are what the six skills map to. Keep them apart.
 - **One CLI, thin skills.** All logic lives in `equipment-map`. Each `SKILL.md` runs only the subcommands its row in the spec's §9 table allows. A skill contains no branching, state machine, JSON assembly, or cross-skill call, and there is no `equipment-map-common` skill.
-- **`audit.jsonl` is the state.** Append-only ledger under `rollouts/<id>/`; `status` derives the current stage from it. There is no mutable `state.json`.
+- **`audit.jsonl` is the rollout stage/approval state.** Append-only ledger under `rollouts/<id>/`; `status` derives the current stage from it. There is no mutable `state.json`.
 - **Operator commands stay human.** `init`, `operator approve-plan`, `operator approve-result`, `operator unlock` appear in no skill and in no CLI `NEXT:` line. A skill invoking one is a scenario failure.
 - **`rollout.json` is the only input to `plan`.** Roots, budgets, allow/deny patterns, and credential aliases come from that file, never from command flags.
 - **Fixed exit contract.** `0` done or safe no-op, `10` await approval, `20` stop, `30` preflight failed. Last stdout line is `NEXT: <command | WAIT-APPROVAL | STOP | INSTALL-OR-UPGRADE>`.
-- **stdout carries counts and hashes only.** Paths, filenames, sample content, credentials, and LLM prompts/responses go to files under the rollout directory.
+- **stdout carries counts and hashes only.** Equipment paths, filenames and approved samples stay in local rollout files. Raw LLM prompts/responses are not retained by default; approved retention is outside rollouts. Validated fields are stored for mapping and recovery.

@@ -36,7 +36,9 @@ supplies it in your environment before this letter (for example
 5. Report the counts: files listed, families, samples, extracted,
    unreadable, budget stops, families interpreted, families `unresolved`.
    Ask the engineer to review family accuracy, sample representativeness,
-   and equipment load. Before they approve: if they want wider roots or
+   equipment load, and `coverage.json` (inventory frontier, sample coverage,
+   unresolved interpretations by reason). Exit 0 is not proof of complete
+   equipment coverage. Before they approve: if they want wider roots or
    bigger budgets, that is another `init` on the same rollout and a new
    plan hash; repeat from step 3. Once satisfied they run
    `operator approve-result`; after that, widening needs a new rollout.

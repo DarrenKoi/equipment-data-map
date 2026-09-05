@@ -19,7 +19,8 @@ instead of retrying.
   `next` refuses to start outside the window (exit 20).
 - `stage 3 next`: the stage 1 pipeline against the real `Source` from
   `rollout.json` (`host`, `port`, `share`), then `interpret_families` from
-  letter 11 over families that have no interpretation yet, then
+  letter 11 over current-scope families without a matching durable field
+  result (scope/input/model/prompt/glossary hashes must match), then
   `write_manifest`. Connection failure writes a diagnostic file, one audit
   entry, exit 20. No firewall or approval-system calls exist anywhere.
 - `stage 5 plan`: refused unless `rollout.json.next_profile` names an
@@ -50,3 +51,9 @@ current; stage 5 plan refused when `next_profile` is absent or equals
 name and otherwise writes `extractor-requests.json` and a `REPORT.md`
 whose stage list includes 5 and whose hash `status` prints; `grep -r` of the
 package finds no firewall, VPN, or approval-API client code.
+
+Also run stages 1→2→3 on one rollout with fake and real-source fixtures
+sharing paths but different bytes. Stage 3 must inventory and interpret the
+new source with no old evidence in its manifest. Reconfigure stage 3 roots
+and repeat; interrupt during scope activation and verify safe recovery.
+Restart without reconfiguration must reuse completed current-scope work.

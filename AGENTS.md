@@ -1,5 +1,17 @@
 # Equipment Data Map agent contract
 
+This root contract guides agents maintaining the repository. The office agent
+executing the build-and-operate letters starts with
+`letters_to_agent/AGENTS.md` and `letters_to_agent/index.md`.
+
+`letters_to_agent/AGENTS.md` is the execution contract for the company-local
+LLM agent: building the mapper in letters 01–15, then operating it in letters
+16–20 within engineer-approved scope and budgets. It defines how that agent
+resumes work, proves completion, and respects human gates. Keep it usable with
+the letters without requiring the office agent to read this root contract.
+When maintaining the letters, keep their execution contract consistent with
+the workflow; do not start executing the letters unless the user asks.
+
 ## Purpose
 
 Build a company-internal exploration kit that lets an LLM inspect one FAB
@@ -8,7 +20,8 @@ collector: provide the guide, portable skills, safe scripts, checkpoints,
 review sheets, and evaluation cases needed for an engineer to supervise a
 long-running exploration.
 
-The minimum model target is the current Qwen3.8 28B class. Treat that as a
+The initial minimum-model validation profile is the dedicated company
+Qwen3.8-27B deployment; record its exact served model identifier. Treat that as a
 capability floor, not a fixed model dependency. Validate newer Qwen, GLM, Kimi,
 GPT, and other approved models against the same observable scenarios and record
 the exact model and serving configuration used by each run.

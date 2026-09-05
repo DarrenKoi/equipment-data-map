@@ -3,7 +3,7 @@
 ## Goal
 
 Derive `wiki/` and `rag/` from the approved `data-map/` only, every page
-citing equipment path and evidence sample.
+citing equipment path and typed sample or metadata evidence.
 
 ## Read
 
@@ -14,7 +14,10 @@ citing equipment path and evidence sample.
 - `equipment_map/publish.py`: one Markdown page per family and one index
   under `data-map/wiki/`; one chunked document per family under
   `data-map/rag/` with front matter holding family key, equipment path
-  pattern, evidence sha, confidence, and `unresolved` fields.
+  pattern, evidence kind and sha, confidence, and `unresolved` fields.
+  Metadata-only families cite their metadata-evidence file, show the skip
+  reason and "content not inspected", and publish only observed metadata
+  as facts. Never invent sample hashes or infer internal fields from paths.
 - Facts with `confidence: low` or `unresolved` render in a separate
   "unconfirmed" block and are excluded from RAG chunks marked `fact`.
 - `stage 4 next`: exit 20 if any family lacks both interpretation and an
@@ -25,14 +28,19 @@ citing equipment path and evidence sample.
   contract version. No model id or config, no equipment id, path, filename,
   or family key. It sits outside `data-map/` and outside the manifest.
 
+- Include `coverage.json` in the engineer review sheet and render coverage
+  in the Wiki index. REPORT remains counts-only under its existing rules.
+
 ## Done when
 
 ```
 python -m pytest -q tests/test_publish.py
 ```
 
-Covers: every wiki page and RAG chunk contains at least one evidence sha
-that exists in `evidence/`; low-confidence facts never appear in `fact`
+Covers: every wiki page and RAG chunk contains at least one typed evidence
+sha that exists in `evidence/` or `metadata-evidence/` as appropriate;
+all-oversize, denied and active-only families publish without samples or
+invented content facts; low-confidence facts never appear in `fact`
 chunks; output is byte-deterministic; stage 4 `plan` is refused without
 stage 3 result approval; a family with neither interpretation nor
 `unresolved` makes `next` exit 20 before writing; `REPORT.md` contains none

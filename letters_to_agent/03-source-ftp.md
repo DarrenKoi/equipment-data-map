@@ -26,8 +26,8 @@ before writing any adapter code. Do not read the whole package.
 - `download(path, max_bytes)` never truncates. It calls `size(path)` first
   and, when the file is larger than `max_bytes`, returns no bytes and a
   skip reason `oversize` for the caller to record as a metadata-only entry.
-  A file at or under the budget is returned whole. This is the only place
-  the per-file budget is enforced, so every later letter goes through it.
+  A stable file at or under the budget is returned whole. The shared download
+  guard calls this boundary; it also enforces aggregate budgets. Every later content read uses both guards.
 - `equipment_map/source/ftp.py` on `ftp_handler`, not on `ftplib`. Rules:
   - Get the downloader class from `ftp_handler.fleet_downloader()`. Never
     import `ftp_handler.direct_downloader` or `ftp_handler.proxy` directly:
@@ -100,6 +100,20 @@ before writing any adapter code. Do not read the whole package.
   CI machine. The Windows path must not go untested until someone is
   sitting at a Windows PC.
 
+- `equipment_map/download_guard.py`: the single entry point for every
+  content transfer, including later signature reads. Check approved roots,
+  allow/deny patterns, metadata-derived active candidates, per-file size,
+  remaining total bytes/files, requests, and time before calling Source.
+  Reserve and persist usage before transfer; resume never resets counters.
+  Completed downloads are reusable by source scope, path, size and mtime.
+  Uncertain reservations stay charged until reconciled; never refund bytes
+  merely because a process died. Letter 06 adds header-specific limits.
+- `Source.download` must also enforce the byte cap during transfer, including
+  equipment-to-proxy traffic. SIZE alone cannot bound a growing file. If the
+  vendored API cannot enforce it, record `blocked` for an upstream release
+  and proxy redeploy; do not fake compliance with a post-download check.
+  Discard partial copies and retain the metadata/failure reason.
+
 ## Done when
 
 ```
@@ -119,3 +133,8 @@ platform forced to `win32` and `CredReadW` mocked, and with `darwin` and
 `subprocess.run` mocked, `lookup` issues exactly the call above and returns
 the secret without logging it; with `linux` it raises `UnsupportedKeystore`
 without touching the network.
+
+Also cover a file growing after SIZE on both transports: the transfer cap
+is enforced before excess bytes are received, no partial evidence is kept,
+and usage remains charged after interruption. Guard tests prove denied and
+active candidates trigger zero content requests.

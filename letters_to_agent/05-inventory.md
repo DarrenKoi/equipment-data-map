@@ -14,7 +14,8 @@ budgets, resume from the last completed directory.
 - `equipment_map/inventory.py` writing `rollouts/<id>/work/inventory.sqlite`
   with the §4.2 columns plus `visited_at`, `status`, `error_kind`.
 - Directory-level checkpoint table: a directory is `done` only after all its
-  entries are stored. Resume skips `done` directories.
+  entries are stored. Key by collection scope + pass_id + directory. Resume
+  skips `done` directories only in that same scope and pass.
 - Every row carries `pass_id`. Stage 1 walks once. Stage 3 walks twice:
   pass 1 full, pass 2 listing only, both charged to the same listing,
   request, and wall-time budgets. A path whose size or mtime differs
@@ -45,3 +46,7 @@ clock); a file rewritten between two passes is `actively_changing`; a walk kille
 row set as an uninterrupted walk; every stored mtime is UTC ISO-8601 or
 `None` with the raw string kept; a dropped connection yields one reconnect
 then stop.
+
+A completed fake-tree directory with the same path as a real-tree directory
+must not suppress the stage 3 walk; pass 1 completion must not skip pass 2.
+Reconfiguration creates a fresh scope; a process restart preserves it.
