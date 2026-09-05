@@ -8,9 +8,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo status
 
-Docs only, no code yet. There is no build, lint, or test command. `letters_to_agent/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
+Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no build, lint, or test command. `letters_to_agent/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
 
 ## Where things are
+
+`ftp_handler/` is the FTP library copied from `skewnono_v3_nuxt` — the intended FTP
+Source adapter for §4, not yet wired to anything. `core` (`FtpClient`, one server) and
+`direct_downloader` (`FtpFleetDownloader`, concurrent fan-out) are stdlib-only; `proxy`
+carries the same `FtpFleetDownloader` surface over HTTP and needs `requests` on the
+client, `flask` on the server. The upstream `web_app` subpackage was left behind.
+
+**Transport is a platform fact, not a call-site choice.** The Windows engineer PCs have
+no FTP egress and must go through the proxy; Linux hosts reach the equipment directly.
+Call `ftp_handler.fleet_downloader()` for the right class instead of importing one of
+the two by hand; `FTP_TRANSPORT=direct|proxy` overrides the guess for a machine sitting
+on the unexpected side of the firewall. `tests/test_ftp_transport.py` pins that branch
+and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
 
 `letters_to_agent/` is the self-contained build-and-operate sequence for the company LLM: it reads `index.md`, then letters in order, tracking state in `progress.md`. `letters_to_agent/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes.
 
