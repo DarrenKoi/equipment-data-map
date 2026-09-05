@@ -8,9 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo status
 
-Docs only, no code yet. There is no build, lint, or test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
+Docs only, no code yet. There is no build, lint, or test command. `letters_to_agent/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
 
 ## Where things are
+
+`letters_to_agent/` is the self-contained build-and-operate sequence for the company LLM: it reads `index.md`, then letters in order, tracking state in `progress.md`. `letters_to_agent/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes.
 
 `docs/architecture/equipment-data-map.md` (Korean) is the source of truth. Section map:
 

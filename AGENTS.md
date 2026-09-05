@@ -52,6 +52,23 @@ extractors operate on the local copy. Promote a successful extractor only
 through a separate reviewed and tested CLI release; otherwise leave an
 `unsupported-format` report with evidence.
 
+## Letters to agent
+
+`letters_to_agent/` is the ordered build-and-operate sequence for the
+company-internal LLM. It is self-contained: `index.md` is the entry point,
+`spec.md` is a snapshot of the architecture doc, and `progress.md` is the
+append-only state ledger. Rules that every tool honours when working there:
+
+- Start from `index.md`; take the first letter without a `done` line.
+- Disk plus `progress.md` is the only state. Write a `wip` line and commit
+  after each build item, so any session can end at any moment and the next
+  one resumes from the `next:` field. Context windows are disposable.
+- A letter is `done` only when its **Done when** commands pass verbatim.
+- Operating letters (16 onward) run only the skill-allowed subcommands and
+  never `init` or `operator` commands.
+- Keep `spec.md` in sync with `docs/architecture/equipment-data-map.md`;
+  the `docs/` copy wins.
+
 ## Skill deliverables
 
 - Publish portable Agent Skills usable from Codex, Claude Code, OpenCode, and
