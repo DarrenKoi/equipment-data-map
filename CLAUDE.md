@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-`AGENTS.md` is the contract shared with Codex, OpenCode, and pi. Put cross-tool rules there. This file adds only Claude Code orientation. Agent files (`AGENTS.md`, `CLAUDE.md`, `SKILL.md`) are English; design docs under `docs/` are Korean.
+`AGENTS.md` is the contract shared with Codex, OpenCode, and pi. Put cross-tool rules there — including which language a file is written in. This file adds only Claude Code orientation.
 
 ## Repo status
 

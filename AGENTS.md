@@ -25,6 +25,12 @@ or extraction behavior, checkpoints, approval gates, or evaluation criteria —
 and do not restate it here. A rule that lives in two places drifts: this file
 says where things are and what wins, the doc says what the system does.
 
+Language is fixed per kind of file. Agent-facing files — `AGENTS.md`,
+`CLAUDE.md`, every `SKILL.md`, and everything under `equipment-data-parser/` —
+are English, as are code, comments, and commit messages. Design docs under
+`docs/` are Korean. Write in the language the file already uses; do not
+translate one into the other.
+
 ## Where the pieces are
 
 - `docs/architecture/equipment-data-map.md` — the spec, in Korean. It wins.
