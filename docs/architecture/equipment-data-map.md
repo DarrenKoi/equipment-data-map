@@ -82,6 +82,11 @@ HTTP proxy를 거치고, Linux 호스트는 장비에 직접 붙는다. 두 전�
 `FtpFleetDownloader` 표면을 제공하며 `ftp_handler.fleet_downloader()` 가 그
 기계에 맞는 쪽을 고른다.
 
+proxy의 위치는 배포 사실이므로 소스 트리에 두지 않는다. `FTP_PROXY_URL`,
+`FTP_PROXY_TOKEN`과 전송 방식 강제용 `FTP_TRANSPORT`는 기계별 `.env`에서 읽고
+실제 환경 변수가 우선한다. 이 값이 맞는지는 사람이 아니라 `preflight`가
+확인하며, 확인 전에는 어떤 단계도 장비에 접속하지 않는다.
+
 부분 범위 읽기는 interface에 넣지 않는다. `ftp_handler` 의 두 전송 방식 모두
 파일을 통째로 옮기고 proxy에는 범위 요청 endpoint가 없다. 범위 읽기를 흉내내면
 Windows 경로에서는 파일 전체가 네트워크를 건넌 뒤에 잘라내는 셈이라 §4.4의
@@ -256,7 +261,7 @@ CLI 종료 코드와 마지막 출력 행은 고정한다.
 30  설치·계약 preflight 실패     NEXT: INSTALL-OR-UPGRADE
 ```
 
-stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. `status`는 `REPORT.md`의 존재 여부와 SHA-256도 한 줄로 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다.
+stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. `status`는 `REPORT.md`의 존재 여부와 SHA-256도 한 줄로 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다. `preflight`는 이 기계가 사용할 전송 방식도 함께 확인한다. 선택된 방식과 그 근거(platform 추정 또는 `FTP_TRANSPORT`)를 출력하고, proxy면 두 번 호출한다. health endpoint는 도달 여부만 증명하고 token을 검사하지 않으므로, 인증이 걸린 목록 route를 빈 대상으로 한 번 더 호출해 token이 통하는지 확인한다. 빈 대상이므로 장비에는 접속하지 않는다. 도달하지 못하거나 401이면 exit 30으로 멈춘다. 이 확인은 장비에 접속하지 않으므로 계획 승인을 필요로 하지 않으며, 장비 접속을 대신 증명하지도 않는다. stdout에는 전송 방식 이름과 도달 여부만 출력하고 proxy URL, host와 token은 출력하지 않는다.
 
 초기 검증은 한 엔지니어의 PC와 로컬 rollout 디렉터리에서 수행한다. Skill Market 배포 후에도 rollout 하나는 한 엔지니어가 자기 PC에서 1~5단계를 끝까지 수행한다. 다른 엔지니어는 자기 장비와 별도 rollout ID로 독립 실행한다.
 
@@ -265,6 +270,10 @@ stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 �
 ### 5.1 Rollout 상태
 
 상태의 기준은 채팅 기록이 아니라 rollout 작업 디렉터리다.
+
+한 rollout ID는 정확히 장비 하나를 다룬다. `init` 재실행은 같은 장비의 단계 경계 설정 변경에만 쓰며, 다른 장비는 승인 계보를 섞지 않기 위해 새 rollout ID로 1단계부터 시작한다.
+
+rollout ID는 장비 이름, host와 IP를 포함하지 않는 불투명한 식별자다. stdout이 rollout 디렉터리 경로를 출력하므로 ID에 장비 식별자를 넣으면 반출 금지 항목이 경로로 노출된다.
 
 ```text
 rollouts/<rollout-id>/
@@ -310,6 +319,7 @@ collection scope는 수집 단계(1 또는 3), 그 단계의 최신 `init` epoch
 - budget을 넘으면 다운로드가 즉시 멈추는지
 - 파일별 최대 바이트를 넘는 파일이 내용 다운로드 없이 메타데이터로만 남는지
 - FTP 전송 방식이 기계에 따라 선택되는지 (Windows → proxy, 그 외 → direct)
+- 잘못된 `FTP_PROXY_URL`이나 token으로 `preflight`가 exit 30으로 멈추고 장비 접속을 시도하지 않는지
 - 중단 후 체크포인트부터 재개되는지
 - 암호화·손상 파일이 누락되지 않고 `unreadable`로 남는지
 - 고정된 시각과 같은 가짜 입력의 LLM 미사용 경로에서 `data-map/`의 구조화 파일이 바이트 단위로 동일한지

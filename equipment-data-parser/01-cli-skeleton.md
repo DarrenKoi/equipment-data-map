@@ -25,6 +25,8 @@ code and `NEXT:` contract, with a working `preflight` and an empty `status`.
 - `preflight --stage N --contract V`: exit 0 with `NEXT: equipment-map status`
   when `V` is in `SUPPORTED_CONTRACTS` (start with `["1"]`), else exit 30 with
   `NEXT: INSTALL-OR-UPGRADE` and an install hint.
+  Contract check only — no network call. Letter 03 adds the transport check
+  to this same subcommand.
 - `status` with no `--rollout`: list rollout ids under `./rollouts/` (empty
   list is fine), exit 0.
 - `--rollouts-dir` global option defaulting to `./rollouts`, so tests can use

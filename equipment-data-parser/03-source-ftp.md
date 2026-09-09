@@ -17,6 +17,40 @@ before writing any adapter code. Do not read the whole package.
 
 ## Build
 
+- First, before any adapter code: confirm this machine's `.env` actually
+  reaches the proxy. The engineer filled `FTP_PROXY_URL` and `FTP_PROXY_TOKEN`
+  in an untracked `.env` at the office (template: `.env.example`); nothing has
+  checked those values yet, and everything below assumes the proxy is real.
+  Both routes exist in the vendored `ftp_handler/proxy/flask_proxy.py`, so
+  this needs no code — two requests, from the repository root:
+
+  ```
+  curl -sS -m 5 "$FTP_PROXY_URL/healthz_sknn_v3"
+  curl -sS -m 5 -o /dev/null -w '%{http_code}\n' -X POST \
+    -H "Authorization: Bearer $FTP_PROXY_TOKEN" -H 'Content-Type: application/json' \
+    -d '{"specs":[]}' "$FTP_PROXY_URL/list_dirs_sknn_v3"
+  ```
+
+  On Windows call `curl.exe` — PowerShell may alias `curl` to
+  `Invoke-WebRequest`, whose flags differ. Read the two values from `.env`
+  yourself; do not print the token, and do not put either value in
+  `progress.md`.
+
+  `{"status": "ok"}` then `200` passes: append `wip` with
+  `env: proxy reachable, token accepted` and continue. The second call is not
+  redundant — `healthz()` is the only route that skips the token check, so a
+  `200` there with a `401` below means a wrong token that health alone would
+  have passed. Either failure is `blocked` plus a `problems/03-problems.md`
+  entry naming which of the two calls failed and its status code: a wrong
+  `.env` is a fact about this office, and the engineer fixes it, not you.
+  `{"specs":[]}` is deliberately empty so this clears the token check without
+  contacting equipment — never substitute a real host to "also test FTP",
+  which would be equipment access before an approved plan.
+
+  If this machine is on the direct side (`fleet_downloader()` returns the
+  direct class, or `FTP_TRANSPORT=direct`), there is nothing to reach yet;
+  append `wip` with `env: direct transport, no proxy check` and continue.
+
 - `equipment_map/source/base.py`: `Source` with exactly `listdir(path)`,
   `size(path)`, `download(path, max_bytes)`, `close()`. Entries carry name,
   is_dir, size, raw mtime string, mtime source (`LIST`/`MDTM`/`SMB`), UTC
@@ -83,6 +117,29 @@ before writing any adapter code. Do not read the whole package.
   The alias resolves to the `user`/`password` passed to the downloader
   constructor; over the proxy those cross the HTTP hop, so the proxy URL
   must be HTTPS and `FTP_PROXY_TOKEN` must be set.
+- `equipment_map/transport_check.py`: `check()` returns the transport name,
+  why it was chosen (`platform` or `FTP_TRANSPORT`), and for `proxy` the result
+  of two calls. Both routes already exist in
+  `ftp_handler/proxy/flask_proxy.py`; nothing on the client side calls either,
+  so this is two `requests` calls with the connect timeout from the same
+  tuning, not a new library.
+  - `GET <FTP_PROXY_URL>/healthz_sknn_v3` → `{"status": "ok"}`. Reachability
+    only: `healthz()` is the one route that skips `_unauthorized()`, so a 200
+    here proves nothing about the token.
+  - `POST <FTP_PROXY_URL>/list_dirs_sknn_v3` with `{"specs": []}` → 200 means
+    the token is accepted, 401 means it is not. An empty spec list reaches the
+    auth check and then builds a downloader with nothing to do, so no
+    equipment is contacted. Do not send a real host here to "also test FTP" —
+    that is equipment access before an approved plan.
+
+  `preflight` calls it and exits 30 with
+  `NEXT: INSTALL-OR-UPGRADE` when the proxy does not answer. Direct transport
+  needs no call — there is nothing to reach until a plan names equipment.
+  Print the transport name and reachable/unreachable only: spec §5 keeps the
+  URL, host and token off stdout, and an unreachable proxy is exactly when
+  someone is tempted to echo the URL they just typed into `.env`.
+  This check never contacts equipment, so it stays outside plan approval.
+
 - `tests/fixtures/serve.py`: `python -m tests.fixtures.serve` starts the
   fake FTP (and, after letter 04, fake SMB) on ephemeral ports, prints
   `FTP_PORT=<n>` and `SMB_PORT=<n>`, and runs until Ctrl-C. Engineers use
@@ -128,7 +185,10 @@ class exposes no method whose name contains `write`, `delete`, `rename`,
 `mkdir`, `put`, or `range`; the fake server logs no STOR/DELE/RNFR/MKD
 command during the test; the same assertions pass against both transports,
 with `FTP_TRANSPORT=proxy` pointed at `fake_proxy`; `fleet_downloader`
-returns the proxy class for `win32` and the direct class otherwise; with the
+returns the proxy class for `win32` and the direct class otherwise; `preflight` exits 30 without touching equipment when the proxy
+health endpoint refuses the connection or answers non-200, and when the
+health endpoint is fine but the empty-spec list POST returns 401,
+and its stdout contains neither the URL nor the token; with the
 platform forced to `win32` and `CredReadW` mocked, and with `darwin` and
 `subprocess.run` mocked, `lookup` issues exactly the call above and returns
 the secret without logging it; with `linux` it raises `UnsupportedKeystore`
