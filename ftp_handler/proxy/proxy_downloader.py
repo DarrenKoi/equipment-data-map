@@ -29,8 +29,13 @@ Proxy location & auth are module constants (NOT constructor args), so the
 constructor signature stays identical to the direct downloader — a shared call
 site swaps the import line and passes nothing transport-specific. Edit these at
 the top of this file for your deployment:
-    PROXY_URL    e.g. "https://proxy.host:8080"   (default the SEM fileloader webapp)
+    PROXY_URL    e.g. "https://proxy.host:8080"   (or set env FTP_PROXY_URL)
     PROXY_TOKEN  bearer-token string the proxy enforces, or None for no auth
+                 (or set env FTP_PROXY_TOKEN)
+
+Both read the environment, which ``ftp_handler`` has already filled from a
+repo-root ``.env`` (copy ``.env.example``), so a deployment's real proxy host
+never enters the source tree.
 
 Credentials travel in the request body: the constructor's ``user``/``password``
 (or a spec's per-host override) are what the proxy logs in with, so the account
@@ -42,6 +47,7 @@ Run: pip install requests
 """
 
 import base64
+import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -133,10 +139,11 @@ __all__ = [
 # constants (NOT constructor args) so the client constructor stays identical to
 # the direct downloader: a shared call site swaps the import line and passes
 # nothing transport-specific. The firewalled client box reaches the proxy at
-# PROXY_URL; set PROXY_TOKEN to the bearer-token string if the proxy enforces
-# auth (leave None for the trusted single-user, no-auth case).
-PROXY_URL = "http://proxy.host:8080"
-PROXY_TOKEN = None
+# PROXY_URL — env FTP_PROXY_URL wins, so a deployment's real host stays out of
+# the source tree; set PROXY_TOKEN to the bearer-token string if the proxy
+# enforces auth (leave None for the trusted single-user, no-auth case).
+PROXY_URL = os.getenv("FTP_PROXY_URL", "http://proxy.host:8080")
+PROXY_TOKEN = os.getenv("FTP_PROXY_TOKEN") or None
 
 
 def _credentials_to_wire(

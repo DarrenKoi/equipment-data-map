@@ -31,6 +31,29 @@ dependency (``requests`` on the client, ``flask`` on the server).
 
 import os
 import sys
+from pathlib import Path
+
+
+def load_dotenv(path: "Path | None" = None) -> None:
+    """Fold a repo-root ``.env`` into ``os.environ``. A real env var wins.
+
+    Deployment facts — the proxy's URL and token — are per-machine, so they live
+    in an untracked ``.env`` (copy ``.env.example``) rather than in the source.
+    ``KEY=value`` lines, ``#`` comments, optional surrounding quotes; that is the
+    whole format, which is why this is eight lines and not ``python-dotenv``.
+    """
+    path = path or Path(__file__).resolve().parent.parent / ".env"
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+load_dotenv()
 
 
 def fleet_downloader(platform: str = sys.platform):
@@ -61,4 +84,4 @@ def fleet_downloader(platform: str = sys.platform):
     return FtpFleetDownloader
 
 
-__all__ = ["fleet_downloader"]
+__all__ = ["fleet_downloader", "load_dotenv"]

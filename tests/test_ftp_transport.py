@@ -51,6 +51,26 @@ def test_both_transports_are_drop_in():
     assert public(Proxy) == public(Direct)
 
 
+def test_dotenv_fills_only_missing_keys():
+    from ftp_handler import load_dotenv
+
+    env_file = Path(__file__).resolve().parent / "_tmp.env"
+    env_file.write_text(
+        '# comment\nFTP_PROXY_URL="http://from-dotenv:9000"\nFTP_TRANSPORT=proxy\n\n',
+        encoding="utf-8",
+    )
+    os.environ["FTP_TRANSPORT"] = "direct"  # a real env var must survive
+    os.environ.pop("FTP_PROXY_URL", None)
+    try:
+        load_dotenv(env_file)
+        assert os.environ["FTP_PROXY_URL"] == "http://from-dotenv:9000"
+        assert os.environ["FTP_TRANSPORT"] == "direct"
+    finally:
+        env_file.unlink()
+        os.environ.pop("FTP_PROXY_URL", None)
+        os.environ.pop("FTP_TRANSPORT", None)
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):
