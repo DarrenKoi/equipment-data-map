@@ -1,12 +1,21 @@
 # Letters to agent
 
-Read [AGENTS.md](AGENTS.md) in this folder first: it is the office agent's
-contract. Run the commands below from the repository root.
+This file is the office agent's contract: read it before anything else in
+this folder, and follow it while you execute the letters. The repository's
+root `AGENTS.md` guides maintaining this repository, which is a different job.
 
-You are the agent that builds and then operates the `equipment-map` CLI to
-produce an equipment data map: a read-only, evidence-backed description of
-one FAB equipment's file store. This folder is self-contained. Everything you
+You are the company-internal coding agent that builds and then operates the
+`equipment-map` CLI to produce an equipment data map: a read-only,
+evidence-backed description of one FAB equipment's file store. Everything you
 need is here; `spec.md` is the specification and the letters order the work.
+
+Run every command from the repository root (the parent of this folder), not
+from `equipment-data-parser/`. This folder holds the instructions; building
+also needs the repository's `ftp_handler/` and writes code and tests at the
+repository root. `spec.md` is a local snapshot of the specification: when the
+architecture document is available and differs,
+`docs/architecture/equipment-data-map.md` wins, and you report the conflict
+rather than silently inventing a resolution.
 
 Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
@@ -21,6 +30,17 @@ and the engineer reviews coverage and results. Building the CLI, installation,
 approvals, stale-lock recovery and unsupported-format workbench sessions still
 need the engineer. A completed command may report partial inventory or
 unresolved interpretations; inspect coverage before calling the map complete.
+
+## Build versus operate
+
+- Letters 01–15: implement and test the CLI and skills. Preserve unrelated
+  changes; stage only the current build item's files.
+- Letters 16–20: run only the permitted CLI commands. The engineer supplies
+  scope, budgets, credentials and approvals. Never run `init`, `operator`
+  commands or the workbench on their behalf, or write `confirmed` records.
+- Follow documented waiting and blocker conditions. Record the next safe
+  action before ending a session; never bypass a failing gate to make
+  progress.
 
 ## Loop
 
@@ -44,7 +64,8 @@ the LLM endpoint, or an instruction that is simply wrong here — append an
 entry to `problems/NN-problems.md` (format in `problems/README.md`) before
 moving on.
 These letters were written without knowing your site; that gap is what the
-engineer needs back from you.
+engineer needs back from you. Record the problem and the workaround you used;
+rewriting a letter is the engineer's call, not yours.
 
 Stop and report when: a **Done when** command still fails after three fix
 attempts; the letter conflicts with `spec.md`; a step needs a credential,
@@ -134,9 +155,8 @@ repository is the entire handover.
 The prompt is always the same, and it names no letter and no step:
 
 ```
-Read equipment-data-parser/index.md, then equipment-data-parser/AGENTS.md, and
-continue the letters from progress.md. Reach the next checkpoint, commit it,
-and stop.
+Read equipment-data-parser/index.md and continue the letters from
+progress.md. Reach the next checkpoint, commit it, and stop.
 ```
 
 In a one-shot run:
@@ -159,7 +179,7 @@ stopping on its own when the work is finished or a human is needed:
 ```sh
 P='equipment-data-parser/progress.md'
 until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked) '; do
-  claude -p "Read equipment-data-parser/index.md, then equipment-data-parser/AGENTS.md, and continue the letters from progress.md. Reach the next checkpoint, commit it, and stop." || break
+  claude -p "Read equipment-data-parser/index.md and continue the letters from progress.md. Reach the next checkpoint, commit it, and stop." || break
   sleep 2
 done
 tail -n 3 "$P"
@@ -170,6 +190,54 @@ prompt>"`. The loop is the same because the state is on disk, not in the tool.
 A run that changes nothing — no new commit, no new `progress.md` line — means
 the agent is stuck; stop the loop and read the last lines of `progress.md` and
 the newest file under `problems/`.
+
+## Unattended runs on Windows
+
+The engineer PCs are Windows, and a scheduler (Task Scheduler, or anything
+that fires a command on a timer) has no memory between runs and nobody to
+answer a prompt. Five things decide whether such a run does real work or
+quietly does nothing. If any of them bites here, that is a problem entry —
+`problems/NN-problems.md`, and say which one.
+
+**Every command in these letters is bash.** `printf`, `date -u +%FT%TZ`,
+`grep -c`, `$(...)`, heredocs. Git for Windows ships all of them: run in Git
+Bash, not `cmd.exe` and not PowerShell. Never hand-translate a `progress.md`
+line into another shell's quoting — letter 15 and several **Done when**
+commands `grep` for `^- NN <state>` with exact spacing, and a line that is
+merely close breaks them. If bash is genuinely unavailable on a PC, stop and
+write the problem entry rather than inventing a second ledger format.
+
+**Non-interactive tool permissions.** A one-shot run that hits a
+tool-approval prompt exits having changed nothing, and it does not look like
+a failure — it looks like an empty run, repeated forever. Before scheduling
+anything, run the prompt once by hand and confirm a commit appears. Whatever
+flag or settings allowlist your tool needs for unattended file edits and
+commands, set it, and record the exact invocation in `progress.md` the way
+letter 01 records the pip install line.
+
+**Scheduler settings that are wrong by default.** The start-in directory is
+not the repository — set it to the repository root, or every relative path in
+these letters misses. Set the task to *not* start a second instance while one
+is running: a checkpoint can take twenty minutes, and two runs committing at
+once corrupt the ledger. Run it as the account that actually holds the CLI
+credentials and a `git config user.name` / `user.email`; a task set to run
+whether the user is logged on or not gets a different environment than the
+one you tested in.
+
+**Guard the trigger, not the prompt.** A schedule has no `until` loop, so
+once the ledger's last line is `waiting` or `blocked` every later trigger
+spends a whole model run to re-read `progress.md` and stop. Check first with
+the same two greps the loop above uses — `^- 20 done`, and a trailing
+`waiting`/`blocked` — and skip the run when either hits. A grep is free; a
+model run is not.
+
+**Watch for empty runs.** Two consecutive triggers with no new commit and no
+new `progress.md` line mean the agent is stuck, not slow. Stop the schedule
+and read the tail of `progress.md` and the newest file under `problems/`.
+
+None of this needs a script in this repository. If the engineer wants one, a
+wrapper that does the two greps, changes directory, and invokes the tool is
+the whole of it.
 
 ## Invariants (hold in every file you write)
 
@@ -194,6 +262,18 @@ the newest file under `problems/`.
   and durable work records.
 - Equipment access is read-only. Data, credentials, and analysis stay inside
   the company network.
+
+## Reporting honestly
+
+Model calls stay on approved local endpoints, inside the company network, like
+the equipment data itself. Code enforces roots, download limits, approvals and
+resumable state; your prose cannot grant any of them. Unsupported formats and
+unresolved interpretations stay visible, with their reasons.
+
+A successful command does not prove complete equipment coverage. Report
+inventory, sampling and interpretation coverage separately, and claim only
+the checks you actually ran: a passing fake-tree test is evidence about the
+fake tree, not about live equipment or model accuracy.
 
 ## Fixed decisions
 

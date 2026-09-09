@@ -2,15 +2,13 @@
 
 This root contract guides agents maintaining the repository. The office agent
 executing the build-and-operate letters starts with
-`equipment-data-parser/AGENTS.md` and `equipment-data-parser/index.md`.
-
-`equipment-data-parser/AGENTS.md` is the execution contract for the company-local
-LLM agent: building the mapper in letters 01–15, then operating it in letters
+`equipment-data-parser/index.md`, which is both its execution contract and its
+workflow: building the mapper in letters 01–15, then operating it in letters
 16–20 within engineer-approved scope and budgets. It defines how that agent
-resumes work, proves completion, and respects human gates. Keep it usable with
-the letters without requiring the office agent to read this root contract.
-When maintaining the letters, keep their execution contract consistent with
-the workflow; do not start executing the letters unless the user asks.
+resumes work, proves completion, and respects human gates. Keep it usable on
+its own, without requiring the office agent to read this root contract, and
+keep the two consistent. Do not start executing the letters unless the user
+asks.
 
 ## Purpose
 
