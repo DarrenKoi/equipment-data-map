@@ -59,5 +59,5 @@ literally:
 ```
 
 Until all four exist, record `waiting` whose check is
-`grep -c '^- 15 confirmed .* | all-scenarios-pass$' letters_to_agent/progress.md`
+`grep -c '^- 15 confirmed .* | all-scenarios-pass$' equipment-data-parser/progress.md`
 equalling 4, and stop.

@@ -38,15 +38,24 @@ unresolved interpretations; inspect coverage before calling the map complete.
 5. Append a `done` line, commit with message `letter NN: <title>`, and go
    back to step 1 in the same session.
 
+At any step, whenever something does not match this office — the network, the
+PCs, credentials, FTP/SMB behaviour, equipment directory habits, file formats,
+the LLM endpoint, or an instruction that is simply wrong here — append an
+entry to `problems/NN-problems.md` (format in `problems/README.md`) before
+moving on.
+These letters were written without knowing your site; that gap is what the
+engineer needs back from you.
+
 Stop and report when: a **Done when** command still fails after three fix
 attempts; the letter conflicts with `spec.md`; a step needs a credential,
 real equipment, or a human decision that is not yet given. Record the reason
-in `progress.md` with the exact failing output, one line.
+in `progress.md` with the exact failing output, one line, and put the detail
+in `problems/NN-problems.md`.
 
 ## progress.md format
 
 ```
-- NN wip <UTC datetime> | <build item finished> | <commit hash> | next: <the very next action>
+- NN wip <UTC datetime> | <build item, or <item>.<n> part of one> | <commit hash> | next: <the very next action>
 - NN waiting <UTC date> | <what the engineer must do> | <check command that proves it>
 - NN confirmed <UTC date> | <key>: <value the human confirmed>   (human-written only)
 - NN blocked <UTC date> | <what is missing> | <failing output, one line>
@@ -55,7 +64,19 @@ in `progress.md` with the exact failing output, one line.
 
 Append only. Never edit or delete earlier lines.
 
-## Checkpoint protocol (two commits per Build item)
+## Checkpoint protocol (two commits per checkpoint)
+
+A **checkpoint** is any point where the work on disk is coherent enough that a
+different session could pick it up cold. A finished Build item is always a
+checkpoint. Inside a long item, checkpoint again whenever you have something
+that stands on its own — a module written before its tests, one subcommand of
+several, one fixture, one failing test made to pass. Number those in the item
+field as `<item>.<n>` (`3.2 exit.py finish()`), so the letter's build items
+stay recognisable.
+
+The rule of thumb: never hold more than ten minutes of unrecorded work. A
+session can end at any moment, and everything after the last checkpoint is
+redone from scratch.
 
 The `wip` line names the commit that holds the work, so the work is
 committed first and the line second:
@@ -66,14 +87,18 @@ git add -- PATH...                       # template: substitute those exact path
 git diff --cached --stat                 # must list only those paths
 git commit -q -m "letter NN wip: <build item>"
 HASH=$(git rev-parse --short HEAD)
-printf -- '- NN wip %s | <build item> | %s | next: <next action>\n' "$(date -u +%FT%TZ)" "$HASH" >> letters_to_agent/progress.md
-git add letters_to_agent/progress.md && git commit -q -m "letter NN: progress"
+printf -- '- NN wip %s | <build item> | %s | next: <next action>\n' "$(date -u +%FT%TZ)" "$HASH" >> equipment-data-parser/progress.md
+git add equipment-data-parser/progress.md && git commit -q -m "letter NN: progress"
 ```
 
 `waiting`, `blocked`, and `done` lines carry no hash; append them and commit
 with the message `letter NN: progress`. A session may end after either
 commit; a `wip` line without its work commit never exists. Changes you did
 not make stay unstaged and untouched.
+
+Tests need not pass at a checkpoint — a checkpoint is a save point, not a
+release. Say so in `next:` (`next: make test_cli_contract.py::test_exit_30
+pass`). Only the `done` line requires the letter's **Done when** commands.
 
 ## Context budget
 
@@ -94,8 +119,57 @@ disposable: disk plus `progress.md` is the state, your memory is not.
   or evidence files in full.
 - Keep command output short: `python -m pytest -q -x --tb=short`, `head`,
   `grep`, `wc -l`. Print a file only when you are about to edit it.
-- One Build item per session is a normal pace. Never start a new letter in
-  a session that has already used most of its window.
+- One checkpoint per session is a normal pace, and one Build item is a good
+  session. Never start a new letter in a session that has already used most
+  of its window.
+
+## One-shot sessions
+
+You may be run as a single non-interactive prompt that exits when it is done
+— `claude -p`, `codex exec`, `opencode run`, or the same idea in another
+tool — and started again from scratch, over and over, with no memory between
+runs. The whole design above exists so that works: `progress.md` plus the
+repository is the entire handover.
+
+The prompt is always the same, and it names no letter and no step:
+
+```
+Read equipment-data-parser/index.md, then equipment-data-parser/AGENTS.md, and
+continue the letters from progress.md. Reach the next checkpoint, commit it,
+and stop.
+```
+
+In a one-shot run:
+
+- Do the work up to the **next checkpoint**, commit it and its `wip` line,
+  then stop and print one line saying what the next action is. Do not carry
+  on to the following checkpoint. Finishing a whole letter in one run is
+  fine only when the run reaches the `done` line naturally.
+- Never ask a question — there is nobody to answer it. A choice the letters
+  and `spec.md` do not settle is a `blocked` line plus an entry in
+  `problems/NN-problems.md`, and the run ends there.
+- Never wait or poll. If the current letter has a `waiting` line, run the
+  check it names once; if it does not pass, stop.
+- Assume nothing survives the run: no environment variables you exported, no
+  background process, no shell state. Anything the next run needs is on disk.
+
+Driving it in a loop from the repository root, one run per checkpoint,
+stopping on its own when the work is finished or a human is needed:
+
+```sh
+P='equipment-data-parser/progress.md'
+until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked) '; do
+  claude -p "Read equipment-data-parser/index.md, then equipment-data-parser/AGENTS.md, and continue the letters from progress.md. Reach the next checkpoint, commit it, and stop." || break
+  sleep 2
+done
+tail -n 3 "$P"
+```
+
+Substitute the tool: `codex exec "<same prompt>"`, `opencode run "<same
+prompt>"`. The loop is the same because the state is on disk, not in the tool.
+A run that changes nothing — no new commit, no new `progress.md` line — means
+the agent is stuck; stop the loop and read the last lines of `progress.md` and
+the newest file under `problems/`.
 
 ## Invariants (hold in every file you write)
 

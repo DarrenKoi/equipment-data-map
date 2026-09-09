@@ -2,9 +2,9 @@
 
 This root contract guides agents maintaining the repository. The office agent
 executing the build-and-operate letters starts with
-`letters_to_agent/AGENTS.md` and `letters_to_agent/index.md`.
+`equipment-data-parser/AGENTS.md` and `equipment-data-parser/index.md`.
 
-`letters_to_agent/AGENTS.md` is the execution contract for the company-local
+`equipment-data-parser/AGENTS.md` is the execution contract for the company-local
 LLM agent: building the mapper in letters 01–15, then operating it in letters
 16–20 within engineer-approved scope and budgets. It defines how that agent
 resumes work, proves completion, and respects human gates. Keep it usable with
@@ -67,20 +67,28 @@ through a separate reviewed and tested CLI release; otherwise leave an
 
 ## Letters to agent
 
-`letters_to_agent/` is the ordered build-and-operate sequence for the
+`equipment-data-parser/` is the ordered build-and-operate sequence for the
 company-internal LLM. It is self-contained: `index.md` is the entry point,
 `spec.md` is a snapshot of the architecture doc, and `progress.md` is the
 append-only state ledger. Rules that every tool honours when working there:
 
 - Start from `index.md`; take the first letter without a `done` line.
 - Disk plus `progress.md` is the only state. Write a `wip` line and commit
-  after each build item, so any session can end at any moment and the next
-  one resumes from the `next:` field. Context windows are disposable.
+  at each checkpoint — inside a build item as well as at its end — so any
+  session can end at any moment and the next one resumes from the `next:`
+  field. Context windows are disposable.
+- A session may be one non-interactive prompt (`claude -p`, `codex exec`,
+  `opencode run`) re-run until the work is finished. It reaches the next
+  checkpoint, commits, and stops; it never asks, waits, or polls.
 - A letter is `done` only when its **Done when** commands pass verbatim.
 - Operating letters (16 onward) run only the skill-allowed subcommands and
   never `init` or `operator` commands.
 - Keep `spec.md` in sync with `docs/architecture/equipment-data-map.md`;
   the `docs/` copy wins.
+- The office agent reports what the letters got wrong about its site in
+  `equipment-data-parser/problems/NN-problems.md`, one file per letter. Those
+  entries are the input for fixing a letter or the spec; the office agent does
+  not edit the letters itself.
 
 ## Skill deliverables
 
