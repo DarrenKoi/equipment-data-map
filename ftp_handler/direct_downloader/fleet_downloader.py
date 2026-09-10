@@ -296,11 +296,17 @@ def _mdtm(ftp: FTP, remote_path: str) -> "datetime | None":
     RFC 3659 fixes the reply to ``213 YYYYMMDDHHMMSS`` in GMT, optionally with
     fractional seconds; the fraction is dropped rather than parsed, since no
     caller needs sub-second resolution here.
+
+    The catch is deliberately total. Anything this raises would propagate out of
+    the per-file loop and sink the whole host -- costing the caller every size
+    already measured on that connection, to learn nothing. There is no reply
+    malformed enough to be worth that, so every failure is the same answer:
+    the mtime is unknown.
     """
     try:
         raw = ftp.voidcmd(f"MDTM {remote_path}")[4:].strip().split(".")[0]
         return datetime.strptime(raw, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
-    except (*all_errors, ValueError, IndexError):
+    except Exception:  # noqa: BLE001 - best-effort by contract; see above
         return None
 
 

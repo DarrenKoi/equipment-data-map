@@ -49,6 +49,18 @@ def test_mdtm_unsupported_is_none_not_a_failure():
     assert _mdtm(_FakeFtp("213 not-a-timestamp"), "/data/a.log") is None
 
 
+def test_nothing_the_probe_can_raise_escapes_it():
+    # It runs inside the per-file loop after a SIZE that already succeeded, so
+    # anything escaping sinks the whole host and loses every measurement on that
+    # connection. Not a hypothetical: the skewnono_v3_nuxt fake returns None
+    # from voidcmd, and the narrower catch this replaced let a TypeError out.
+    class _Hostile:
+        def voidcmd(self, cmd):
+            return None
+
+    assert _mdtm(_Hostile(), "/data/a.log") is None
+
+
 def test_wire_round_trip_and_older_proxy():
     original = FileSize(
         host="h", remote_path="/data/a.log", size=12,
