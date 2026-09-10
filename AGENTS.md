@@ -43,7 +43,10 @@ translate one into the other.
   entries are the input for fixing a letter or the spec. That agent does not
   edit the letters; you do.
 - `ftp_handler/` — vendored from `skewnono_v3_nuxt`, read-only here. A change
-  to it belongs upstream.
+  to it belongs upstream. One exception is already applied and pending
+  upstream: `size_dirs` carries a UTC `modified` per file (MDTM beside SIZE,
+  both transports), covered by `tests/test_sizing_mtime.py`. Port it to
+  `skewnono_v3_nuxt` before the next re-vendor, or it is lost.
 
 ## Skill deliverables
 
@@ -59,7 +62,7 @@ translate one into the other.
 ## Completion evidence
 
 A change is complete only when its smallest relevant scenario proves the
-behavior. Prefer fake FTP/SMB trees and copied samples before any approved
+behavior. Prefer fake FTP trees and copied samples before any approved
 equipment trial. Verify read-only access, budget stops, checkpoint resume,
 unreadable-file retention, evidence traceability, and rejection of invalid
 stage transitions. A skill release also needs the same task scenario

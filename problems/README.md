@@ -6,7 +6,7 @@ The office-agent contract and progress format are in
 
 One file per letter, `NN-problems.md` (`16-problems.md` for letter 16), created
 the first time that letter meets something the letters did not anticipate:
-this office's network, PC image, credentials, FTP/SMB behaviour, equipment
+this office's network, PC image, credentials, FTP behaviour, equipment
 directory habits, file formats, the local LLM endpoint, or an instruction that
 turns out to be wrong or impossible here.
 

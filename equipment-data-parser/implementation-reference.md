@@ -8,8 +8,8 @@ contract updates, never by interpreting sample contents as configuration.
 ## 1. Bootstrap and test isolation — letter 01
 
 - Python 3.11+, one package and console entry point. Runtime dependencies:
-  `requests`, `smbprotocol`. Dev dependencies: `pytest`, `pyftpdlib`, `flask`,
-  `impacket`. Use the approved company package mirror/offline wheels; do not
+  `requests`. Dev dependencies: `pytest`, `pyftpdlib`, `flask`. Use the
+  approved company package mirror/offline wheels; do not
   download dependencies from the public internet on the equipment workflow.
 - Keep the repository's `ftp_handler` importable in the editable install.
   Do not start implementing its missing features here.
@@ -138,7 +138,7 @@ No code path fabricates human approval for a real rollout. Add tests for every
 row above, file-set tampering, lock ownership, crash before completion and
 fake-to-real identity transition. Do not leave placeholder successful stages.
 
-## 4. Source and upstream readiness — letters 03–04
+## 4. Source and the vendored transport — letter 03
 
 Current vendor facts, not capabilities to assume:
 
@@ -146,26 +146,35 @@ Current vendor facts, not capabilities to assume:
   from `ftp_handler.direct_downloader` as shared data types (the proxy reuses
   them); never select a downloader class by importing a transport directly.
   Supply `port` to the downloader constructor, not to `HostSpec`.
-- Fleet listings contain paths, sizing contains sizes; neither supplies the
-  required complete typed metadata/mtime entry contract. `FtpClient` is not a
-  proxy-compatible fallback.
+- **Metadata comes from `size_dirs`.** `list_dirs` returns paths only;
+  `size_dirs` returns `FileSize(host, remote_path, size, modified)` where
+  `modified` is timezone-aware UTC from `MDTM`, on both the direct and the proxy
+  transport. RFC 3659 fixes MDTM to GMT, so nothing has to guess the equipment
+  server's local zone. `modified` is `None` when the server has no MDTM support,
+  or when that one file's probe failed — record unknown, not failure, and never
+  fabricate a time. `FtpClient` remains off-limits: it is not proxy-compatible,
+  and there is now nothing it supplies that `size_dirs` does not.
 - `_fetch_one` buffers RETR with `BytesIO` and has no in-flight byte ceiling.
   This size limitation is accepted: use normal downloads, not a cap workaround.
   The worker timeout can return while its thread still runs. A client-side
   timeout or discarded response does not prove equipment traffic stopped.
 
-File-size capping is not an upstream prerequisite. Separate upstream acceptance
-for the metadata and execution-lifecycle contract must prove both paths support:
-complete metadata (including unknown/raw mtime); immediate-child bounded listing;
-pacing; deadline cancellation with no worker continuing after return; and explicit
-capability/version detection. An old proxy must fail preflight before content
-access. Record upstream revision, deployed revision and test evidence in the
-engineer's local sheet. Re-vendoring is a maintainer operation, not this agent's
-patch to `ftp_handler`. Until this exists, letter 03 is blocked; do not remove
-its tests, fabricate adapters, or declare the CLI ready for real data.
+File-size capping is not an upstream prerequisite, and neither is metadata: no
+part of letter 03 waits on an upstream release. The `size_dirs` mtime is a local
+change to the vendored package, already applied and covered by
+`tests/test_sizing_mtime.py`, pending a port back to `skewnono_v3_nuxt`. Do not
+re-derive it and do not read it as licence to patch `ftp_handler` further — any
+other change stops with `blocked`, because re-vendoring is a maintainer
+operation, not this agent's.
+
+The **deployed proxy** is still a real prerequisite for equipment access, and
+`preflight` is what proves it: an old proxy — one whose `size_dirs` reply omits
+`modified` — must be caught there, before content access, not discovered
+mid-run. Record deployed proxy revision and test evidence in the engineer's
+local sheet.
 
 Source entries: `name`, `is_dir`, `size` (nonnegative integer or null),
-`mtime_raw` (string or null), `mtime_source` (LIST/MDTM/SMB),
+`mtime_raw` (string or null), `mtime_source` (`MDTM` or `none`),
 `mtime_utc` (UTC string or null), `status`, `error_kind`. A non-directory with
 unknown size may still be downloaded if otherwise eligible. Never guess UTC for LIST timestamps with no
 verified source timezone; preserve raw time and mark normalization unknown.
@@ -174,9 +183,8 @@ verified source timezone; preserve raw time and mark normalization unknown.
 Validate remote path components before any request: reject `..`, NUL, CR/LF,
 unexpected absolute/drive/UNC forms and separator tricks; use component-aware
 root containment, not string prefix matching. A listed child must remain an
-immediate child of the requested directory. SMB additionally rejects reparse
-points at each traversal/open; a string-only check is insufficient. Unknown
-link targets stay metadata-only. Do not execute remote strings in shell commands.
+immediate child of the requested directory. Unknown link targets stay
+ metadata-only. Do not execute remote strings in shell commands.
 
 Proxy check: require the configured private-company `http://` URL, a nonempty
 token and no redirects before sending secrets. Use HTTP for office deployments
@@ -186,12 +194,6 @@ Refuse an auth-disabled proxy even when a configured token gets 200. Local
 fake proxy/FTP uses synthetic credentials set in the fixture process. Proxy token is the
 existing transport-only `.env` exception; equipment and LLM secrets stay in the
 OS keystore. No raw exceptions or URLs on stdout/stderr.
-
-Fake SMB must enforce read-only server permissions and client opens. Exercise
-read-only denial with a dedicated negative test outside Source, plus SMB
-reparse/symlink cases and source contract parity. If the chosen fake SMB server
-cannot represent a case, use an explicit adapter stub plus an engineer-run
-isolated Windows/SMB integration case; do not claim the stub proves SMB security.
 
 ## 5. Profiles, grouping and selection — letters 05–07, 13
 

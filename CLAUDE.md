@@ -13,7 +13,10 @@ Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no CLI bui
 ## Where things are
 
 `ftp_handler/` is the FTP library copied from `skewnono_v3_nuxt` — the intended FTP
-Source adapter for §4, not yet wired to anything. `core` (`FtpClient`, one server) and
+Source adapter for §4, not yet wired to anything. It carries one local change
+pending upstream: `size_dirs` returns a UTC `modified` per file, so the metadata
+pass gets path, size and mtime in one connection on either transport
+(`tests/test_sizing_mtime.py`). `core` (`FtpClient`, one server) and
 `direct_downloader` (`FtpFleetDownloader`, concurrent fan-out) are stdlib-only; `proxy`
 carries the same `FtpFleetDownloader` surface over HTTP and needs `requests` on the
 client, `flask` on the server. The upstream `web_app` subpackage was left behind.
@@ -38,7 +41,7 @@ and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
 | CLI subcommands, exit codes, stdout rules | §5 |
 | Rollout directory layout and state truth | §5.1 |
 | Safeguards (allowlist, lock, approval hash) | §6 |
-| Verification scenarios against fake FTP/SMB | §7 |
+| Verification scenarios against a fake FTP tree | §7 |
 | Rollout stages 1–5 | §8 |
 | Skill suite layout and per-skill allowed commands | §9 |
 | Done criteria | §10 |

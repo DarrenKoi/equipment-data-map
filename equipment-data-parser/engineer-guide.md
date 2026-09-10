@@ -48,8 +48,8 @@ named deployment is unavailable, record the gap; do not substitute silently.
 
 ## 2. Fake transport setup
 
-The fixture server built in letters 03–04 must provide local fake FTP, fake
-proxy and fake SMB, print their ports and run until stopped. Never use production
+The fixture server built in letter 03 must provide a local fake FTP and fake
+proxy, print their ports and run until stopped. Never use production
 credentials. Start it in your own terminal:
 
 ```sh

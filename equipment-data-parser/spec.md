@@ -6,7 +6,7 @@ Copied from `docs/architecture/equipment-data-map.md` so this folder is self-con
 
 ## 1. 목표
 
-FAB 장비의 FTP/SMB 파일 구조를 읽기 전용으로 탐색하고, 반복되는 파일을 묶어 최소한의 대표 샘플만 분석하여 **장비 데이터 지도**를 만든다.
+FAB 장비의 FTP 파일 구조를 읽기 전용으로 탐색하고, 반복되는 파일을 묶어 최소한의 대표 샘플만 분석하여 **장비 데이터 지도**를 만든다.
 
 장비 데이터 지도는 다음 질문에 답해야 한다.
 
@@ -32,7 +32,7 @@ FAB 장비의 FTP/SMB 파일 구조를 읽기 전용으로 탐색하고, 반복�
 ## 3. 전체 흐름
 
 ```text
-장비 FTP/SMB
+장비 FTP
     |
     v
 [1. Inventory] -- 경로, 크기, 시각 등 메타데이터만 수집
@@ -71,7 +71,9 @@ Skill Market에 배포할 단계별 스킬은 rollout 5단계에 대응한다. �
 
 ### 4.1 Source
 
-FTP와 SMB의 차이를 숨기는 실제 seam이다. 두 adapter는 동일한 읽기 전용 interface를 제공한다.
+전송 방식의 차이를 숨기는 실제 seam이다. 현재 adapter는 FTP 하나뿐이고, 그
+interface는 프로토콜을 하나 더 붙일 수 있는 모양으로 남겨 둔다 — SMB는 필요해질
+때 같은 interface 뒤에 추가한다. 지금 없는 프로토콜을 위해 미리 짓지 않는다.
 
 - 디렉터리 목록 조회
 - 파일 크기 조회
@@ -81,15 +83,22 @@ FTP와 SMB의 차이를 숨기는 실제 seam이다. 두 adapter는 동일한 �
 쓰기 동작은 interface에 포함하지 않는다.
 
 FTP adapter는 사내 `ftp_handler` 라이브러리 위에 올린다. 전송 방식은 호출부의
-선택이 아니라 기계의 속성이다. Windows 엔지니어 PC는 FTP egress가 막혀 있어
-HTTP proxy를 거치고, Linux 호스트는 장비에 직접 붙는다. 두 전송 방식은 같은
+선택이 아니라 기계의 속성이다. **운영 기계는 Windows 엔지니어 PC이고 FTP egress가
+막혀 있으므로 HTTP proxy가 기본 경로다.** Linux 호스트의 직접 연결은 개발·시험용
+보조 경로이며, 어떤 기능도 그쪽에서만 동작해서는 안 된다. 두 전송 방식은 같은
 `FtpFleetDownloader` 표면을 제공하며 `ftp_handler.fleet_downloader()` 가 그
 기계에 맞는 쪽을 고른다.
+
+메타데이터 수집은 `size_dirs` 를 쓴다. fleet 목록(`list_dirs`)은 경로만 나르지만
+`size_dirs` 는 경로·크기·UTC 수정 시각을 한 연결에서 함께 돌려주며, 두 전송 방식
+모두에서 그렇다. 수정 시각은 `MDTM` 에서 오고 RFC 3659가 GMT로 고정하므로 서버
+지역 시간을 추측할 필요가 없다. `MDTM` 이 없는 장비 서버는 수정 시각이 `None` 이
+되며, 이는 실패가 아니라 미상으로 기록한다.
 
 외부 접근을 방화벽으로 통제하는 사내 전용망에서 실행한다. FTP proxy와
 내부 LLM endpoint는 운영·시험 환경 모두 `http://`를 사용한다. HTTPS/TLS를
 실행 선행조건으로 요구하거나 URL을 자동 승격하지 않는다. 이 정책은 HTTP
-endpoint에 적용하며 장비 쪽 FTP/SMB 프로토콜은 그대로 사용한다.
+endpoint에 적용하며 장비 쪽 FTP 프로토콜은 그대로 사용한다.
 
 proxy의 위치는 배포 사실이므로 소스 트리에 두지 않는다. `FTP_PROXY_URL`,
 `FTP_PROXY_TOKEN`과 전송 방식 강제용 `FTP_TRANSPORT`는 기계별 `.env`에서 읽고
@@ -111,7 +120,7 @@ proxy의 위치는 배포 사실이므로 소스 트리에 두지 않는다. `FT
 - 장비 식별자와 프로토콜
 - 전체 경로
 - 파일 크기와 수정 시각
-- 수정 시각의 출처(`LIST`, `MDTM`, `SMB`)와 원본 표기
+- 수정 시각의 출처(`MDTM`, 서버가 지원하지 않으면 `none`)와 원본 표기
 - UTC로 정규화한 수정 시각과 정규화 가능 여부
 - 확장자
 - 탐색 시각과 성공/실패 상태
@@ -265,7 +274,7 @@ equipment-map status --rollout <ID>
 
 `init`은 엔지니어가 직접 실행하는 대화형 명령이다. 다음을 `rollout.json`에 저장한다.
 
-- 장비 식별자, 프로토콜, 접속 정보(host, port, SMB share)
+- 장비 식별자, 프로토콜, 접속 정보(host, port)
 - 허용 루트, 실시간 데이터 후보 경로, 샘플 allow/deny 패턴
 - 4.4절의 모든 budget과 LLM 요청 수 budget
 - 자격 증명 별칭, 장비 접근 허용 시간대(`always` 또는 UTC 구간)
@@ -365,7 +374,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 승인 후 계획, 대상, 경로 또는 budget이 바뀌면 재승인 요구
 - rollout별 lock에 호스트, PID와 시각을 기록해 동시 실행 차단
 - stale lock은 자동 삭제하지 않고 상태를 보여준 뒤 엔지니어의 대화형 해제 요구
-- 경로 이탈과 SMB symlink/reparse point 추적 방지
+- 경로 이탈 방지
 - 자격 증명은 OS의 승인된 비밀 저장소에서 별칭으로 조회
 - 샘플과 LLM prompt/response 접근 권한 및 보존 기간 설정
 - 파일별 성공, 생략, 실패 사유를 audit log에 기록
@@ -374,7 +383,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 
 ## 7. 검증 전략
 
-실장비 연결 전에 회사 PC에서 작은 가짜 FTP/SMB 트리를 사용해 다음을 검증한다.
+실장비 연결 전에 회사 PC에서 작은 가짜 FTP 트리를 사용해 다음을 검증한다.
 
 - 쓰기 동작이 존재하지 않는지
 - 이름이 반복되는 파일이 같은 파일군으로 묶이는지
@@ -391,7 +400,6 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 이전 단계를 승인하지 않고 다음 rollout 단계에 진입할 수 없는지
 - 실행 결과 승인 없이 다음 rollout 단계에 진입할 수 없는지
 - CLI가 없거나 계약 버전이 맞지 않을 때 스킬이 실행을 계속하지 않는지
-- 가짜 SMB가 비표준 포트 또는 격리된 VM·컨테이너에서 검증되는지
 
 추가 필수 시나리오: signature와 sample 경로 모두에서 보호 파일 내용 요청 0건, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분을 검증한다.
 
@@ -415,13 +423,13 @@ LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한
 
 ### 1단계: 로컬 가짜 장비로 수집기 검증
 
-설치된 CLI로 가짜 FTP/SMB의 목록 수집, 파일군 분류, 제한 샘플링과 `data-map/` 생성을 실행·검증한다. LLM 없이도 전체 흐름이 동작해야 한다.
+설치된 CLI로 가짜 FTP의 목록 수집, 파일군 분류, 제한 샘플링과 `data-map/` 생성을 실행·검증한다. LLM 없이도 전체 흐름이 동작해야 한다.
 
 실장비 주소와 자격 증명을 사용하지 않은 가짜 트리 결과만 승인 대상으로 삼는다.
 Windows의 가짜 FTP 검증은 같은 PC의 가짜 proxy와 가짜 FTP를 함께 사용한다.
 회사 운영 proxy에 `localhost`를 보내면 엔지니어 PC가 아니라 proxy 서버를
 가리키므로 허용하지 않는다. 시험용 설정은 별도 프로세스 환경에만 적용한다.
-FTP와 SMB adapter 모두 build 시나리오로 검증하고 rollout 하나의 1단계는
+FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검증하고 rollout 하나의 1단계는
 선택한 protocol 하나만 사용한다.
 
 ### 2단계: 회사 로컬 LLM 연결
@@ -491,7 +499,7 @@ equipment-map-suite/
 
 ## 10. 1차 완료 기준
 
-- 가짜 FTP와 SMB에서 동일한 형식의 inventory가 생성된다.
+- 가짜 FTP에서 direct·proxy 두 전송 방식이 동일한 형식의 inventory를 생성한다.
 - 반복 파일 100개를 전체 복제하지 않고 대표 샘플 3~5개로 요약한다.
 - 텍스트, CSV, JSON, 알 수 없는 바이너리, 암호화 파일을 구분한다.
 - 파일군마다 규칙, 통계, 설명, 신뢰도와 근거 경로가 기록된다.

@@ -17,8 +17,8 @@ Read implementation-reference.md §2–3 before defining schemas or state.
 
 - `equipment_map/rollout.py`: paths for `rollouts/<id>/` files in §5.1.
 - `rollout.json` schema and validation, top-level keys exactly:
-  `equipment_id`, `protocol` (`ftp`|`smb`), `host`, `port`, `share` (SMB
-  only), `allowed_roots`, `realtime_candidates`, `allow_patterns`,
+  `equipment_id`, `protocol` (`ftp`; the only value the CLI accepts today),
+  `host`, `port`, `allowed_roots`, `realtime_candidates`, `allow_patterns`,
   `deny_patterns`, `budgets` (every §4.4 budget plus `llm_max_requests`),
   `credential_alias`, `access_window` (`always` or `{start, end}` UTC),
   `profile`, `llm` (`endpoint`, `key_alias`, `glossary_path`,

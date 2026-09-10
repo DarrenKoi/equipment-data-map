@@ -48,6 +48,7 @@ Run: pip install requests
 
 import base64
 import os
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -144,6 +145,16 @@ __all__ = [
 # enforces auth (leave None for the trusted single-user, no-auth case).
 PROXY_URL = os.getenv("FTP_PROXY_URL", "http://proxy.host:8080")
 PROXY_TOKEN = os.getenv("FTP_PROXY_TOKEN") or None
+
+
+def _parse_modified(raw: "str | None") -> "datetime | None":
+    """Read a ``FileSize.modified`` back off the wire.
+
+    Tolerates both a null and a missing key so a client can talk to a proxy
+    deployed before sizing carried mtimes: the caller gets ``None``, the same
+    answer an FTP server without ``MDTM`` produces.
+    """
+    return datetime.fromisoformat(raw) if raw else None
 
 
 def _credentials_to_wire(
@@ -496,6 +507,7 @@ class FtpFleetDownloader:
                 host=item["host"],
                 remote_path=item["remote_path"],
                 size=item["size"],
+                modified=_parse_modified(item.get("modified")),
             )
             for item in data.get("files", [])
         ]

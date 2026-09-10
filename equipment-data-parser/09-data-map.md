@@ -44,7 +44,7 @@ Use implementation-reference.md §7 for common records and hash ordering.
 python -m pytest -q tests/test_stage1_e2e.py
 ```
 
-Covers, for both fake FTP and fake SMB: `plan` → fake approval →
+Covers, on both transports against the fake FTP: `plan` → fake approval →
 `next` exits 0 and `data-map/` contains the five base JSON files, coverage, metadata evidence
 and sample evidence; two runs with the frozen clock give byte-identical
 `data-map/*.json` and the same manifest hash; stdout contains no fixture

@@ -28,7 +28,6 @@ the bullet:
 - next stage refused without previous approval
 - next stage refused without result approval
 - missing or wrong contract stops before any work
-- fake SMB runs on a non-standard port
 
 Where an existing test proves a bullet, reference its test node in a coverage
 table in `scenarios/README.md`; do not import test functions to inflate counts. Fix any gap found in the earlier modules; note the fix in

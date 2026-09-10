@@ -27,7 +27,7 @@ before writing any adapter code. Do not read the whole package.
 
 - `equipment_map/source/base.py`: `Source` with exactly `listdir(path)`,
   `size(path)`, `download(path)`, `close()`. Entries carry name,
-  is_dir, size, raw mtime string, mtime source (`LIST`/`MDTM`/`SMB`), UTC
+  is_dir, size, mtime source (`MDTM`, or `none` when the server has no MDTM), UTC
   mtime or `None`. No write method exists, and no range read exists — spec
   §4.1 uses the library's normal whole-file download without a transfer cap.
 - `download(path)` uses the vendor's normal whole-file download. Size is an
@@ -52,27 +52,26 @@ before writing any adapter code. Do not read the whole package.
   - Never call the downloader's `upload`. The `Source` exposes no path to it.
   - `ftp_handler` is vendored and read-only. If an item here seems to need a
     change inside it, stop and append `blocked` rather than editing it.
-- The current vendor fleet listing carries paths, not modified times. Its
-  missing metadata remains a separate upstream prerequisite. Lack of an
-  in-flight file-size cap is accepted and must not block downloads or require
-  an upstream change or workaround. Build the Source
-  contract and fake tests, then record `blocked` for the upstream release and
-  deployed proxy proof in implementation-reference.md §4. A human confirmation
-  alone does not supply missing code. No direct `FtpClient` bypass and no
-  two-machine inventory workaround: those would change the one-PC contract.
-  Do not mark letter 03 done until both transports pass the required cases.
-- Before implementing `secrets.py`, the engineer must confirm the
-  company-approved keystore per platform. Append `waiting` naming the two
-  candidates below and stop until `progress.md` holds a human line
-  `03 confirmed <UTC date> | keystore: <win32 backend>, <darwin backend>`.
+- `listdir` gets its metadata from the downloader's **`size_dirs`**, not from
+  `list_dirs`. The fleet listing carries paths only; `size_dirs` carries
+  `remote_path`, `size` and a UTC `modified` per file, over both transports, in
+  the same connection. That is exactly the §4.2 metadata Inventory needs, so
+  there is no upstream prerequisite here and no reason to reach past the fleet
+  API to `FtpClient` — the one-PC proxy contract holds.
+  `modified` is `None` when the equipment's FTP server has no `MDTM`; record it
+  as unknown and carry on, never as a failure. Lack of an in-flight file-size
+  cap is likewise accepted: it must not block downloads or require a workaround.
+- `equipment_map/secrets.py` uses the **Windows Credential Manager**, the
+  approved keystore for the engineer PCs. No `waiting` line and no human
+  confirmation is needed to start it.
 - `equipment_map/secrets.py`: `lookup(alias)` delegates to one module-level
-  backend chosen by `sys.platform` at import. Candidates: `win32` → Windows
-  Credential Manager (`ctypes` `CredReadW`, generic credential named
-  `equipment-map/<alias>`); `darwin` → login Keychain (`security
-  find-generic-password -s equipment-map -a <alias> -w` via `subprocess`);
+  backend chosen by `sys.platform` at import: `win32` → Windows Credential
+  Manager (`ctypes` `CredReadW`, generic credential named
+  `equipment-map/<alias>`);
   every other platform → `UnsupportedKeystore`, which `next` maps to exit
-  20 before any connection. Both are stdlib; no portable fallback and no
-  file-based store exists. `set_backend(obj)` is the test seam; tests use
+  20 before any connection. `ctypes` is stdlib; no portable fallback and no
+  file-based store exists. A maintainer working off-Windows runs the test fake,
+  never a second backend: one keystore is the whole contract. `set_backend(obj)` is the test seam; tests use
   a dict-backed fake. Never read credentials from argv or environment.
   The alias resolves to the `user`/`password` passed to the downloader
   constructor. The proxy URL must use `http://` on the private company network;
@@ -108,9 +107,9 @@ before writing any adapter code. Do not read the whole package.
   This check never contacts equipment, so it stays outside plan approval.
 
 - `tests/fixtures/serve.py`: `python -m tests.fixtures.serve` starts the
-  fake FTP, local fake proxy (and, after letter 04, fake SMB) on ephemeral ports, prints
-  `FTP_PORT=<n>`, `PROXY_PORT=<n>` and `SMB_PORT=<n>`, and runs until Ctrl-C. Engineers use
-  it in letter 16; skills never start it.
+  fake FTP and the local fake proxy on ephemeral ports, prints `FTP_PORT=<n>`
+  and `PROXY_PORT=<n>`, and runs until Ctrl-C. Engineers use it in letter 16;
+  skills never start it.
 - `tests/fixtures/tree.py`: builds a directory tree in a temp dir with
   100 log files differing only by date and lot tokens, 20 CSVs, 5 JSON, 3
   XML, 2 PNG, 1 fixed-seed unknown binary and 1 known encrypted archive fixture, 1 truncated zip, 1 nested
@@ -158,10 +157,11 @@ returns the proxy class for `win32` and the direct class otherwise; `preflight` 
 health endpoint refuses the connection or answers non-200, and when the
 health endpoint is fine but the empty-spec list POST returns 401,
 and its stdout contains neither the URL nor the token; with the
-platform forced to `win32` and `CredReadW` mocked, and with `darwin` and
-`subprocess.run` mocked, `lookup` issues exactly the call above and returns
-the secret without logging it; with `linux` it raises `UnsupportedKeystore`
-without touching the network.
+platform forced to `win32` and `CredReadW` mocked, `lookup` issues exactly the
+call above and returns the secret without logging it; on every other platform it
+raises `UnsupportedKeystore` without touching the network; `size_dirs` over both
+transports yields a UTC `modified` per file, and a server without `MDTM` yields
+`None` rather than a failure entry.
 
 Also cover a file growing after SIZE on both transports: complete successful
 downloads are retained, actual bytes and overruns are recorded, and no next

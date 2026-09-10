@@ -2,7 +2,7 @@
 
 ## Goal
 
-Run one rollout against the selected fake FTP or SMB tree using
+Run one rollout against the fake FTP tree using
 only the commands a stage 1 skill may use. From here on you are the
 operator's agent, not the developer: run fixed commands, relay results,
 wait for approvals.

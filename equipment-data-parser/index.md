@@ -92,7 +92,8 @@ verified checkpoints, not through an assumed single uninterrupted run.
 ## Loop
 
 1. Read `progress.md`. For the first build, the first letter without a `done`
-   line is your current letter. For a later rollout, preserve all build history;
+   line is your current letter — "letter" meaning a row in the table at the
+   bottom of this file, so a number with no row (04) is skipped, never waited on. For a later rollout, preserve all build history;
    the engineer appends `- 16 confirmed <UTC date> | rollout: <opaque id>`.
    Evaluate operating-letter outcomes only after that marker and only for
    that rollout. An inherited older `done` line never completes the new one.
@@ -110,7 +111,7 @@ verified checkpoints, not through an assumed single uninterrupted run.
    back to step 1 in the same session.
 
 At any step, whenever something does not match this office — the network, the
-PCs, credentials, FTP/SMB behaviour, equipment directory habits, file formats,
+PCs, credentials, FTP behaviour, equipment directory habits, file formats,
 the LLM endpoint, or an instruction that is simply wrong here — append an
 entry to `problems/NN-problems.md` (format in `problems/README.md`) before
 moving on.
@@ -127,7 +128,7 @@ in `problems/NN-problems.md`.
 ## progress.md format
 
 ```
-- NN wip <UTC datetime> | <build item, or <item>.<n> part of one> | <commit hash> | next: <the very next action>
+- NN wip <UTC datetime> | <build item, or <item>.<n> part of one> | next: <the very next action>
 - NN waiting <UTC date> | <what the engineer must do> | <check command that proves it>
 - NN confirmed <UTC date> | <key>: <value the human confirmed>   (human-written only)
 - NN blocked <UTC date> | <what is missing> | <sanitized error code, one line>
@@ -144,37 +145,30 @@ edits, no test execution, and no commits of runtime data. A released skill
 has no Git or progress-ledger duties. Test-only fake approvals in letters
 01–15 are allowed inside isolated tests, never against an operational rollout.
 
-## Checkpoint protocol (two commits per checkpoint)
+## Checkpoint protocol (one commit per Build item)
 
-A **checkpoint** is any point where the work on disk is coherent enough that a
-different session could pick it up cold. A finished Build item is always a
-checkpoint. Inside a long item, checkpoint again whenever you have something
-that stands on its own — a module written before its tests, one subcommand of
-several, one fixture, one failing test made to pass. Number those in the item
-field as `<item>.<n>` (`3.2 exit.py finish()`), so the letter's build items
-stay recognisable.
+A **checkpoint** is a finished Build item: the work on disk is coherent enough
+that a different session could pick it up cold. Checkpoint at the end of each
+Build item, not inside it. If a single item runs long enough that stopping
+would lose serious work — a module plus its tests, several subcommands —
+checkpoint mid-item and name the part in the item field (`3.2 exit.py`), but
+that is the exception, not the routine.
 
-The rule of thumb: never hold more than ten minutes of unrecorded work. A
-session can end at any moment, and everything after the last checkpoint is
-redone from scratch.
-
-The `wip` line names the commit that holds the work, so the work is
-committed first and the line second:
+The work and the ledger line go in **one** commit:
 
 ```
 git status --short                       # inspect; list the paths this item created or edited
 git add -- PATH...                       # template: substitute those exact paths, nothing else
-git diff --cached --stat                 # must list only those paths
+printf -- '- NN wip %s | <build item> | next: <next action>\n' "$(date -u +%FT%TZ)" \
+  >> equipment-data-parser/progress.md
+git add equipment-data-parser/progress.md
+git diff --cached --stat                 # must list only those paths plus progress.md
 git commit -q -m "letter NN wip: <build item>"
-HASH=$(git rev-parse --short HEAD)
-printf -- '- NN wip %s | <build item> | %s | next: <next action>\n' "$(date -u +%FT%TZ)" "$HASH" >> equipment-data-parser/progress.md
-git add equipment-data-parser/progress.md && git commit -q -m "letter NN: progress"
 ```
 
-`waiting`, `blocked`, and `done` lines carry no hash; append them and commit
-with the message `letter NN: progress`. A session may end after either
-commit; a `wip` line without its work commit never exists. Changes you did
-not make stay unstaged and untouched.
+`waiting`, `blocked`, and `done` lines follow the same shape; when there is no
+code to go with them, the commit holds only `progress.md` and its message is
+`letter NN: progress`. Changes you did not make stay unstaged and untouched.
 
 Tests need not pass at a checkpoint — a checkpoint is a save point, not a
 release. Say so in `next:` (`next: make test_cli_contract.py::test_exit_30
@@ -185,13 +179,13 @@ pass`). Only the `done` line requires the letter's **Done when** commands.
 Your context window is finite and will fill during long letters. Treat it as
 disposable: disk plus `progress.md` is the state, your memory is not.
 
-- Session end is always safe after a `wip` line and a commit. When the
-  harness warns that context is nearly full, or you have finished a Build
-  item and the window is more than about two-thirds used, finish that item,
-  append `wip` with `next:`, commit, and end the session with one sentence:
-  "Restart with the same command." The next session resumes from the
-  `next:` field. Ending early costs nothing; a half-written item with no
-  `wip` line costs a whole redo.
+- Session end is always safe after a checkpoint commit. Keep going while the
+  window allows it, and finish the letter in one session when you can. When
+  the harness warns that context is nearly full, finish the current Build
+  item, append `wip` with `next:`, commit, and end the session with one
+  sentence: "Restart with the same command." The next session resumes from
+  the `next:` field. A half-written item with no `wip` line costs a whole
+  redo — that is the only thing worth stopping early to avoid.
 - Read only what the current step needs. From `spec.md` read only the
   sections the letter names: `grep -n '^##' equipment-data-parser/spec.md` for line ranges, then
   print that range. Read one letter at a time. Never print `spec.md`,
@@ -199,9 +193,9 @@ disposable: disk plus `progress.md` is the state, your memory is not.
   or evidence files in full.
 - Keep command output short: `python -m pytest -q -x --tb=short`, `head`,
   `grep`, `wc -l`. Print a file only when you are about to edit it.
-- One checkpoint per session is a normal pace, and one Build item is a good
-  session. Never start a new letter in a session that has already used most
-  of its window.
+- A whole letter in a session is a good session; several short ones is
+  better. Context, not procedure, decides when to stop. Do not start a new
+  letter in a session that has already used most of its window.
 
 ## One-shot sessions
 
@@ -220,10 +214,10 @@ progress.md. Reach the next checkpoint, commit it, and stop.
 
 In a one-shot run:
 
-- Do the work up to the **next checkpoint**, commit it and its `wip` line,
-  then stop and print one line saying what the next action is. Do not carry
-  on to the following checkpoint. Finishing a whole letter in one run is
-  fine only when the run reaches the `done` line naturally.
+- Work through as many checkpoints as the context window allows, committing
+  each, and prefer finishing the whole letter. Stop at a checkpoint when the
+  window is nearly full, or at a `waiting`/`blocked` line, and print one line
+  saying what the next action is.
 - Never ask a question — there is nobody to answer it. A choice the letters
   and `spec.md` do not settle is a `blocked` line plus an entry in
   `problems/NN-problems.md`, and the run ends there.
@@ -351,15 +345,22 @@ fake tree, not about live equipment or model accuracy.
   an FTP client. It is copied from `skewnono_v3_nuxt` and carries two
   transports with one surface: `direct_downloader` (stdlib) and `proxy`
   (`requests` on the client, `flask` on the server). Which one a machine gets
-  is not a call-site choice; `ftp_handler.fleet_downloader()` decides, because
-  the Windows engineer PCs have no FTP egress and must go through the proxy.
-  Treat the package as read-only: a change to it belongs upstream, and a letter
-  that needs one records why in `progress.md` first.
+  is not a call-site choice; `ftp_handler.fleet_downloader()` decides. The
+  operating machine is a Windows engineer PC with no FTP egress, so **proxy is
+  the path that must work**; direct is the development convenience, and a
+  feature that works only on direct is not done.
+  Metadata comes from `size_dirs` — path, size and UTC mtime in one connection,
+  on both transports — never from `list_dirs`, which carries paths only.
+  The package is otherwise read-only: a change to it belongs upstream in
+  `skewnono_v3_nuxt`, and a letter that needs one records why in `progress.md`
+  first. One change has already been made here — `size_dirs` now carries a UTC
+  `modified` per file (MDTM alongside SIZE, on both transports) — and is
+  pending upstream; do not re-derive it, and do not treat it as licence for
+  another.
 - Standard library first: `argparse`, `sqlite3`, `hashlib`, `json`, `zipfile`.
-  Allowed third-party: `smbprotocol` (SMB client), `requests` (the
-  `ftp_handler` proxy client). Dev only: `pytest`, `pyftpdlib` (fake FTP),
-  `flask` (fake proxy server in tests), `impacket` (fake SMB server on a
-  non-standard port). Add nothing else without recording why in `progress.md`.
+  Allowed third-party: `requests` (the `ftp_handler` proxy client) only. Dev
+  only: `pytest`, `pyftpdlib` (fake FTP), `flask` (fake proxy server in
+  tests). Add nothing else without recording why in `progress.md`.
 - Every CLI exit goes through one function that prints the final `NEXT:` line
   and returns the exit code. No other code prints `NEXT:`.
 - Every timestamp on disk is UTC ISO-8601. Every hash is SHA-256 hex.
@@ -373,7 +374,6 @@ fake tree, not about live equipment or model accuracy.
 | 01 | CLI skeleton and exit contract | all |
 | 02 | Rollout state, plan, approvals, lock | all |
 | 03 | Source interface, FTP adapter, fake FTP | 1 |
-| 04 | SMB adapter, fake SMB | 1 |
 | 05 | Inventory with checkpoints and budgets | 1 |
 | 06 | Grouping into file families | 1 |
 | 07 | Sampling with budgets and dedup | 1 |
@@ -390,3 +390,8 @@ fake tree, not about live equipment or model accuracy.
 | 18 | Operate: stage 3 pilot on one equipment | 3 |
 | 19 | Operate: stage 4 publish, the deliverable | 4 |
 | 20 | Operate: stage 5 register the next profile | 5 |
+
+Letter 04 was SMB. There is no SMB at this site yet, so it was removed rather
+than built ahead of a need; number 04 stays vacant so every later letter keeps
+the number `progress.md` already refers to. Adding SMB later means a new letter
+behind the same `Source` interface, not a renumbering.
