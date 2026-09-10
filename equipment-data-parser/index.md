@@ -6,13 +6,22 @@ root `AGENTS.md` guides maintaining this repository, which is a different job.
 
 You are the company-internal coding agent that builds and then operates the
 `equipment-map` CLI to produce an equipment data map: a read-only,
-evidence-backed description of one FAB equipment's file store. Everything you
-need is here; `spec.md` is the specification and the letters order the work.
+evidence-backed description of one FAB equipment's file store. The CLI and
+released skills do not exist yet. These letters are build instructions, not runnable extraction commands until letters 01–15 pass.
+`spec.md` is the specification and the letters order the work.
+
+Read [implementation-reference.md](implementation-reference.md) only at the
+section linked by your letter. The engineer uses
+[engineer-guide.md](engineer-guide.md) for site prerequisites and review gates.
+These references refine implementation and handoff details; `spec.md` wins.
 
 Run every command from the repository root (the parent of this folder), not
 from `equipment-data-parser/`. This folder holds the instructions; building
 also needs the repository's `ftp_handler/` and writes code and tests at the
-repository root. `spec.md` is a local snapshot of the specification: when the
+repository root. Problem reports live in the repository-root `problems/`
+directory, alongside `equipment-data-parser/`, not inside it. All `problems/`
+paths below are relative to the repository root; from this file the guide is
+[../problems/README.md](../problems/README.md). `spec.md` is a local snapshot of the specification: when the
 architecture document is available and differs,
 `docs/architecture/equipment-data-map.md` wins, and you report the conflict
 rather than silently inventing a resolution.
@@ -61,10 +70,33 @@ to store it under, not a way to use it. And a rollout id must stay opaque: a
 tool name in the prompt is not a rollout id, however convenient the naming
 looks.
 
+## Iterative progress to the final letter
+
+Expect several sessions and correction rounds before letter 20 is complete.
+A session may finish only one checkpoint or report one blocker. That is progress,
+not permission to skip the current letter or restart the whole sequence.
+
+When a letter fails at the office, append the problem to the root
+`problems/NN-problems.md` and record the checkpoint or blocker in `progress.md`.
+The maintainer revises the instructions when needed; the engineer supplies any
+missing site decisions. In the next session, read those updates, verify the
+recorded resume condition, and continue the same unfinished letter. Repeat its
+relevant checks before marking it done. Preserve earlier problem entries and
+append the resolution evidence rather than deleting the history.
+
+A revised instruction does not itself prove a blocker resolved, grant approval,
+or reset the three-attempt stop rule. After a correction, record what changed
+and the check that now permits another attempt. Reach the final letter through
+verified checkpoints, not through an assumed single uninterrupted run.
+
 ## Loop
 
-1. Read `progress.md`. The first letter without a `done` line is your current
-   letter. If it has `wip` lines, continue from the last one. If it has a
+1. Read `progress.md`. For the first build, the first letter without a `done`
+   line is your current letter. For a later rollout, preserve all build history;
+   the engineer appends `- 16 confirmed <UTC date> | rollout: <opaque id>`.
+   Evaluate operating-letter outcomes only after that marker and only for
+   that rollout. An inherited older `done` line never completes the new one.
+   If it has `wip` lines, continue from the last one. If it has a
    `waiting` line, run the check it names; continue only when it passes.
    A check may be `grep` for a `confirmed` line that only a human appends.
    If every letter is `done`, stop and report.
@@ -89,7 +121,7 @@ rewriting a letter is the engineer's call, not yours.
 Stop and report when: a **Done when** command still fails after three fix
 attempts; the letter conflicts with `spec.md`; a step needs a credential,
 real equipment, or a human decision that is not yet given. Record the reason
-in `progress.md` with the exact failing output, one line, and put the detail
+in `progress.md` with a sanitized error code, one line, and put safe detail
 in `problems/NN-problems.md`.
 
 ## progress.md format
@@ -98,11 +130,19 @@ in `problems/NN-problems.md`.
 - NN wip <UTC datetime> | <build item, or <item>.<n> part of one> | <commit hash> | next: <the very next action>
 - NN waiting <UTC date> | <what the engineer must do> | <check command that proves it>
 - NN confirmed <UTC date> | <key>: <value the human confirmed>   (human-written only)
-- NN blocked <UTC date> | <what is missing> | <failing output, one line>
+- NN blocked <UTC date> | <what is missing> | <sanitized error code, one line>
 - NN done <UTC date> | <test or status command> | <result, e.g. 12 passed>
 ```
 
 Append only. Never edit or delete earlier lines.
+
+Operating letters may read their instructions and progress ledger and append
+sanitized progress/problem entries, using the checkpoint Git commands only
+for those instruction-ledger files. The equipment command allowlist still
+applies: no shell inspection of rollout files except `REPORT.md`, no code
+edits, no test execution, and no commits of runtime data. A released skill
+has no Git or progress-ledger duties. Test-only fake approvals in letters
+01–15 are allowed inside isolated tests, never against an operational rollout.
 
 ## Checkpoint protocol (two commits per checkpoint)
 
@@ -153,7 +193,7 @@ disposable: disk plus `progress.md` is the state, your memory is not.
   `next:` field. Ending early costs nothing; a half-written item with no
   `wip` line costs a whole redo.
 - Read only what the current step needs. From `spec.md` read only the
-  sections the letter names: `grep -n '^##' spec.md` for line ranges, then
+  sections the letter names: `grep -n '^##' equipment-data-parser/spec.md` for line ranges, then
   print that range. Read one letter at a time. Never print `spec.md`,
   `progress.md` history you already acted on, generated JSON, sqlite dumps,
   or evidence files in full.
@@ -192,17 +232,22 @@ In a one-shot run:
 - Assume nothing survives the run: no environment variables you exported, no
   background process, no shell state. Anything the next run needs is on disk.
 
-Driving it in a loop from the repository root, one run per checkpoint,
+For the first build/rollout only, drive it from the repository root, one run per checkpoint,
 stopping on its own when the work is finished or a human is needed:
 
 ```sh
 P='equipment-data-parser/progress.md'
 until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked) '; do
+  before=$(git rev-parse HEAD)
   claude -p "Read equipment-data-parser/index.md and continue the letters from progress.md. Reach the next checkpoint, commit it, and stop." || break
+  [ "$(git rev-parse HEAD)" != "$before" ] || break
   sleep 2
 done
 tail -n 3 "$P"
 ```
+
+For another rollout, invoke the one-shot prompt manually after its new marker;
+do not reuse this first-rollout loop's historical `20 done` check.
 
 Substitute the tool: `codex exec "<same prompt>"`, `opencode run "<same
 prompt>"`. The loop is the same because the state is on disk, not in the tool.
@@ -267,7 +312,7 @@ the whole of it.
   assembly, or cross-skill calls; no `equipment-map-common` skill.
 - `audit.jsonl` is the rollout stage/approval state: append-only under `rollouts/<id>/`; `status`
   derives the stage from it. No mutable `state.json`.
-- Operator commands stay human: `init`, `operator approve-plan`,
+- Outside isolated build tests, operator commands stay human: `init`, `operator approve-plan`,
   `operator approve-result`, `operator unlock` appear in no skill, no
   `NEXT:` line, and are never run by you.
 - `rollout.json` is the only input to `plan`: roots, budgets, patterns,

@@ -13,6 +13,8 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
 
 ## Build
 
+Read implementation-reference.md §2–3 before defining schemas or state.
+
 - `equipment_map/rollout.py`: paths for `rollouts/<id>/` files in §5.1.
 - `rollout.json` schema and validation, top-level keys exactly:
   `equipment_id`, `protocol` (`ftp`|`smb`), `host`, `port`, `share` (SMB
@@ -54,8 +56,8 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
 - `stage N next --rollout <id>`: refuse without approval (exit 10). Refuse
   when the current `plan.json` hash differs from the approved hash (exit 20).
   Take `.lock` with host, PID, UTC time; refuse when a lock exists (exit 20,
-  show lock contents). Release the lock on every exit path. For now the body
-  does no work and records `next-stop` with `completed: true`. Calling
+  show lock contents). Release only a lock acquired by this call, on handled exits; a crash leaves it for the engineer. For now the body
+  refuses unimplemented stages with exit 20. A completed fake pipeline exists only in tests; no installed placeholder may record `completed: true`. Calling
   `next` on a completed stage is a no-op exit 0 printing result-approval
   state.
 - `status --rollout <id>` also prints one line `REPORT.md: absent` or
@@ -66,7 +68,9 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
   `next-stop`, so the manifest always matches `data-map/` on disk.
 - `operator approve-result --rollout <id>`: TTY only. Records the current
   `result-manifest.json` hash the same way as plan approval. Refuse (exit 20)
-  when that hash differs from the one in the latest `next-stop` record.
+  unless the latest current-epoch `next-stop` has `completed: true` and the
+  actual file list and rehashed bytes match the manifest and completion hash.
+  Apply spec §5.2 to all mutations, past/future-stage calls and input validation.
 - `operator unlock --rollout <id>`: TTY only. Shows the lock, asks for
   confirmation, records `unlock` with the old lock contents.
 - `NEXT:` lines from `plan` and `next` may name only `stage N plan`,
@@ -104,3 +108,7 @@ rollouts dir fails validation.
 
 Also cover LLM setting and profile/glossary content changes invalidating the
 plan, invalid numeric limits, and restart retaining scope and usage counters.
+Also cover file mutation/addition/deletion without manifest edits; approval
+before completion; stale/future-stage calls; init after terminal completion;
+lock collision preserving the owner's lock; malformed audit records; concurrent
+plan/init/approval; and repeated plan preserving a valid approval when unchanged.

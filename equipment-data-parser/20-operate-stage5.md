@@ -11,7 +11,8 @@ an extractor release.
 `spec.md` §8 stage 5, §5 (init reconfiguration), §9 row for stage 5.
 Rules from letter 16 apply.
 
-`ROLLOUT` is the rollout id from letter 16's `done` line. The engineer
+`ROLLOUT` is the rollout id from the current rollout's letter 16 `done` line
+(after its newest human rollout marker, if one exists). The engineer
 supplies it in your environment before this letter (for example
 `export ROLLOUT=<that id>` in the shell that launches you); you never run
 `export` yourself.
@@ -26,7 +27,7 @@ supplies it in your environment before this letter (for example
 2. `equipment-map preflight --stage 5 --contract 1`, then
    `equipment-map stage 5 plan --rollout "$ROLLOUT"`; append `waiting`
    until `operator approve-plan`.
-3. `equipment-map stage 5 next --rollout "$ROLLOUT"` until exit `0`.
+3. Run `equipment-map stage 5 next --rollout "$ROLLOUT"` once.
    Report the counts: extractors mapped, families listed in
    `extractor-requests.json`, and the new `REPORT.md` hash.
 4. Ask the engineer to review `data-map/extractor-requests.json` and run

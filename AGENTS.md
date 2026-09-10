@@ -38,7 +38,7 @@ translate one into the other.
   company LLM. `index.md` is its contract and entry point, `spec.md` is a
   snapshot of the architecture doc, `progress.md` is the append-only state
   ledger. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
-- `equipment-data-parser/problems/` — where the office agent reports what the
+- `problems/` — where the office agent reports what the
   letters got wrong about its site, one `NN-problems.md` per letter. Those
   entries are the input for fixing a letter or the spec. That agent does not
   edit the letters; you do.

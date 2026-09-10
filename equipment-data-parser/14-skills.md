@@ -17,6 +17,10 @@ metadata stays out of the shared skill body.
 
 ## Build
 
+Read implementation-reference.md §9 for installation and scenario evidence.
+The run skill has no stage prerequisites; it permits contract preflight and
+status listing without a rollout. Do not apply stage-only flags to that skill.
+
 - `equipment-map-suite/` exactly as the §9 tree. `runtime/equipment-map`
   is a thin launcher for the Python package.
 - Each `SKILL.md`: frontmatter `name` and `description` only. Body has

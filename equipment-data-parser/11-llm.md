@@ -12,8 +12,12 @@ results, bounded API failures, and explicit interpretation coverage.
 
 ## Build
 
+Read implementation-reference.md §8 for prompts, field validators and limits.
+
 - `equipment_map/llm/client.py`: use the approved `llm` configuration from
-  letter 02, key via `secrets.lookup`. Send `model`, `temperature` and
+  letter 02, key via `secrets.lookup`. Use the approved internal `http://`
+  endpoint; HTTP applies to office deployments and fixtures alike.
+  Send `model`, `temperature` and
   `max_tokens`; record requested alias separately from returned model ID,
   revision and serving settings. Unknown backend details remain `unknown`.
   No automatic model switching. No streaming.
@@ -30,8 +34,8 @@ results, bounded API failures, and explicit interpretation coverage.
   Authentication errors stop further calls and mark remaining fields api-error.
 - `equipment_map/llm/fields.py`: one short prompt per field — description,
   field meanings, producer, expected period, operational use, sensitivity,
-  confidence (`high`|`medium`|`low`), evidence (nonempty list of actual sample
-  SHA-256 under the current family's `evidence/`) — each with a validator.
+  confidence (`high`|`medium`|`low`), evidence (newline-separated actual sample
+  SHA-256 under the current family's `evidence/`, assembled into a list by code) — each with a validator.
   Input is family rule/stats, bounded extract, extractor structure, glossary,
   and the deterministic sample SHA identifiers needed to cite that bundle.
   No sample → skip API calls and mark content interpretation `unresolved:

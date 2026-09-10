@@ -2,7 +2,7 @@
 
 ## Goal
 
-Run a real rollout, end to end, against the fake FTP and SMB trees using
+Run one rollout against the selected fake FTP or SMB tree using
 only the commands a stage 1 skill may use. From here on you are the
 operator's agent, not the developer: run fixed commands, relay results,
 wait for approvals.
@@ -32,18 +32,27 @@ wait for approvals.
   `export ROLLOUT=<that id>` in the shell that launches you); you never
   run `export` yourself.
 
+A successful `next` waits for result review; do not call it in a loop.
+Resume from `status`: unplanned → plan; awaiting plan approval → wait;
+plan approved and run incomplete → next once; run complete → wait for result
+review; result approved → finish this letter. Re-running `plan` must not erase
+an unchanged approval. `status` shows current stage and per-stage approval
+history, so approval of stage 1 may show current stage 2.
+
 ## Steps
 
 1. Prerequisite the engineer performs in their own terminal: start the
    fixtures with `python -m tests.fixtures.serve` (letter 03) and read the
-   printed ports. You start no server.
+   printed ports. For FTP on Windows use the local fake proxy, never the office
+   production proxy; see engineer-guide.md §2. You start no server. Both adapters
+   have already passed build tests; this rollout selects one protocol.
 2. Ask the engineer to run `equipment-map init --rollout <id>` of their
    choosing, pointing at `localhost` and those ports, with small budgets,
    and to set `ROLLOUT` to that id in your environment.
 3. `equipment-map preflight --stage 1 --contract 1`, then
    `equipment-map stage 1 plan --rollout "$ROLLOUT"`. Report the plan
    hash. Append `waiting` until the engineer has run `operator approve-plan`.
-4. `equipment-map stage 1 next --rollout "$ROLLOUT"` until exit `0`.
+4. Run `equipment-map stage 1 next --rollout "$ROLLOUT"` once.
    Report counts.
 5. Ask the engineer to review `file-families.json` and `unreadable.json`
    and run `operator approve-result`. Append `waiting`.
@@ -54,5 +63,6 @@ wait for approvals.
 equipment-map status --rollout "$ROLLOUT"
 ```
 
-Shows stage 1 with plan approved, run completed, and result approved.
+Shows stage 1 in history with plan approved, run completed and result approved
+(current stage is now 2).
 Record the rollout id and counts in the `done` line.

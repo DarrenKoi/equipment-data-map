@@ -17,8 +17,8 @@ the bullet:
 - no write operation exists
 - repeated names group into one family
 - format outliers are captured separately
-- budget breach stops downloads immediately
-- an over-budget file stays metadata-only with none of its bytes fetched
+- total byte target exhaustion stops the next download
+- large and unknown-size eligible files download whole with actual usage recorded
 - the FTP transport follows the machine (Windows → proxy, else direct)
 - resume from checkpoint after interruption
 - encrypted and corrupt files survive as `unreadable`
@@ -30,8 +30,8 @@ the bullet:
 - missing or wrong contract stops before any work
 - fake SMB runs on a non-standard port
 
-Where an existing test already proves a bullet, import or reuse it rather
-than duplicating. Fix any gap found in the earlier modules; note the fix in
+Where an existing test proves a bullet, reference its test node in a coverage
+table in `scenarios/README.md`; do not import test functions to inflate counts. Fix any gap found in the earlier modules; note the fix in
 `progress.md`.
 
 ## Done when
@@ -42,7 +42,7 @@ python -m pytest -q
 
 Whole suite green. Include the extra download-guard, growing-file,
 collection-scope and metadata-evidence cases required by spec §7 in the
-relevant earlier test modules; the fifteen functions below cover the original
-bullet list, not the entire acceptance scope. `tests/test_scenarios_stage1.py` has exactly fifteen
-test functions — one per §7 bullet. Recount §7 before you start: if the
-spec has moved, the count moves with it.
+relevant earlier test modules. Maintain the coverage table against every current
+§7 requirement; do not require an arbitrary number of test functions. Include
+proxy authentication, stage/epoch/result-file integrity, deadline enforcement,
+and output-injection cases added to the specification and implementation reference.

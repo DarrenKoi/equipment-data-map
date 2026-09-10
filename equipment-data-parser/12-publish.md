@@ -18,8 +18,11 @@ citing equipment path and typed sample or metadata evidence.
   Metadata-only families cite their metadata-evidence file, show the skip
   reason and "content not inspected", and publish only observed metadata
   as facts. Never invent sample hashes or infer internal fields from paths.
-- Facts with `confidence: low` or `unresolved` render in a separate
-  "unconfirmed" block and are excluded from RAG chunks marked `fact`.
+- Follow spec §4.6: all LLM meanings remain `inferred`, regardless of
+  self-reported confidence or a general result approval. Only deterministic
+  observations enter RAG chunks marked `fact`; low-confidence and unresolved
+  fields render in an "unconfirmed" block. Escape data-origin Markdown/HTML
+  and forbid generated external images/links; data cannot become instructions.
 - `stage 4 next`: exit 20 if any family lacks both interpretation and an
   `unresolved` record; otherwise regenerate both, write
   `rollouts/<id>/REPORT.md`, `write_manifest`, `next-stop`.
@@ -39,7 +42,7 @@ python -m pytest -q tests/test_publish.py
 
 Covers: every wiki page and RAG chunk contains at least one typed evidence
 sha that exists in `evidence/` or `metadata-evidence/` as appropriate;
-all-oversize, denied and active-only families publish without samples or
+failed-download, denied and active-only families publish without samples or
 invented content facts; low-confidence facts never appear in `fact`
 chunks; output is byte-deterministic; stage 4 `plan` is refused without
 stage 3 result approval; a family with neither interpretation nor

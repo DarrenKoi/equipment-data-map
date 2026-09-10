@@ -25,7 +25,7 @@ budgets, resume from the last completed directory.
   and real-time candidates as metadata-only with period `unknown`. Stage 5
   performs no inventory.
 - Budgets enforced here: max entries, max depth, requests per second,
-  connections (always 1). Exceeding any budget stops the walk immediately
+  connections (always 1). Rate limits pace requests; exceeding a count/time budget stops the walk immediately
   with reason recorded; it is not an error.
 - Connection failure: record the diagnostic, stop, no retries beyond one
   reconnect.
@@ -37,11 +37,11 @@ budgets, resume from the last completed directory.
 python -m pytest -q tests/test_inventory.py
 ```
 
-Covers, over the fake FTP: full walk counts match the fixture; for each
-of max entries, max depth, requests per second, and wall time, a limit one
-above the fixture's need completes and a limit one below stops with
-`reason: budget:<key>` and no further request (wall time via the frozen
-clock); a file rewritten between two passes is `actively_changing`; a walk killed mid-way
+Covers, over the fake FTP: full walk counts match the fixture; entry/depth/time
+limits stop with `reason: budget:<key>` and no further request. With a frozen
+monotonic clock, request start times obey the rate, and a required wait beyond
+the deadline stops without another request. Read implementation-reference.md
+§2 for counter units and §5 for unknown timestamps and deterministic order; a file rewritten between two passes is `actively_changing`; a walk killed mid-way
 (simulate by raising after N entries) resumes and finishes with the same
 row set as an uninterrupted walk; every stored mtime is UTC ISO-8601 or
 `None` with the raw string kept; a dropped connection yields one reconnect

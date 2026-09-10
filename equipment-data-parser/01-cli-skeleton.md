@@ -12,6 +12,8 @@ code and `NEXT:` contract, with a working `preflight` and an empty `status`.
 ## Build
 
 - `pyproject.toml` with the console script and dev extras (`pytest`).
+  Read implementation-reference.md §1 for dependencies, fixture isolation,
+  ignore rules and the existing transport-test isolation fix.
   Install it with pip, never uv: `python -m pip install -e ".[dev]"`.
   Record that exact line in `progress.md`; every later letter's
   **Done when** assumes this editable install is in place.

@@ -11,6 +11,8 @@ safety limits, and classify what cannot be read.
 
 ## Build
 
+Use implementation-reference.md §6 for exact limits, output and reason codes.
+
 - `equipment_map/extract/` with one module per kind: text/log (encoding
   detection, bounded read), CSV/TSV (columns, inferred types, few rows),
   JSON/XML/INI (key structure, sample values; XML with external entities
@@ -19,8 +21,9 @@ safety limits, and classify what cannot be read.
   printable strings, entropy).
 - Dispatcher by signature first, extension second.
 - `unreadable` result with reason in `encrypted`, `corrupt`, `unsupported`,
-  `too-large`. High-entropy unknown binary → `encrypted` guess with low
-  confidence.
+  `too-large`. High entropy alone → `unsupported`, with an optional low-
+  confidence encryption hypothesis. `encrypted` requires a recognized format's
+  encryption flag; random bytes are not proof.
 - Nothing is ever executed; archives are listed with `zipfile`, never
   extracted to disk.
 - Extraction results are written next to the evidence file as
@@ -51,9 +54,10 @@ python -m pytest -q tests/test_extraction.py
 ```
 
 Covers every fixture kind: text, CSV, JSON, XML with an external entity
-(must not resolve), PNG, random bytes → `unreadable: encrypted`, truncated
+(must not resolve), PNG, random bytes → `unreadable: unsupported`, a known
+encrypted archive → `unreadable: encrypted`, truncated
 zip → `unreadable: corrupt`, nested zip reads one level only, an archive
-whose inner file exceeds the cap is cut at the cap. Same input twice gives
+whose inner file exceeds the cap stops without publishing a complete inner sample. Same input twice gives
 byte-identical output; `workbench` refuses a copy dir under `rollouts/`,
 appends without rewriting earlier records, and `hermes-gui` produces
 `handoff.json` and no extraction output.

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo status
 
-Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no build, lint, or test command. `equipment-data-parser/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
+Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no CLI build or lint command yet; the existing transport check runs with `python tests/test_ftp_transport.py`. `equipment-data-parser/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
 
 ## Where things are
 
@@ -28,7 +28,7 @@ tree: copy `.env.example` to `.env` (untracked) for `FTP_PROXY_URL` and
 import, and a real env var wins. `tests/test_ftp_transport.py` pins that branch
 and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
 
-`equipment-data-parser/` is the self-contained build-and-operate sequence for the company LLM: `index.md` is both the office agent's contract and the workflow, then letters in order, tracking state in `progress.md`. `equipment-data-parser/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes. `equipment-data-parser/problems/` is where the office agent reports where the letters miss its site — one `NN-problems.md` per letter, read them before rewriting a letter.
+`equipment-data-parser/` is the self-contained build-and-operate sequence for the company LLM: `index.md` is both the office agent's contract and the workflow, then letters in order, tracking state in `progress.md`. `equipment-data-parser/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes. `problems/` is where the office agent reports where the letters miss its site — one `NN-problems.md` per letter, read them before rewriting a letter.
 
 `docs/architecture/equipment-data-map.md` (Korean) is the source of truth. Section map:
 

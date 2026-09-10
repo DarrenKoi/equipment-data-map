@@ -12,6 +12,8 @@ grouping → sampling → extraction end to end without an LLM.
 
 ## Build
 
+Use implementation-reference.md §7 for common records and hash ordering.
+
 - `equipment_map/datamap.py`: `index.json` (dataset version, per-file
   hashes), `equipment.json`, `file-families.json`, `paths.json`,
   `unreadable.json`. Sorted keys, `\n` line endings, no timestamps other

@@ -12,11 +12,15 @@ instead of retrying.
 
 ## Build
 
+Use implementation-reference.md §2 and §5 for the profile and window contract.
+
 - `equipment_map/profiles.py`: profile registry file `profiles/<type>.json`
   with allowed path patterns, filename token rules, extractor mapping.
   `rollout.json` names a profile; grouping and extraction consult it.
 - Access window: `always` or a UTC window, included in the canonical plan;
-  `next` refuses to start outside the window (exit 20).
+  `next` refuses to start outside the window (exit 20), checks before every
+  equipment request and aborts in-flight work at its end. A returned timeout
+  is not proof a worker or remote proxy stopped; test server-side termination.
 - `stage 3 next`: the stage 1 pipeline against the real `Source` from
   `rollout.json` (`host`, `port`, `share`), then `interpret_families` from
   letter 11 over current-scope families without a matching durable field

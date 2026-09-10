@@ -8,7 +8,8 @@ model configuration.
 
 ## Read
 
-`spec.md` §7 (agent-tool checks, observable results), §10.
+`spec.md` §7 (agent-tool checks, observable results), §10, and
+implementation-reference.md §9 before building the normalizers.
 
 The initial minimum-model profile is the engineer's dedicated Qwen3.8-27B
 deployment. Record its exact served model identifier; parameter-count
@@ -18,10 +19,17 @@ the same scenarios, recording the exact model and serving configuration.
 
 ## Build
 
+Before coding normalizers, obtain an engineer-provided synthetic native export
+and exact tool/export version for each of the four tools. Record `waiting`
+if any is missing; never infer an export schema from the tool name. Keep samples
+local and untracked. The human confirms availability with
+`- 15 confirmed <UTC date> | export-fixtures: ready | <local inventory sha256>`.
+The fixture inventory records all four tool versions and sample hashes.
+
 - `scenarios/README.md`: one scenario per §7 observable result, each with
   the exact prompt to give the agent tool, the rollout fixture to prepare,
   and the expected `audit.jsonl` events.
-- Normalized transcript: `scenarios/transcripts/<tool>-<model>-<scenario>.jsonl`,
+- Normalized transcript: `scenarios/transcripts/<tool>-<case-id>.jsonl` (local, untracked),
   one object per line, keys exactly `seq`, `ts` (UTC ISO-8601), `role`
   (`user`|`assistant`|`command`), `text`, `command` (shell line, `command`
   role only), `exit_code`. `scripts/normalize_transcript.py --tool
@@ -36,7 +44,7 @@ the same scenarios, recording the exact model and serving configuration.
   transport limit, contains requests beyond cumulative budget, or repeats a
   committed result. Compare it with authoritative `work/llm.sqlite`, including
   recovery after an interrupted export.
-- `scenarios/results/<tool>-<model>.md` template with fields: tool and
+- `scenarios/results/<tool>-<case-id>.md` local, untracked result sheet with fields: tool and
   version, model id, serving config, scenario pass/fail, normalized
   transcript path.
 
@@ -52,12 +60,14 @@ values in place of the angle-bracket fields and `all-scenarios-pass`
 literally:
 
 ```
-- 15 confirmed <UTC date> | codex <tool version> | <model id> | <serving config> | all-scenarios-pass
-- 15 confirmed <UTC date> | claude-code <tool version> | <model id> | <serving config> | all-scenarios-pass
-- 15 confirmed <UTC date> | opencode <tool version> | <model id> | <serving config> | all-scenarios-pass
-- 15 confirmed <UTC date> | pi <tool version> | <model id> | <serving config> | all-scenarios-pass
+- 15 confirmed <UTC date> | codex | <local result sheet sha256> | all-scenarios-pass
+- 15 confirmed <UTC date> | claude-code | <local result sheet sha256> | all-scenarios-pass
+- 15 confirmed <UTC date> | opencode | <local result sheet sha256> | all-scenarios-pass
+- 15 confirmed <UTC date> | pi | <local result sheet sha256> | all-scenarios-pass
 ```
 
-Until all four exist, record `waiting` whose check is
-`grep -c '^- 15 confirmed .* | all-scenarios-pass$' equipment-data-parser/progress.md`
-equalling 4, and stop.
+Record `waiting` until one current-release confirmation exists for each distinct
+tool, tied to its actual result sheet. Four duplicate lines do not pass.
+The engineer verifies sheet hashes, suite/contract versions and the same exact
+minimum-model profile in those sheets; model identity/configuration stays there,
+not in tracked progress. Read implementation-reference.md §9 for the matrix.

@@ -12,7 +12,8 @@ family gets its bounded LLM interpretation.
 `spec.md` §5 (init reconfiguration), §8 stage 3, §6, §9 row for stage 3.
 Rules from letter 16 apply.
 
-`ROLLOUT` is the rollout id from letter 16's `done` line. The engineer
+`ROLLOUT` is the rollout id from the current rollout's letter 16 `done` line
+(after its newest human rollout marker, if one exists). The engineer
 supplies it in your environment before this letter (for example
 `export ROLLOUT=<that id>` in the shell that launches you); you never run
 `export` yourself.
@@ -30,7 +31,7 @@ supplies it in your environment before this letter (for example
 3. `equipment-map preflight --stage 3 --contract 1`, then
    `equipment-map stage 3 plan --rollout "$ROLLOUT"`. Report the hash and
    the window it includes; append `waiting` until `operator approve-plan`.
-4. `equipment-map stage 3 next --rollout "$ROLLOUT"` until exit `0`. On
+4. Run `equipment-map stage 3 next --rollout "$ROLLOUT"` once. On
    exit `20` for a connection failure, relay that a diagnostic file exists
    under the rollout directory and stop; the engineer decides.
 5. Report the counts: files listed, families, samples, extracted,

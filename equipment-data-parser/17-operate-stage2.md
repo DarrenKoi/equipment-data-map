@@ -9,7 +9,8 @@ measurement family and one log family with the engineer.
 
 `spec.md` §4.6, §8 stage 2, §9 row for stage 2. Rules from letter 16 apply.
 
-`ROLLOUT` is the rollout id from letter 16's `done` line. The engineer
+`ROLLOUT` is the rollout id from the current rollout's letter 16 `done` line
+(after its newest human rollout marker, if one exists). The engineer
 supplies it in your environment before this letter (for example
 `export ROLLOUT=<that id>` in the shell that launches you); you never run
 `export` yourself.
@@ -24,7 +25,7 @@ supplies it in your environment before this letter (for example
 2. `equipment-map preflight --stage 2 --contract 1`, then
    `equipment-map stage 2 plan --rollout "$ROLLOUT"`; report the hash and
    append `waiting` until `operator approve-plan`.
-3. `equipment-map stage 2 next --rollout "$ROLLOUT"` until exit `0`.
+3. Run `equipment-map stage 2 next --rollout "$ROLLOUT"` once.
    Report the resolved and `unresolved` counts and the hash of
    `llm-provenance.json` from stdout, nothing else.
 4. Ask the engineer to check one measurement family and one log family in
