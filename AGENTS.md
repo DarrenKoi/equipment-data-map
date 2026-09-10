@@ -43,10 +43,15 @@ translate one into the other.
   entries are the input for fixing a letter or the spec. That agent does not
   edit the letters; you do.
 - `ftp_handler/` — vendored from `skewnono_v3_nuxt`, read-only here. A change
-  to it belongs upstream. One exception is already applied and pending
-  upstream: `size_dirs` carries a UTC `modified` per file (MDTM beside SIZE,
-  both transports), covered by `tests/test_sizing_mtime.py`. Port it to
-  `skewnono_v3_nuxt` before the next re-vendor, or it is lost.
+  to it belongs upstream. One change was made here and has been ported to both
+  `flask_modules` (upstream) and `skewnono_v3_nuxt` (the other vendored copy):
+  `size_dirs` carries a UTC `modified` per file, MDTM beside SIZE, on both
+  transports. Covered by `tests/test_sizing_mtime.py` here and by each repo's
+  own suite there. The three copies of the two changed files are byte-identical,
+  so a re-vendor is safe; the only standing difference in `ftp_handler/` is this
+  repo's `.env` handling of `PROXY_URL`/`PROXY_TOKEN`, which is deliberate and
+  must not be pushed upstream — it is what keeps the deployment's real host out
+  of the source tree.
 
 ## Skill deliverables
 

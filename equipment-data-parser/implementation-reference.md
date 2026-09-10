@@ -160,11 +160,10 @@ Current vendor facts, not capabilities to assume:
   timeout or discarded response does not prove equipment traffic stopped.
 
 File-size capping is not an upstream prerequisite, and neither is metadata: no
-part of letter 03 waits on an upstream release. The `size_dirs` mtime is a local
-change to the vendored package, already applied and covered by
-`tests/test_sizing_mtime.py`, pending a port back to `skewnono_v3_nuxt`. Do not
-re-derive it and do not read it as licence to patch `ftp_handler` further — any
-other change stops with `blocked`, because re-vendoring is a maintainer
+part of letter 03 waits on an upstream release. The `size_dirs` mtime is applied
+here, covered by `tests/test_sizing_mtime.py`, and already ported upstream. Do
+not re-derive it and do not read it as licence to patch `ftp_handler` further —
+any other change stops with `blocked`, because re-vendoring is a maintainer
 operation, not this agent's.
 
 The **deployed proxy** is still a real prerequisite for equipment access, and

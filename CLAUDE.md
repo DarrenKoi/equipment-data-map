@@ -13,10 +13,10 @@ Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no CLI bui
 ## Where things are
 
 `ftp_handler/` is the FTP library copied from `skewnono_v3_nuxt` — the intended FTP
-Source adapter for §4, not yet wired to anything. It carries one local change
-pending upstream: `size_dirs` returns a UTC `modified` per file, so the metadata
-pass gets path, size and mtime in one connection on either transport
-(`tests/test_sizing_mtime.py`). `core` (`FtpClient`, one server) and
+Source adapter for §4, not yet wired to anything. `size_dirs` returns a UTC
+`modified` per file, so the metadata pass gets path, size and mtime in one
+connection on either transport (`tests/test_sizing_mtime.py`); that change is
+already ported to `flask_modules` and `skewnono_v3_nuxt`. `core` (`FtpClient`, one server) and
 `direct_downloader` (`FtpFleetDownloader`, concurrent fan-out) are stdlib-only; `proxy`
 carries the same `FtpFleetDownloader` surface over HTTP and needs `requests` on the
 client, `flask` on the server. The upstream `web_app` subpackage was left behind.

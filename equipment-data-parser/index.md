@@ -353,10 +353,9 @@ fake tree, not about live equipment or model accuracy.
   on both transports — never from `list_dirs`, which carries paths only.
   The package is otherwise read-only: a change to it belongs upstream in
   `skewnono_v3_nuxt`, and a letter that needs one records why in `progress.md`
-  first. One change has already been made here — `size_dirs` now carries a UTC
-  `modified` per file (MDTM alongside SIZE, on both transports) — and is
-  pending upstream; do not re-derive it, and do not treat it as licence for
-  another.
+  first. One change has already been made here and ported upstream — `size_dirs`
+  carries a UTC `modified` per file, MDTM alongside SIZE, on both transports.
+  Do not re-derive it, and do not treat it as licence for another.
 - Standard library first: `argparse`, `sqlite3`, `hashlib`, `json`, `zipfile`.
   Allowed third-party: `requests` (the `ftp_handler` proxy client) only. Dev
   only: `pytest`, `pyftpdlib` (fake FTP), `flask` (fake proxy server in
