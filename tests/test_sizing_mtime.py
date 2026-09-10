@@ -73,6 +73,55 @@ def test_wire_round_trip_and_older_proxy():
     assert _parse_modified(None) is None
 
 
+class _ModeFtp:
+    """A strict server: nlst() flips to ASCII (as ftplib's does), and SIZE is
+    refused unless the session is back in binary mode."""
+
+    def __init__(self, refuse_type_i=False):
+        self.mode, self.refuse_type_i = "A", refuse_type_i
+
+    def voidcmd(self, cmd):
+        if cmd == "TYPE I":
+            if self.refuse_type_i:
+                raise error_perm("504 TYPE I not implemented")
+            self.mode = "I"
+            return "200 Type set to I"
+        return "213 20260910123456"
+
+    def nlst(self, remote_dir):
+        self.mode = "A"
+        return ["a.log", "b.log"]
+
+    def size(self, remote_path):
+        if self.mode != "I":
+            raise error_perm("550 SIZE not allowed in ASCII mode.")
+        return 7
+
+
+def _size_with(fake):
+    from contextlib import contextmanager
+    from ftp_handler.direct_downloader.fleet_downloader import FtpFleetDownloader, HostSpec, ListDir
+
+    dl = FtpFleetDownloader(user="u", password="p", max_concurrency=1)
+    dl._session = contextmanager(lambda spec: iter([fake]))
+    return dl._size_worker(HostSpec("h", listings=[ListDir("/log")]))
+
+
+def test_listing_does_not_undo_binary_mode():
+    # nlst() sends TYPE A itself; sizing after it must re-assert TYPE I, or a
+    # strict server refuses every SIZE and the whole listing measures nothing.
+    sizes, failures = _size_with(_ModeFtp())
+    assert [s.remote_path for s in sizes] == ["/log/a.log", "/log/b.log"]
+    assert sizes[0].size == 7 and failures == []
+
+
+def test_refused_type_i_does_not_sink_the_host():
+    # The refusal is per file, in the same shape as any other SIZE failure.
+    sizes, failures = _size_with(_ModeFtp(refuse_type_i=True))
+    assert sizes == [] and [f.remote_path for f in failures] == ["/log/a.log", "/log/b.log"]
+    assert all("error_perm" in f.error for f in failures)
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

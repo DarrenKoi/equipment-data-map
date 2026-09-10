@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo status
 
-Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no CLI build or lint command yet; the existing transport check runs with `python tests/test_ftp_transport.py`. `equipment-data-parser/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
+Docs plus one vendored library (`ftp_handler/`), no CLI yet. There is no CLI build or lint command yet; the existing transport check runs with `python tests/test_ftp_transport.py`. `spike.py` (letter 00) runs as `python spike.py equipment.toml`; its home check is `uv run --python 3.11 --with pyftpdlib --with flask --with requests python tests/test_spike_fake.py` (fake FTP, real proxy blueprint, fake LLM). `equipment-data-parser/` fixes the stack the code will use (Python 3.11, pytest); once letter 01 lands, `python -m pytest -q` is the test command. The architecture doc is the spec the code must satisfy. When the `equipment-map` CLI lands, record its build, test, and single-test commands here.
 
 ## Where things are
 

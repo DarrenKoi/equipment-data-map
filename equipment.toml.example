@@ -1,0 +1,26 @@
+# Copy to equipment.toml (untracked) and fill in. Every value here is a placeholder.
+# The engineer fills this file; the agent never reads it, only spike.py does.
+# Machine facts (proxy URL, token, FTP_TRANSPORT) stay in .env, not here.
+
+[equipment]
+name = "tool-a"            # output directory name only
+host = "10.0.0.1"
+port = 21
+user = "readonly"
+password = "change-me"     # plaintext allowed; file is gitignored, never printed
+roots = ["/log", "/data"]  # allowlist: anything outside is refused before the wire
+deny = ["*.bak", "tmp/*"]  # fnmatch on basename or path relative to its root
+
+[budget]
+max_download_bytes = 200_000_000
+max_dirs = 500             # directories visited, then stop
+sample_bytes = 8192        # head of each sampled file sent to the LLM
+
+[llm]
+url = "http://llm.host:8000"   # base URL; spike posts to <url>/v1/chat/completions
+model = "HCP-Medium-Latest"
+api_key = ""               # empty: no Authorization header
+timeout_s = 60
+
+[output]
+dir = "out"

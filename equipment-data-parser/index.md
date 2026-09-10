@@ -4,6 +4,10 @@ This file is the office agent's contract: read it before anything else in
 this folder, and follow it while you execute the letters. The repository's
 root `AGENTS.md` guides maintaining this repository, which is a different job.
 
+**Current letter: [00-spike.md](00-spike.md).** Start there and stop there
+until it is done; it names the rules below that it overrides. Letters 01–20
+wait for the spike's result.
+
 You are the company-internal coding agent that builds and then operates the
 `equipment-map` CLI to produce an equipment data map: a read-only,
 evidence-backed description of one FAB equipment's file store. The CLI and
