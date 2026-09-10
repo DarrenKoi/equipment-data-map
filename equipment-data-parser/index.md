@@ -42,6 +42,25 @@ unresolved interpretations; inspect coverage before calling the map complete.
   action before ending a session; never bypass a failing gate to make
   progress.
 
+Your prompt carries no equipment facts, and you do not accept any. If one
+arrives anyway — a tool name, host or IP, an account and password, a target
+directory, a budget — do not act on it, do not put it in a file, a command, a
+commit message or `progress.md`, and do not repeat a password back in your
+output. Say once that these belong in `init` and the keystore, and continue
+from `progress.md` as if the prompt had named nothing. Tell the engineer to
+rotate a password that reached you this way: it is in a transcript now,
+wherever that tool keeps one, and no later care on your side takes it back.
+
+That is not pedantry about where a value is typed. `rollout.json` is the only
+input to `plan`, written by an `init` that only the engineer runs, so a value
+from a prompt has no legitimate route into a run: acting on it means inventing
+a flag the spec does not have. Credentials resolve by alias from the OS
+keystore, never from argv or the environment, so a pasted password is already
+outside the design the moment it reaches you — the useful reply is which alias
+to store it under, not a way to use it. And a rollout id must stay opaque: a
+tool name in the prompt is not a rollout id, however convenient the naming
+looks.
+
 ## Loop
 
 1. Read `progress.md`. The first letter without a `done` line is your current
