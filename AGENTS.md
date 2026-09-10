@@ -46,8 +46,11 @@ translate one into the other.
   to it belongs upstream. One change was made here and has been ported to both
   `flask_modules` (upstream) and `skewnono_v3_nuxt` (the other vendored copy):
   `size_dirs` carries a UTC `modified` per file, MDTM beside SIZE, on both
-  transports. Covered by `tests/test_sizing_mtime.py` here and by each repo's
-  own suite there. The three copies of the two changed files are byte-identical,
+  transports. A later review pass (ValueError caught beside `all_errors`,
+  `close()` instead of QUIT, host sanitized in `local_target`, MLSD `type`
+  case, constant-time token compare) was ported the same way. Covered by `tests/test_sizing_mtime.py` and
+  `tests/test_worker_isolation.py` here and by each repo's own suite there.
+  The three copies of the changed files are byte-identical,
   so a re-vendor is safe; the only standing difference in `ftp_handler/` is this
   repo's `.env` handling of `PROXY_URL`/`PROXY_TOKEN`, which is deliberate and
   must not be pushed upstream — it is what keeps the deployment's real host out
