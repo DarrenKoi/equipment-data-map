@@ -42,6 +42,10 @@ translate one into the other.
   letters got wrong about its site, one `NN-problems.md` per letter. Those
   entries are the input for fixing a letter or the spec. That agent does not
   edit the letters; you do.
+- `agent_build_steps/` — hands-on course for the maintainer on growing
+  `spike.py` into a harness and then an agent. Korean, like `docs/`: it is
+  read by the user, not by the office agent. It prescribes no behavior; when
+  it disagrees with the spec, the spec wins and the course is wrong.
 - `ftp_handler/` — vendored from `skewnono_v3_nuxt`, read-only here. A change
   to it belongs upstream. One change was made here and has been ported to both
   `flask_modules` (upstream) and `skewnono_v3_nuxt` (the other vendored copy):
