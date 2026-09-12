@@ -46,14 +46,14 @@ while not done:
 - 허용 명령 표 (동사 4개, 각각 언제 부르는가 한 줄)
 - 멈출 조건: 같은 동사가 두 번 연속 실패 / `budget_stop` 이 ledger 에 보임 /
   boolean 이 참인데 파일 수가 0
-- 완료 증거: 마지막 JSON 줄과 `out/<name>/index.md` 경로
+- 완료 증거: 마지막 JSON 줄의 성공 판정과 `output_dir` 아래 `index.md` 경로
 
 그다음 **세 가지 상황을 실제로 먹여 본다** (fake 트리로):
 
 1. 정상 — 모델이 walk→sample→describe→emit 순으로 부르고 끝내는가
 2. 예산 초과 — `max_download_bytes` 를 1000 으로 낮춘다. 모델이 멈추고
    보고하는가, 아니면 예산을 늘리려고 config 를 고치려 드는가
-3. 중간 실패 — 가짜 FTP 를 `describe` 직전에 죽인다. 재개하는가
+3. 중간 실패 — 가짜 LLM을 `describe` 직전에 중단한다. 실패를 기록하고 재개하는가
 
 2번이 제일 중요하다. 모델이 config 를 고치려 들면 **그건 프롬프트 문제가
 아니라 harness 문제다** — CLI 가 `equipment.toml` 쓰기를 막아야 한다.

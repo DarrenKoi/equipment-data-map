@@ -4,9 +4,8 @@
 
 ## 왜
 
-`spike.py` 의 `inside()` 와 `denied()` 는 지금 **주장** 이다. 코드를 읽으면
-맞는 것 같지만, 누가 리팩터링하다 `normpath` 한 번 빼먹으면 `/log/../etc` 가
-통과한다. 그리고 그 사실은 실장비에서 처음 드러난다.
+`spike.py` 의 경계는 `tests/test_spike_boundaries.py`로 검증한다.
+리팩터링 중 검사가 빠져도 실제 장비에 닿기 전에 실패하도록 유지해야 한다.
 
 agent 로 가는 순간 이게 더 중요해진다. 사람이 돌릴 때는 사람이 명령을 보지만,
 모델이 돌릴 때는 아무도 안 본다. **경계는 "모델이 시키지 않을 것" 이 아니라
@@ -22,25 +21,27 @@ harness 의 경계에는 두 층이 있다.
 
 둘을 섞으면(= 호출부마다 if 로 막으면) 호출부 하나 빠뜨리는 순간 구멍이 난다.
 집행은 wire 로 나가는 **단 하나의 길목** 에 두고, 그 길목을 테스트한다.
-`spike.py` 는 이미 그렇게 돼 있다 — `dl.size_dirs` / `dl.download` 를 부르기
-전에 `inside()`·`denied()` 를 통과해야 한다.
+`spike.py`는 `list_dirs`로 먼저 목록을 받은 뒤 경로를 정규화·검사하고,
+고정 경로만 `size_dirs`에 넘긴다. 다운로드 직전에도 같은 정책을 적용한다.
+목록을 직접 `size_dirs`로 확장하면 제외 경로에도 SIZE/MDTM이 전송될 수 있다.
 
 ## 실습
 
-`tests/test_spike_boundaries.py` 를 새로 쓴다. fake FTP 를 띄울 필요 없다 —
-`spike.py` 의 판정 함수만 떼어 부르면 된다. 그러려면 `main()` 안의
-`inside`/`denied` 를 모듈 최상위 함수로 끌어올려야 한다 (roots 를 인자로 받게).
-이게 이 단계의 유일한 리팩터링이다.
+기존 `tests/test_spike_boundaries.py`를 실행하고 가짜 목록에 예외 입력을 더한다.
+가짜 FTP 서버 없이 `main()`을 실행하고 외부 전송 응답만 대체한다.
+함수를 떼어 단독 검사하는 것보다 실제 LIST·SIZE·다운로드 요청 기록에서
+금지 경로가 없는지 확인하는 것이 이 단계의 목적이다.
 
 막아야 할 것 최소 4개:
 
 1. `/log/../etc/passwd` — 정규화 후에도 roots 밖
 2. `/logs` — `/log` 의 접두사이지 하위가 아님 (`startswith` 버그의 고전)
 3. `deny = ["*.bak"]` 일 때 `/log/a/b.bak`
-4. `max_download_bytes` 를 1바이트 넘기는 파일이 `wanted` 에 안 들어감
+4. 전체 목표 바이트에 도달·초과한 전송 이후 다음 다운로드가 시작되지 않음
 
-3·4번은 fake 트리가 있어야 정직하다. `tests/test_spike_fake.py` 에 트리를
-하나 더 심어서 확인해도 된다.
+조회 크기는 참고값이다. 남은 목표보다 큰 파일도 통째로 받을 수 있으며
+완료 후 실제 바이트로 다음 전송을 결정한다. 실패 전송은 부분 사용량을
+모르므로 이후 전송을 멈춘다. `tests/test_spike_fake.py`는 실제 FTP 명령도 기록한다.
 
 ```
 python tests/test_spike_boundaries.py

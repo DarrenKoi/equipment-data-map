@@ -25,7 +25,7 @@ harness 가 갖춰야 할 성질은 딱 세 가지다. 이 셋이 없으면 "age
 |---|---|---|
 | **경계 (bounded)** | 할 수 없는 일은 시도조차 wire 에 못 나간다 | `inside()`, `denied()`, `budget` |
 | **관측 (observable)** | 무슨 일이 있었는지 기계가 읽을 수 있다 | 마지막 줄 JSON `stats` |
-| **판정 (verifiable)** | 끝났는지 아닌지를 모델이 아니라 코드가 말한다 | 세 boolean `index_exists` / `md_per_dir` / `evidence_tables` |
+| **판정 (verifiable)** | 끝났는지 아닌지를 모델이 아니라 코드가 말한다 | 출력 검사 + 파일 수 + 유효 LLM 응답 수 + 사용량 미상 여부 |
 
 `spike.py` 는 이미 셋 다 **씨앗 형태로** 갖고 있다. 이 과정은 새 설계를
 들여오는 게 아니라 저 셋을 각각 자라게 하는 것이다. 단계마다 "어느 성질을
@@ -87,7 +87,11 @@ letter 00 이 먼저다.
 
 ## 하지 않을 것
 
-- 승인 게이트, 5단계 rollout, 4-tool skill suite — 2026-09-11 에 범위 밖으로
-  결정됐다 (issue #1). 이 과정은 그걸 되살리지 않는다.
-- agent 프레임워크 도입. 5단계까지 오면 agent 는 "CLI + SKILL.md 한 장" 이다.
-  그 이상이 필요해지면 그때 필요해진 이유를 적고 도입한다.
+- 실습 단계에서 승인 게이트·5단계 rollout·4-tool skill suite를 한꺼번에
+  구현하지 않는다. 최종 배포 요구에서 제외된다는 뜻은 아니며,
+  [아키텍처](../docs/architecture/equipment-data-map.md)가 우선한다.
+- agent 프레임워크를 미리 도입하지 않는다. 실습의 단일 스킬과 자유 동사
+  예제는 학습용이며, 배포 CLI·스킬 계약은 아키텍처에 맞춰야 한다.
+
+현재 코드 개선과 office 검증의 순서는
+[단계별 개선안](../docs/plans/2026-09-13-incremental-improvements.md)을 따른다.

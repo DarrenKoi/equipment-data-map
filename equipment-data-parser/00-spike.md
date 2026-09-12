@@ -5,8 +5,8 @@
 Run `spike.py` on one approved equipment through the office proxy until it
 writes markdown, then record what happened. The script exists; this letter is
 about running it at this site. Nothing else in this folder is needed until it
-passes: read this letter, `equipment.toml.example`, and `spike.py` (170 lines,
-read all of it), and skip `spec.md` and letters 01–20.
+passes: read this letter, `equipment.toml.example`, and all of `spike.py`,
+and skip `spec.md` and letters 01–20.
 
 Pass means markdown from one real equipment. A fake tree running at home is
 not a pass.
@@ -22,8 +22,9 @@ not a pass.
   `api_key` still appear nowhere: `spike.py` scrubs them from every file it
   writes and from its own output, and exception text is reduced to a class
   name. Keep that property in any edit you make.
-- **No exit-code contract, no `NEXT:` line, no per-item checkpoint.** One
-  `progress.md` line at the end (step 6).
+- **No staged CLI exit-code contract, no `NEXT:` line, no per-item checkpoint.**
+  The spike uses the 0/1 smoke-check verdict in step 3 and one `progress.md`
+  line at the end (step 6).
 - Dependencies are stdlib, `ftp_handler/` (read-only, as in `AGENTS.md`), and
   `requests`. `pip install requests` if the import fails.
 
@@ -57,20 +58,40 @@ not a pass.
    python spike.py equipment.toml
    ```
 
-   The last line is one JSON object: `dirs`, `files`, `bytes`, `llm_calls`,
-   `md`, and three booleans `index_exists`, `md_per_dir`, `evidence_tables`.
-   Done here when all three booleans are true **and** `files > 0` **and**
-   `llm_calls > 0`. Three true booleans over zero files means the walk saw no
-   files; that is a failure, go to step 5.
+   The last line is one JSON object containing:
 
-4. **Read the output.** Open `out/<name>/index.md` and two directory files.
+   - `dirs`, `files`, `md`, and `output_dir` for this invocation.
+   - `bytes`: actual bytes of successfully received whole files;
+     `estimated_bytes`: listed sizes of attempted downloads;
+     `overrun_bytes`: successful bytes above `max_download_bytes`.
+   - `download_failed` and `usage_unknown`: failed transfers can consume
+     unreported partial bytes. When usage is unknown, no further download
+     starts during this invocation. Do not treat `bytes` as all network traffic.
+   - `llm_calls` (attempts), `llm_success` (valid response shape), `llm_failed`.
+   - `index_exists`, `md_per_dir`, `evidence_tables`.
+
+   Exit 0 requires all three booleans, `files > 0`, `llm_success > 0`,
+   and `usage_unknown == false`. Otherwise exit 1; go to step 5. These checks
+   do not prove complete inventory or accurate interpretation. Review any
+   failed LLM calls and skipped samples even when the exit code is 0.
+
+4. **Read the output.** Open `<output_dir>/index.md` using the path in the
+   final JSON, then follow its links to two directory files (or all if fewer).
+   Each invocation writes a fresh `out/<name>/<run-id>/`; directory filenames
+   use path hashes, and previous output is preserved. This is not checkpoint
+   resume: a new invocation starts a new budget and walks the roots again.
    Judge whether the `## LLM` section is usable: does `### Observed` stay
    within the evidence table, does `### Inferred` say something an engineer
-   would keep? One or two sentences of judgement go into the problem entry.
+   would keep? Format validation does not establish factual accuracy.
+   One or two sentences of judgement go into the problem entry. An unusable
+   analysis is not a pass, even with exit 0.
    Read only from `out/`; never paste a directory file into a commit or
    `progress.md`.
 
-5. **When it fails, fix `spike.py`, then rerun step 3.** The likely site
+5. **When it fails, fix `spike.py`, then rerun step 3.** If `usage_unknown`
+   is true, first stop and ask the engineer to verify the previous transfer
+   has ended and reconcile its usage before authorizing a new invocation.
+   A new output directory does not settle unknown usage. The likely site
    differences: LLM reply not shaped as `choices[0].message.content`, an FTP
    server that rejects a command the library sends, a text encoding beyond
    UTF-8 and CP949, a listing format the library normalizes wrongly. Change
@@ -85,7 +106,7 @@ not a pass.
    number of sessions used. Then one line to `progress.md`:
 
    ```
-   - 00 done <UTC time> | dirs=<n> files=<n> bytes=<n> llm_calls=<n> | see problems/00-problems.md
+   - 00 done <UTC time> | dirs=<n> files=<n> bytes=<n> llm_success=<n> llm_failed=<n> | see problems/00-problems.md
    ```
 
    or `- 00 blocked ... | <one-line reason> | see problems/00-problems.md`.
@@ -97,8 +118,9 @@ not a pass.
 ## Done when
 
 `python spike.py equipment.toml` on one approved equipment, through the
-proxy, prints a last line whose three booleans are true with `files > 0` and
-`llm_calls > 0`, and the `done` line is committed.
+proxy, exits 0 with three true booleans, `files > 0`, `llm_success > 0` and
+`usage_unknown == false`. The engineer judges the analysis usable, and the
+`done` line is committed. Home fake tests never complete this letter.
 
 ## What the script does
 
@@ -106,19 +128,30 @@ Reference for judging its output; the code is the source of truth.
 
 - One `HostSpec` per call, `max_concurrency=1`, `passive=True`, transport
   from `fleet_downloader()`. The script never sets `FTP_TRANSPORT`.
-- Walk: breadth-first from `roots`, one `size_dirs` per directory. A listing
+- Walk: breadth-first from deduplicated, normalized `roots`. First use
+  `list_dirs`, check normalized paths against roots and deny patterns, then
+  use `size_dirs` with fixed accepted paths only (no listing expansion).
+  Check download candidates again before calling `download`. This avoids
+  SIZE/MDTM as well as RETR on excluded entries without changing the vendored
+  library. The extra listing connection is intentional. A listing
   entry whose `SIZE` fails is treated as a subdirectory; a server with no
   `SIZE` at all makes every file look like one, and then file-named markdown
   appears. Report that, do not fix it here. `max_dirs` stops the walk and
   the index says how many directories were left.
 - Sampling: newest file per extension per directory, by MDTM mtime. The
-  whole file crosses the wire (the library has no range read), its full size
-  counts against `max_download_bytes`, and only the first `sample_bytes` go
-  to the LLM when they decode as UTF-8 or CP949.
+  whole file crosses the wire (the library has no range read). Download one
+  file at a time and count its actual received length. Listed size is advisory:
+  a file larger than the remaining target can still be received whole. Once
+  successful bytes reach `max_download_bytes`, no next download starts.
+  This is a best-effort total target, not an in-flight cap. Only the first
+  `sample_bytes` go to the LLM when they decode as UTF-8 or CP949.
 - Evidence table `sample` column: `text head`, `meta only` (binary),
-  `download failed`, `over budget`, `-` (not the newest of its extension).
+  `download failed, usage unknown`, `usage unknown, skipped`, `over budget`,
+  `-` (not the newest of its extension).
   Denied files are absent from the table.
 - One LLM call per non-empty directory, `POST <url>/v1/chat/completions`,
   Bearer header only when `api_key` is set. The heading records the alias
   you asked for and the `model` the endpoint answered with. HTTP 400/413
-  becomes `input too large` in that file and the walk continues.
+  becomes `request rejected` in that file and the walk continues. A successful
+  HTTP response counts as `llm_success` only if its content has exactly the
+  two non-empty `### Observed` and `### Inferred` sections in that order.

@@ -9,6 +9,8 @@ flask and requests, so run it as::
 """
 
 import json
+import contextlib
+import io
 import os
 import socket
 import sys
@@ -27,26 +29,34 @@ def free_port():
         return s.getsockname()[1]
 
 
-def start_ftp(tree, port):
+def start_ftp(tree, port, commands):
     from pyftpdlib.authorizers import DummyAuthorizer
     from pyftpdlib.handlers import FTPHandler
     from pyftpdlib.servers import FTPServer
 
     auth = DummyAuthorizer()
     auth.add_user("ro", "ro-secret", str(tree), perm="elr")  # read-only
-    FTPHandler.authorizer = auth
-    server = FTPServer(("127.0.0.1", port), FTPHandler)
+    class Handler(FTPHandler):
+        def ftp_RETR(self, path):
+            commands.append(("RETR", Path(path).relative_to(tree).as_posix()))
+            return super().ftp_RETR(path)
+
+        def ftp_SIZE(self, path):
+            commands.append(("SIZE", Path(path).relative_to(tree).as_posix()))
+            return super().ftp_SIZE(path)
+
+    Handler.authorizer = auth
+    server = FTPServer(("127.0.0.1", port), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
 
 def start_proxy(port):
     from ftp_handler.proxy.flask_proxy import create_app
+    from werkzeug.serving import make_server
 
     app = create_app()
-    threading.Thread(
-        target=lambda: app.run(host="127.0.0.1", port=port, use_reloader=False),
-        daemon=True,
-    ).start()
+    server = make_server("127.0.0.1", port, app)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
 
 
 def start_llm(port):
@@ -68,13 +78,14 @@ def start_llm(port):
     threading.Thread(target=HTTPServer(("127.0.0.1", port), H).serve_forever, daemon=True).start()
 
 
-def main():
-    tmp = Path(tempfile.mkdtemp())
+def main(transport="proxy"):
+    tmp = Path(tempfile.mkdtemp()).resolve()
     tree, out = tmp / "ftp", tmp / "out"
     for rel, data in {
         "log/a.log": b"line1\nline2\n", "log/b.log": b"newer\n", "log/tool.bak": b"deny me",
         "log/sub/c.csv": "가,나\n".encode("cp949"), "log/sub/deep/img.png": b"\x80\xff" * 100,
-        "data/big.bin": b"x" * 5000, "secret/leak.txt": b"outside roots",
+        "data/note.txt": b"data", "log/sub/deep/z-big.bin": b"x" * 5000,
+        "log/sub/deep/zz-next.csv": b"over budget", "secret/leak.txt": b"outside roots",
     }.items():
         (tree / rel).parent.mkdir(parents=True, exist_ok=True)
         (tree / rel).write_bytes(data)
@@ -82,10 +93,12 @@ def main():
 
     ftp_port, proxy_port, llm_port = free_port(), free_port(), free_port()
     # Proxy facts belong to the environment, exactly as .env would set them.
-    os.environ.update(FTP_TRANSPORT="proxy", FTP_PROXY_URL=f"http://127.0.0.1:{proxy_port}",
+    os.environ.update(FTP_TRANSPORT=transport, FTP_PROXY_URL=f"http://127.0.0.1:{proxy_port}",
                       FTP_PROXY_TOKEN="proxy-secret")
-    start_ftp(tree, ftp_port)
-    start_proxy(proxy_port)
+    commands = []
+    start_ftp(tree, ftp_port, commands)
+    if transport == "proxy":
+        start_proxy(proxy_port)
     start_llm(llm_port)
 
     cfg = tmp / "equipment.toml"
@@ -113,18 +126,27 @@ dir = "{out.as_posix()}"
 
     import spike
 
-    assert spike.main(cfg) == 0
-    md = {p.name: p.read_text() for p in (out / "fake").glob("*.md")}
-    assert set(md) == {"index.md", "log.md", "log__sub.md", "log__sub__deep.md", "data.md"}, set(md)
-    assert "tool.bak" not in md["log.md"] and "leak.txt" not in "".join(md.values())
-    assert "| b.log | .log | 6 |" in md["log.md"] and "text head" in md["log.md"]
-    assert "| a.log | .log | 12 |" in md["log.md"] and "| - |" in md["log.md"]  # not sampled
-    assert "meta only" in md["log__sub__deep.md"]  # binary png
-    assert "over budget" in md["data.md"]  # 5000 > 1000
-    assert "glm-fake" in md["log.md"]
+    with contextlib.redirect_stdout(io.StringIO()) as stdout:
+        assert spike.main(cfg) == 0
+    stats = json.loads(stdout.getvalue())
+    run_dir = Path(stats["output_dir"])
+    assert (run_dir / "index.md").is_file()
+    md = {p.read_text().splitlines()[0]: p.read_text() for p in run_dir.glob("dir-*.md")}
+    assert set(md) == {"# /log", "# /log/sub", "# /log/sub/deep", "# /data"}, set(md)
+    assert "tool.bak" not in md["# /log"] and "leak.txt" not in "".join(md.values())
+    assert "| b.log | .log | 6 |" in md["# /log"] and "text head" in md["# /log"]
+    assert "| a.log | .log | 12 |" in md["# /log"] and "| - |" in md["# /log"]  # not sampled
+    assert "meta only" in md["# /log/sub/deep"]  # binary png
+    assert "over budget" in md["# /log/sub/deep"]
+    assert "glm-fake" in md["# /log"]
     assert "ro-secret" not in "".join(md.values()) and "llm-secret" not in "".join(md.values())
-    print("ok test_spike_fake")
+    assert stats["bytes"] == 5216 and stats["overrun_bytes"] == 4216, stats
+    assert stats["llm_calls"] == stats["llm_success"] == 4 and stats["llm_failed"] == 0
+    assert not any(path in ("log/tool.bak", "secret/leak.txt") for _, path in commands)
+    assert ("RETR", "log/sub/deep/z-big.bin") in commands
+    assert ("RETR", "log/sub/deep/zz-next.csv") not in commands
+    print(f"ok test_spike_fake ({transport})")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "proxy")

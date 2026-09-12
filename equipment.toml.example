@@ -12,7 +12,7 @@ roots = ["/log", "/data"]  # allowlist: anything outside is refused before the w
 deny = ["*.bak", "tmp/*"]  # fnmatch on basename or path relative to its root
 
 [budget]
-max_download_bytes = 200_000_000
+max_download_bytes = 200_000_000  # best-effort total target; finish the whole file, then stop
 max_dirs = 500             # directories visited, then stop
 sample_bytes = 8192        # head of each sampled file sent to the LLM
 
@@ -23,4 +23,4 @@ api_key = ""               # empty: no Authorization header
 timeout_s = 60
 
 [output]
-dir = "out"
+dir = "out"               # writes <dir>/<name>/<run-id>/; see output_dir in JSON
