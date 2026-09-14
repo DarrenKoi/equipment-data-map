@@ -50,9 +50,9 @@ unresolved interpretations; inspect coverage before calling the map complete.
 This PC pulls the repository from the maintainer's remote and never pushes to
 it. Commit on the local office branch you are already on: `office`, or
 `office-<model>` when the engineer runs several agent models in parallel, each
-in its own git worktree ([engineer-guide.md](engineer-guide.md) §1). Your
-working directory is your whole identity: never read, write or commit in
-another worktree, and never take a model name from the prompt. The maintainer's
+in its own local copy of the repository ([engineer-guide.md](engineer-guide.md)
+§1). Your working directory is your whole identity: never read, write or commit
+in another copy, and never take a model name from the prompt. The maintainer's
 updates arrive only when the engineer merges them between sessions.
 
 Before any other step, `git branch --show-current` must print `office` or a
@@ -309,7 +309,7 @@ commands, set it, and record the exact invocation in `office/progress.md` the wa
 letter 01 records the pip install line.
 
 **Scheduler settings that are wrong by default.** The start-in directory is
-not the repository — set it to the repository root (that model's worktree), or
+not the repository — set it to the repository root (that model's folder), or
 every relative path in these letters misses. Set the task to *not* start a second instance while one
 is running: a checkpoint can take twenty minutes, and two runs committing at
 once corrupt the ledger. Run it as the account that actually holds the CLI
