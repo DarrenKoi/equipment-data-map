@@ -1,12 +1,25 @@
 # Equipment Data Map agent contract
 
-This contract is for agents **maintaining** this repository: the architecture
-doc, the letters, the spec snapshot, the skills, and the CLI once it exists.
+This file is read by both maintainer agents and company-local LLM agents on
+the office PC. Apply the instructions for the job the user requested:
 
-Executing the letters is a different job with its own contract,
-`equipment-data-parser/index.md`. Do not start executing them unless the user
-asks. When you change them, keep that file usable on its own — the office
-agent must never need to read this one.
+- **Maintenance:** follow the sections below when maintaining the architecture
+  doc, letters, spec snapshot, skills, and CLI. Do not execute the letters
+  unless the user asks.
+- **Office execution:** when asked to execute the letters, follow
+  `equipment-data-parser/index.md` as the execution contract, including its
+  setup checks and write permissions. The maintainer-only restrictions below
+  do not prohibit the office agent's permitted work.
+
+**During office execution, read and follow the instructions in
+`equipment-data-parser/`, and create all results outside that folder. Never
+create, modify, or delete files inside `equipment-data-parser/`.** Run commands
+from the repository root. Write code, tests, logs, and other results to the
+paths specified by the current letter and execution contract, including
+`office/` where specified; resolve those paths from the repository root.
+
+Keep `equipment-data-parser/index.md` usable on its own when editing it.
+The remaining sections describe repository maintenance.
 
 ## Purpose
 
@@ -41,11 +54,15 @@ translate one into the other.
   The office PC pulls `main` and never pushes; its commits stay on a local
   `office` branch that merges your updates (`engineer-guide.md` §1).
 - `office/` — the office agent's ledger (`progress.md`), problem entries and
-  `spike.py` workaround. It exists only on the office branch: never create
-  it here, and create nothing at a root path a build letter tells the office
-  agent to create. Nothing comes back by git; the user relays sanitized
+  `spike.py` workaround. It exists only on the local `office` branch.
+  During maintenance, do not create or modify `office/`, or create root-level
+  outputs assigned to the office agent by a build letter. During office
+  execution, the office agent may create and update files in `office/` and
+  root-level build outputs as permitted by `equipment-data-parser/index.md`
+  and the current letter, after the required office setup checks pass.
+  Nothing comes back by git; the user relays sanitized
   summaries, and those are the input for fixing a letter or the spec. The
-  office agent does not edit the letters; you do.
+  office agent does not edit the letters; the maintainer does.
 - `agent_build_steps/` — hands-on course for the maintainer on growing
   `spike.py` into a harness and then an agent. Korean, like `docs/`: it is
   read by the user, not by the office agent. It prescribes no behavior; when
