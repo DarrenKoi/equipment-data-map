@@ -97,8 +97,9 @@ FTP adapter는 사내 `ftp_handler` 라이브러리 위에 올린다. 전송 방
 endpoint에 적용하며 장비 쪽 FTP 프로토콜은 그대로 사용한다.
 
 proxy의 위치는 배포 사실이므로 소스 트리에 두지 않는다. `FTP_PROXY_URL`,
-`FTP_PROXY_TOKEN`과 전송 방식 강제용 `FTP_TRANSPORT`는 기계별 `.env`에서 읽고
-실제 환경 변수가 우선한다. 이 값이 맞는지는 사람이 아니라 `preflight`가
+선택 사항인 `FTP_PROXY_TOKEN`과 전송 방식 강제용 `FTP_TRANSPORT`는 기계별
+`.env`에서 읽고 실제 환경 변수가 우선한다. 운영 proxy는 신뢰하는 단일 사용자용이라
+token 없이 배포하며, token은 proxy가 인증을 켠 배포에서만 설정한다. 이 값이 맞는지는 사람이 아니라 `preflight`가
 확인하며, 확인 전에는 어떤 단계도 장비에 접속하지 않는다.
 
 부분 범위 읽기는 interface에 넣지 않는다. `ftp_handler`의 일반 다운로드로
@@ -300,7 +301,7 @@ CLI 종료 코드와 마지막 출력 행은 고정한다.
 30  설치·계약 preflight 실패     NEXT: INSTALL-OR-UPGRADE
 ```
 
-stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. `status`는 `REPORT.md`의 존재 여부와 SHA-256도 한 줄로 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다. `preflight`는 이 기계가 사용할 전송 방식도 함께 확인한다. 선택된 방식과 그 근거(platform 추정 또는 `FTP_TRANSPORT`)를 출력하고, proxy면 세 번 호출한다. health endpoint는 도달 여부만 증명하므로 목록 route에 빈 대상으로 인증 없이 요청해 401인지 확인한 다음, 설정한 token으로 요청해 200인지 확인한다. 인증 없는 요청의 401은 기대 결과이고 token을 보낸 요청의 401은 실패다. 인증 없는 요청이 성공하거나 도달하지 못해도 exit 30으로 멈춘다. 설정된 사내 `http://` URL과 비어 있지 않은 token을 먼저 확인하고 redirect를 거부한다. 운영 proxy와 loopback fixture 모두 HTTP를 사용하며 HTTPS/TLS를 요구하지 않는다. 빈 대상이므로 장비에는 접속하지 않는다. 이 확인은 장비에 접속하지 않으므로 계획 승인을 필요로 하지 않으며, 장비 접속을 대신 증명하지도 않는다. stdout에는 전송 방식 이름과 도달 여부만 출력하고 proxy URL, host와 token은 출력하지 않는다.
+stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. `status`는 `REPORT.md`의 존재 여부와 SHA-256도 한 줄로 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다. `preflight`는 이 기계가 사용할 전송 방식도 함께 확인한다. 선택된 방식과 그 근거(platform 추정 또는 `FTP_TRANSPORT`)를 출력하고, proxy면 health endpoint를 호출한 뒤 목록 route에도 빈 대상으로 요청한다. health endpoint는 도달 여부만 증명하기 때문이다. token이 비어 있으면 인증 없는 요청이 200이어야 한다. token이 설정되어 있으면 인증 없는 요청이 401인지 확인한 다음, 설정한 token으로 요청해 200인지 확인한다. 이때 인증 없는 요청의 401은 기대 결과이고 token을 보낸 요청의 401은 실패다. token을 설정했는데 인증 없는 요청이 성공하면 설정과 배포가 어긋난 것이므로 exit 30으로 멈추며, 도달하지 못해도 exit 30으로 멈춘다. 설정된 사내 `http://` URL을 먼저 확인하고 redirect를 거부한다. 운영 proxy와 loopback fixture 모두 HTTP를 사용하며 HTTPS/TLS를 요구하지 않는다. 빈 대상이므로 장비에는 접속하지 않는다. 이 확인은 장비에 접속하지 않으므로 계획 승인을 필요로 하지 않으며, 장비 접속을 대신 증명하지도 않는다. stdout에는 전송 방식 이름과 도달 여부만 출력하고 proxy URL, host와 token은 출력하지 않는다.
 
 초기 검증은 한 엔지니어의 PC와 로컬 rollout 디렉터리에서 수행한다. Skill Market 배포 후에도 rollout 하나는 한 엔지니어가 자기 PC에서 1~5단계를 끝까지 수행한다. 다른 엔지니어는 자기 장비와 별도 rollout ID로 독립 실행한다.
 
@@ -387,7 +388,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 전체 목표 바이트에 도달한 다운로드 완료 후 다음 전송을 시작하지 않는지
 - 참고 크기 초과·크기 미상 파일도 다운로드를 시도하고 성공한 전체 파일과 실제 사용량을 보존하는지
 - FTP 전송 방식이 기계에 따라 선택되는지 (Windows → proxy, 그 외 → direct)
-- 잘못된 `FTP_PROXY_URL`이나 token으로 `preflight`가 exit 30으로 멈추고 장비 접속을 시도하지 않는지
+- 잘못된 `FTP_PROXY_URL`이나 proxy 배포와 맞지 않는 token 설정으로 `preflight`가 exit 30으로 멈추고 장비 접속을 시도하지 않는지
 - 중단 후 체크포인트부터 재개되는지
 - 암호화·손상 파일이 누락되지 않고 `unreadable`로 남는지
 - 고정된 시각과 같은 가짜 입력의 LLM 미사용 경로에서 `data-map/`의 구조화 파일이 바이트 단위로 동일한지

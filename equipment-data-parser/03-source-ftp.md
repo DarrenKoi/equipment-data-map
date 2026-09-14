@@ -75,20 +75,22 @@ before writing any adapter code. Do not read the whole package.
   a dict-backed fake. Never read credentials from argv or environment.
   The alias resolves to the `user`/`password` passed to the downloader
   constructor. The proxy URL must use `http://` on the private company network;
-  `FTP_PROXY_TOKEN` must be set. HTTP is the required internal transport for
+  `FTP_PROXY_TOKEN` is optional: the office proxy is a trusted single-user
+  deployment with auth disabled, so leave it empty unless the proxy enforces
+  one. HTTP is the required internal transport for
   both office deployments and local fixtures; do not require TLS or upgrade
   the URL to HTTPS.
 - `equipment_map/transport_check.py`: `check()` returns the transport name,
   why it was chosen (`platform` or `FTP_TRANSPORT`), and for `proxy` the result
-  of three calls. Both routes already exist in
+  of the calls below. Both routes already exist in
   `ftp_handler/proxy/flask_proxy.py`; nothing on the client side calls either,
-  so this is three bounded `requests` calls with the connect timeout from the same
+  so these are bounded `requests` calls with the connect timeout from the same
   tuning, not a new library.
   - `GET <FTP_PROXY_URL>/healthz_sknn_v3` → `{"status": "ok"}`. Reachability
     only: `healthz()` is the one route that skips `_unauthorized()`, so a 200
     here proves nothing about the token.
   - `POST <FTP_PROXY_URL>/list_dirs_sknn_v3` with `{"specs": []}` → 200 means
-    the token is accepted, 401 means it is not. An empty spec list reaches the
+    the request is accepted, 401 means it is not. An empty spec list reaches the
     auth check and then builds a downloader with nothing to do, so no
     equipment is contacted. Do not send a real host here to "also test FTP" —
     that is equipment access before an approved plan.
@@ -96,9 +98,11 @@ before writing any adapter code. Do not read the whole package.
   `preflight` calls it and exits 30 with
   `NEXT: INSTALL-OR-UPGRADE` when the proxy does not answer. Direct transport
   needs no call — there is nothing to reach until a plan names equipment.
-  A correct-token 200 alone does not prove auth enforcement: first send the
-  same empty-spec request without a token and require 401, then require 200
-  with the configured nonempty token. Validate the configured internal `http://`
+  With `FTP_PROXY_TOKEN` empty, send the empty-spec request without a token
+  and require 200. With a token configured, a correct-token 200 alone does not
+  prove auth enforcement: first send the same request without a token and
+  require 401, then require 200 with the token; a 200 without a token then
+  means the proxy does not match the configuration and is also exit 30. Validate the configured internal `http://`
   URL and refuse redirects. Apply the same HTTP policy to office deployments
   and local fixtures (see §4 of the reference).
   Print the transport name and reachable/unreachable only: spec §5 keeps the
@@ -155,7 +159,9 @@ command during the test; the same assertions pass against both transports,
 with `FTP_TRANSPORT=proxy` pointed at `fake_proxy`; `fleet_downloader`
 returns the proxy class for `win32` and the direct class otherwise; `preflight` exits 30 without touching equipment when the proxy
 health endpoint refuses the connection or answers non-200, and when the
-health endpoint is fine but the empty-spec list POST returns 401,
+health endpoint is fine but the empty-spec list POST returns 401, and when a
+token is configured but the POST without a token returns 200; with no token
+configured it exits 0 on a no-auth proxy that answers 200,
 and its stdout contains neither the URL nor the token; with the
 platform forced to `win32` and `CredReadW` mocked, `lookup` issues exactly the
 call above and returns the secret without logging it; on every other platform it

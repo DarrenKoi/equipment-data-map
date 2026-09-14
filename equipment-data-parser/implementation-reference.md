@@ -185,13 +185,16 @@ root containment, not string prefix matching. A listed child must remain an
 immediate child of the requested directory. Unknown link targets stay
  metadata-only. Do not execute remote strings in shell commands.
 
-Proxy check: require the configured private-company `http://` URL, a nonempty
-token and no redirects before sending secrets. Use HTTP for office deployments
-and local fixtures; do not require TLS or automatically upgrade to HTTPS. Health JSON must be expected; empty-spec POST
-without auth must return 401; with auth must return 200 with the expected schema.
-Refuse an auth-disabled proxy even when a configured token gets 200. Local
-fake proxy/FTP uses synthetic credentials set in the fixture process. Proxy token is the
-existing transport-only `.env` exception; equipment and LLM secrets stay in the
+Proxy check: require the configured private-company `http://` URL and no
+redirects before sending anything. Use HTTP for office deployments
+and local fixtures; do not require TLS or automatically upgrade to HTTPS. Health JSON must be expected.
+The token is optional: the office proxy is a trusted single-user deployment
+with auth disabled. With no token configured, empty-spec POST without auth must
+return 200 with the expected schema. With a token configured, the same POST
+without auth must return 401 and with auth must return 200; a 200 without auth
+then means the proxy does not match the configuration, and preflight exits 30.
+Local fake proxy/FTP uses synthetic credentials set in the fixture process. The
+optional proxy token is the existing transport-only `.env` exception; equipment and LLM secrets stay in the
 OS keystore. No raw exceptions or URLs on stdout/stderr.
 
 ## 5. Profiles, grouping and selection — letters 05–07, 13

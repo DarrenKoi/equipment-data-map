@@ -39,8 +39,9 @@ Keep a local readiness sheet with these entries:
 Use `http://` for both the company FTP proxy and the internal LLM endpoint.
 This is the required transport inside the private company network, whose outside
 access is controlled by the firewall; no TLS setup is required. The HTTP scheme
-in `.env.example` is appropriate. Replace its placeholder host and supply a
-nonempty token; its no-auth comment does not remove this kit's token requirement.
+in `.env.example` is appropriate. Replace its placeholder host. Leave
+`FTP_PROXY_TOKEN` empty for the trusted single-user proxy, which runs with auth
+disabled; set it only if the proxy enforces a token.
 
 The instructions' minimum-model label is a validation target, not proof of a
 particular backend. Record the served model identity/settings locally. If the
