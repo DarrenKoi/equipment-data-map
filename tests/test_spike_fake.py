@@ -66,7 +66,7 @@ def start_llm(port):
             assert self.path == "/v1/chat/completions"
             assert self.headers["Authorization"] == "Bearer llm-secret"
             reply = {"model": "glm-fake", "choices": [{"message": {
-                "content": f"### Observed\n{len(body['messages'][1]['content'])} chars\n### Inferred\nlogs"}}]}
+                "content": f"### Observed\n{len(body['messages'][1]['content'])} chars"}}]}
             data = json.dumps(reply).encode()
             self.send_response(200)
             self.send_header("Content-Length", str(len(data)))

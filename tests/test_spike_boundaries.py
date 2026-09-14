@@ -79,7 +79,7 @@ class SpikeTests(unittest.TestCase):
         )
         if response is None:
             response = {"model": "fake", "choices": [{"message": {
-                "content": "### Observed\nA file.\n### Inferred\nPossibly logs."}}]}
+                "content": "### Observed\nA file."}}]}
         reply = NS(status_code=200, raise_for_status=lambda: None, json=lambda: response)
         with patch.object(spike, "fleet_downloader", return_value=lambda **kw: transport), \
                 patch.object(spike.requests, "post", return_value=reply,
@@ -97,6 +97,18 @@ class SpikeTests(unittest.TestCase):
         self.assertEqual(transport.calls, [
             ("list", "/log"), ("size", "/log/good.log"), ("download", "/log/good.log"),
         ])
+
+    def test_site_noise_never_reaches_the_wire_without_deny_config(self):
+        kept = ["/log/temperature.log", "/log/template.xml", "/log/attempt.log",
+                "/log/tmpfile.txt", "/log/lockfile.cfg"]
+        noise = ["/log/old.BAK", "/log/disk.iso", "/log/run.lock", "/log/temp.txt",
+                 "/log/log_tmp_1.csv", "/log/TEMP-001.dat", "/log/~tmp", "/log/backup.tmp",
+                 "/log/Temp", "/log/Temp/inside.log"]
+        transport = FakeTransport({"/log": kept + noise, "/log/Temp": ["/log/Temp/inside.log"]})
+        self.run_spike(transport)
+        touched = {path for _, path in transport.calls}
+        self.assertLessEqual(set(kept), touched)
+        self.assertEqual(set(noise) & touched, set())
 
     def test_root_slash_discovers_children(self):
         transport = FakeTransport({"/": ["/log"], "/log": ["/log/a.txt"]})
@@ -155,7 +167,8 @@ class SpikeTests(unittest.TestCase):
         self.assertEqual(stats["llm_failed"], 1)
 
     def test_invalid_llm_content_cannot_pass(self):
-        for content in (None, "", "Unstructured answer", "### Observed\n\n### Inferred\nGuess"):
+        for content in (None, "", "Unstructured answer", "### Observed\n",
+                        "### Observed\nA file.\n### Inferred\nProbably logs."):
             with self.subTest(content=content):
                 code, _ = self.run_spike(FakeTransport({"/log": ["/log/a.txt"]}), response={
                     "choices": [{"message": {"content": content}}]})

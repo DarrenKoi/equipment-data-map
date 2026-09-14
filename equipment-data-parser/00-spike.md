@@ -13,8 +13,10 @@ Pass means markdown from one real equipment. A fake tree running at home is
 not a pass.
 
 Prioritize directory paths, file metadata (names, extensions, sizes and
-modification times), and brief directory descriptions from limited samples.
-Keep observed facts separate from inferred purposes. Do not attempt complete
+modification times), and observed facts from limited samples. The LLM records
+only what one directory's listing and samples show; it states no purpose for
+the directory, because one folder cannot reveal how the tool works. Inference
+comes in a later pass, from observed facts across directories. Do not attempt complete
 content extraction, cross-folder relationship analysis, or multi-model
 orchestration. Possible relationships remain unverified observations for a
 later investigation; they do not trigger more collection in this pass.
@@ -104,8 +106,9 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    use path hashes, and previous output is preserved. This is not checkpoint
    resume: a new invocation starts a new budget and walks the roots again.
    Judge whether the `## LLM` section is usable: does `### Observed` stay
-   within the evidence table, does `### Inferred` say something an engineer
-   would keep? Format validation does not establish factual accuracy.
+   within the evidence table and samples, and does it record facts an engineer
+   would keep (naming patterns, formats, visible fields) without guessing the
+   directory's purpose? Format validation does not establish factual accuracy.
    One or two sentences of judgement go into the problem entry. An unusable
    analysis is not a pass, even with exit 0.
    Read only from `out/`; never paste a directory file into a commit or
@@ -209,10 +212,16 @@ Reference for judging its output; the code is the source of truth.
 - Evidence table `sample` column: `text head`, `meta only` (binary),
   `download failed, usage unknown`, `usage unknown, skipped`, `over budget`,
   `-` (not the newest of its extension).
-  Denied files are absent from the table.
+  Denied files are absent from the table. Besides `deny`, the script always
+  excludes site noise: `NOISE_EXTENSIONS` (`.bak`, `.iso`, `.lock`) and
+  `NOISE_WORDS` (`temp`, `tmp` as a word no letter touches, so
+  `temperature.log` stays), case-insensitive, on any path segment below a
+  root. The maintainer extends those lists; a missing noise pattern here is a
+  problem entry, not a `deny` workaround hidden in the private config.
 - One LLM call per non-empty directory, `POST <url>/v1/chat/completions`,
   Bearer header only when `api_key` is set. The heading records the alias
   you asked for and the `model` the endpoint answered with. HTTP 400/413
   becomes `request rejected` in that file and the walk continues. A successful
-  HTTP response counts as `llm_success` only if its content has exactly the
-  two non-empty `### Observed` and `### Inferred` sections in that order.
+  HTTP response counts as `llm_success` only if its content is exactly one
+  non-empty `### Observed` section; any other `###` section, such as a guessed
+  `### Inferred`, makes it invalid.

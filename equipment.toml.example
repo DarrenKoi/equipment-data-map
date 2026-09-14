@@ -9,7 +9,8 @@ port = 21
 user = "readonly"
 password = "change-me"     # plaintext allowed; file is gitignored, never printed
 roots = ["/log", "/data"]  # allowlist: anything outside is refused before the wire
-deny = ["*.bak", "tmp/*"]  # fnmatch on basename or path relative to its root
+deny = []                  # extra fnmatch on basename or path relative to its root;
+                           # .bak/.iso/.lock and temp/tmp names are excluded by spike.py already
 
 [budget]
 max_download_bytes = 200_000_000  # best-effort total target; finish the whole file, then stop

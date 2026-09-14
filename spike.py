@@ -24,11 +24,25 @@ from ftp_handler import fleet_downloader
 from ftp_handler.direct_downloader import HostSpec, ListDir
 from ftp_handler.direct_downloader.fleet_downloader import SizingReport
 
+# Site-wide noise, always excluded on top of `deny`, matched case-insensitively
+# on each path segment below its root (so a Temp/ directory is skipped whole).
+# The configured root itself is the engineer's choice and is never noise. Add to these lists as more FAB tools are surveyed.
+NOISE_EXTENSIONS = ["bak", "iso", "lock"]
+# A word counts only when no letter touches it: temp.txt and log_tmp_1.csv are
+# noise, temperature.log and template.xml are kept.
+NOISE_WORDS = ["temp", "tmp"]
+NOISE = re.compile(
+    r"\.(?:%s)$|(?<![a-z])(?:%s)(?![a-z])"
+    % ("|".join(map(re.escape, NOISE_EXTENSIONS)), "|".join(map(re.escape, NOISE_WORDS))),
+    re.IGNORECASE)
+
 PROMPT = (
-    "You describe one directory of a FAB equipment file store from partial evidence. "
-    "Reply in markdown with exactly two sections: '### Observed' (only what the "
-    "listing and samples show) and '### Inferred' (what the directory is probably "
-    "for, marked as a guess). Be brief."
+    "You record facts about one directory of a FAB equipment file store. "
+    "Reply in markdown with exactly one section, '### Observed', listing only what "
+    "the listing and samples show: file names and naming patterns, extensions, "
+    "sizes, modification times, formats, and field names or values visible in the "
+    "samples. One directory cannot reveal the tool's purpose, so state no purpose "
+    "or guess; those come later from facts across directories. Be brief."
 )
 
 
@@ -50,7 +64,9 @@ def main(config_path):
 
     def denied(path):  # deny patterns match the path relative to its root, or the basename
         base = posixpath.basename(path)
-        return any(fnmatch.fnmatch(base, pattern) or
+        below = [posixpath.relpath(path, root).split("/") for root in roots
+                 if path.startswith(root.rstrip("/") + "/")]
+        return any(NOISE.search(part) for parts in below for part in parts) or any(fnmatch.fnmatch(base, pattern) or
                    any(fnmatch.fnmatch(posixpath.relpath(path, root), pattern)
                        for root in roots if path == root or path.startswith(root.rstrip("/") + "/"))
                    for pattern in eq.get("deny", []))
@@ -194,10 +210,9 @@ def ask_llm(llm, d, rows, samples):
         content = data["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             return "## LLM\n\ninvalid response", False
-        sections = re.fullmatch(r"### Observed\s*\n(.*?)\n### Inferred\s*\n(.*)",
-                                content.strip(), re.DOTALL)
-        if (sections is None or not all(part.strip() for part in sections.groups())
-                or len(re.findall(r"^### ", content, re.MULTILINE)) != 2):
+        observed = re.fullmatch(r"### Observed\s*\n(.*)", content.strip(), re.DOTALL)
+        if (observed is None or not observed.group(1).strip()
+                or len(re.findall(r"^### ", content, re.MULTILINE)) != 1):
             return "## LLM\n\ninvalid response", False
         # Shape validation is not a judgement of factual accuracy.
         return f"## LLM ({llm['model']} -> {served})\n\n{content}", True
