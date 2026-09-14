@@ -33,7 +33,7 @@ and runs bare (`python tests/test_ftp_transport.py`).
 
 `equipment-data-parser/` is the self-contained build-and-operate sequence for the company LLM: `index.md` is both the office agent's contract and the workflow, then letters in order, tracking state in `office/progress.md`. `equipment-data-parser/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes. `office/` (ledger, problem entries, `spike.py` workaround) exists only on the office PC's local branch — never create it here; read the summaries the user relays before rewriting a letter.
 
-`docs/architecture/equipment-data-map.md` (Korean) is the source of truth. Section map:
+`docs/architecture/equipment-data-map.md` (Korean) is the source of truth. `docs/architecture/equipment-data-parser-llm-behavior.md` (Korean) is a one-page guide to how the letters drive the agent LLM, what the internal LLM receives, and which Markdown comes out (no HTML is generated). Section map of the spec:
 
 | Need | Section |
 |---|---|
