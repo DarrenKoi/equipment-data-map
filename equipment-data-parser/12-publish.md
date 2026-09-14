@@ -33,6 +33,14 @@ citing equipment path and typed sample or metadata evidence.
 
 - Include `coverage.json` in the engineer review sheet and render coverage
   in the Wiki index. REPORT remains counts-only under its existing rules.
+- Render spec §4.7.1 relationships from approved family records, including
+  incoming references and both directions of a stored symmetric relation.
+  Show relation type, matched value, support scope, typed evidence and
+  relationship coverage/truncation. Link only to generated local family pages;
+  never turn raw file references into executable or external links. Shared IDs
+  are observed matches, not proof of the same run or causal use. Content matches
+  apply only to cited samples, never every member of their families. Include
+  these distinctions in the engineer review sheet and RAG claim text.
 
 ## Done when
 
@@ -48,3 +56,8 @@ chunks; output is byte-deterministic; stage 4 `plan` is refused without
 stage 3 result approval; a family with neither interpretation nor
 `unresolved` makes `next` exit 20 before writing; `REPORT.md` contains none
 of the fixture's paths, filenames, family keys, or the fake LLM's model id.
+
+Also cover navigation in both directions without duplicate stored edges,
+sample-scoped relationship claims, visible truncation/unresolved references,
+and rejection of unsupported causal claims as facts. Raw reference strings
+must remain escaped data; REPORT must not contain matched terms or IDs.

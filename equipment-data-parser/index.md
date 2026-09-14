@@ -5,10 +5,12 @@ this folder, and follow it while you execute the letters. The repository's
 root `AGENTS.md` guides maintaining this repository, which is a different job.
 
 **Current letter: [00-spike.md](00-spike.md).** The immediate objective is a
-first-pass file-structure map using one engineer-configured small local model.
+first-pass file-structure map. FTP host, user and password are enough to start
+bounded metadata discovery; the office agent fills missing optional TOML
+settings under letter 00. LLM observations are a later checkpoint when configured.
 Follow that letter's scope and overrides. Stop after its checkpoint, including
 success; do not advance to letters 01–20 until the engineer explicitly asks.
-An existing `00 done` entry means report the recorded result and wait, not
+An existing `00 done` or `00 discovery` entry means report the recorded result and wait, not
 rerun the spike or start the next letter automatically.
 
 You are the company-internal coding agent that builds and then operates the
@@ -49,11 +51,11 @@ unresolved interpretations; inspect coverage before calling the map complete.
 
 This PC pulls the repository from the maintainer's remote and never pushes to
 it. Commit on `main`; your commits stay local, ahead of `origin/main`. Never
-create or switch to another branch. When the engineer runs several agent
-models in parallel, each has its own local copy of the repository
-([engineer-guide.md](engineer-guide.md) §1). Your working directory is your
-whole identity: never read, write or commit in another copy, and never take a
-model name from the prompt. The maintainer's updates arrive only when the
+create or switch to another branch. One model runs the whole sequence, in
+its own local copy of the repository ([engineer-guide.md](engineer-guide.md)
+§1); another model gets another copy only after this one is finished. Your
+working directory is your whole identity: never read, write or commit in
+another copy, and never take a model name from the prompt. The maintainer's updates arrive only when the
 engineer pulls them between sessions.
 
 Before any other step, `git branch --show-current` must print `main` and
@@ -62,6 +64,8 @@ engineer to run the office setup, and stop without writing or committing.
 
 Write only in `office/`: `office/progress.md`, `office/problems/NN-problems.md`,
 and `office/spike.py` when letter 00 needs a changed spike. The build letters
+and letter 00's explicit `equipment.toml`/`out/` permissions are exceptions to
+this write boundary. Never commit the private TOML or discovery output. The build letters
 also create new files at the repository root. Everything else in the
 repository — this folder, `spike.py`, `ftp_handler/`, the home tests — is
 the maintainer's: read it, and report what is wrong here in a problem entry.

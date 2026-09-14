@@ -48,11 +48,16 @@ Read equipment-data-parser/index.md and continue the letters from
 office/progress.md. Reach the next checkpoint, commit it, and stop.
 ```
 
-그래서 같은 편지를 여러 모델로 나란히 돌릴 수 있다. 모델마다 저장소를
-통째로 복사한 폴더 하나(`<repo>-<model>/`)를 주고, 그 폴더의 작업
-디렉터리가 곧 정체성이다. 각 폴더는 `main`에서 로컬 커밋을 쌓고, 허브 클론
-하나만 원격을 본다. 원장 첫 줄과 `equipment.toml`의 `llm` 절이 모델을
-기록한다(`engineer-guide.md` §1).
+**모델은 하나가 끝까지 맡는다.** 승인된 모델 하나가 에이전트 역할과
+`equipment.toml`의 `llm.model` 역할을 함께 맡아 편지 00부터 20까지 완주한
+뒤에야 다른 모델을 시험한다. 여러 모델을 나란히 돌리거나 중간에 바꾸지
+않는다. 반쯤 만든 CLI와 반쯤 해석한 지도를 두 모델이 나눠 가지면 하나의
+결과로 검토할 수 없기 때문이다. 모델 비교는 완주한 뒤의 별도 작업이다.
+
+모델에게는 저장소를 통째로 복사한 폴더 하나(`<repo>-<model>/`)를 주고, 그
+폴더의 작업 디렉터리가 곧 정체성이다. 다음 모델은 새 복사본을 받는다. 각
+폴더는 `main`에서 로컬 커밋을 쌓고, 허브 클론 하나만 원격을 본다. 원장 첫
+줄과 `equipment.toml`의 `llm` 절이 모델을 기록한다(`engineer-guide.md` §1).
 
 Markdown 지시가 하는 일과 하지 않는 일:
 

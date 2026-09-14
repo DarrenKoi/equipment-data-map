@@ -297,6 +297,15 @@ A field record has `value` (null for unresolved), `confidence`, `evidence`
 and LLM provenance when applicable. Stage 1 has pending interpretation, not
 fake semantic success. No-sample groups get metadata evidence and no LLM calls.
 
+Family records also include `features`, `relationships`, and
+`relationship_coverage` as specified in spec §4.7.1. That section owns the
+relationship rules and limits; implement them in letter 09 after extraction.
+Metadata evidence is also required for sampled families that participate in
+metadata relationships or serve as resolved file-reference targets. Preserve
+sample path identity alongside hashes and validate feature locations against
+the cited extract, not just the existence of the sample hash. Relationship
+output is scoped derived data and participates in the same index/manifest.
+
 Coverage: per root `inventory_complete`, `frontier_count`, `stop_reasons`;
 current-scope `files_found`, `families_found`, `families_with_samples`,
 `families_without_samples_by_reason`, `resolved_fields`, `unresolved_fields`,

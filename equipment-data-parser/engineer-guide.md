@@ -31,12 +31,20 @@ plus the new files the build letters create, and commits on `main`, ahead of
 `office/problems/` and the `office/progress.md` result to the maintainer, with
 no equipment addresses, paths or credentials.
 
+**One model takes the whole sequence.** One approved model runs letters 00
+through 20 to the end — as the agent and as `llm.model` in `equipment.toml`
+alike — before any other model is tried. Do not run the letters with several
+models at once, and do not switch models mid-sequence: a half-built CLI or a
+half-interpreted map from two models cannot be reviewed as one result.
+Comparing models is a later exercise, on a finished process.
+
 **One hub, one folder per model.** The clone that talks to the maintainer's
 remote is the hub: it stays on `main`, only ever pulls, and no agent runs in
-it. Every agent model that runs the letters gets its own plain copy of the
-hub, `<repo>-<model>/`, on its own `main`, so parallel runs
-never share a ledger, a `office/spike.py`, root build outputs, `out/` or
-`rollouts/`. A model folder's `origin` is the hub directory, not the remote.
+it. The model that runs the letters gets its own plain copy of the hub,
+`<repo>-<model>/`, on its own `main`. When a later model is tried it gets a
+fresh copy, so the two never share a ledger, a `office/spike.py`, root build
+outputs, `out/` or `rollouts/`. A model folder's `origin` is the hub
+directory, not the remote.
 The working directory is the whole identity: the prompt never names the
 model, and an agent launched in `<repo>-<model>/` is that model's run. The
 first line of that folder's `office/progress.md` names the model, and its
@@ -77,16 +85,16 @@ mean that directory.
 The push guard stops accidents only. Give this PC read-only access to the
 remote so a deliberate push from the hub also fails.
 
-Merge maintainer updates between agent sessions: disable every schedule first
-and let any running agent and its child processes finish. Pull once in the
-hub, then merge in each model folder.
+Merge maintainer updates between agent sessions: disable the schedule first
+and let the running agent and its child processes finish. Pull once in the
+hub, then merge in the active model folder.
 
 ```sh
 git pull --ff-only          # in the hub, on main
 ```
 
 ```sh
-(                           # in each model folder
+(                           # in the model folder
   set -e
   test "$(git branch --show-current)" = main
   test -z "$(git status --porcelain)"

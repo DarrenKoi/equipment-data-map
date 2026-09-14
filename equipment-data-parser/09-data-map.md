@@ -38,6 +38,19 @@ Use implementation-reference.md §7 for common records and hash ordering.
   Coverage records inventory completeness/frontier and sampling coverage;
   later stages add interpretation counts without claiming unseen totals.
 
+- After extraction, build the bounded file-family relationships in spec
+  §4.7.1 inside `equipment_map/datamap.py`; use the existing inventory and
+  extracted samples only. Add `features`, `relationships`, and
+  `relationship_coverage` to family records. Keep file families separate.
+  Follow the spec's exact relation types, identifier/keyword rules, evidence
+  validation, deterministic ordering, limits and coverage fields. Generate
+  metadata evidence for sampled families too when a relation needs it.
+  Use an inverted index and stream candidates; never materialize all pairs.
+  Preserve source paths even when samples share a SHA. Persist or rebuild
+  derived relationships from the same scoped inputs on resume without
+  duplicate edges; all computation consumes the existing rollout deadline.
+  Do not fetch referenced paths or call an LLM to generate relationships.
+
 ## Done when
 
 ```
@@ -49,3 +62,11 @@ Covers, on both transports against the fake FTP: `plan` → fake approval →
 and sample evidence; two runs with the frozen clock give byte-identical
 `data-map/*.json` and the same manifest hash; stdout contains no fixture
 path or filename; `next` again is a no-op exit 0.
+
+Also cover spec §7's relationship scenarios in `tests/test_stage1_e2e.py`
+or a focused test module referenced by letter 10: cross-folder identifier
+matches, misleading words/numbers, reused IDs, unresolved references,
+sample-only support, metadata-only restrictions, source-path preservation,
+invalid evidence rejection, all relationship limits, deadline and resume.
+Assert zero extra source requests during relationship construction and
+byte-identical relationship output for fixed inputs.

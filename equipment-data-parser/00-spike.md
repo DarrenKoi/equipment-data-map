@@ -3,14 +3,15 @@
 ## Goal
 
 Use `spike.py` on one approved equipment through the office proxy to produce
-a first-pass map of its file structure with one engineer-configured small
-local model, then record what happened. The script exists; this letter is
+a first-pass map of its file structure, then record what happened. Only FTP
+host (IP), user (ID), and password are required to start. A local LLM is optional
+for discovery and required for the later interpretation checkpoint. The script exists; this letter is
 about running it at this site. Nothing else in this folder is needed until it
 passes: read this letter, `equipment.toml.example`, and all of `spike.py`,
 and skip `spec.md` and letters 01–20.
 
-Pass means markdown from one real equipment. A fake tree running at home is
-not a pass.
+Discovery means evidence markdown from one real equipment. Full letter completion
+also needs usable LLM observations. A fake tree running at home is neither.
 
 Prioritize directory paths, file metadata (names, extensions, sizes and
 modification times), and observed facts from limited samples. The LLM records
@@ -31,10 +32,15 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
 
 ## Where this letter overrides index.md
 
-- **Equipment facts live in `equipment.toml`**, filled by the engineer and
-  read only by `spike.py`. There is no `init`, no keystore, no alias. You
-  never open that file: no `cat`, no Read, no `python -c` that prints a value
-  from it. Step 2 shows the one inspection that is allowed.
+- **Equipment facts live in `equipment.toml`.** The engineer supplies only
+  FTP `equipment.host`, `equipment.user`, and `equipment.password` initially.
+  You may fill missing optional settings in this ignored local file. Use
+  `--prepare-config` for defaults; it reads and writes locally without printing
+  values. There is no `init`, keystore, or alias in the spike. Never display
+  the whole file, credentials or API keys in a tool result or prompt. For
+  later non-secret settings, use a local programmatic edit that preserves
+  credential values, validates TOML before replacement and prints status only.
+  Never invent credentials, endpoints, model IDs, or equipment purpose.
 - **Paths may appear on stdout and in `out/`.** The office network has no
   external egress, which replaces the stdout path rule. `password` and
   `api_key` still appear nowhere: `spike.py` scrubs them from every file it
@@ -62,17 +68,36 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    entry, append a `blocked` line, and stop.
    This step contacts the proxy only, never equipment.
 
-2. **Config present.** The engineer copies `equipment.toml.example` to
-   `equipment.toml` and fills it for one approved equipment with small roots
-   and a small budget. Select an approved small local model for preliminary
-   directory descriptions; model size does not prove accuracy. Confirm shape
-   without reading values:
+2. **Prepare missing settings.** The engineer supplies the three FTP fields
+   in local `equipment.toml`, using `equipment.toml.example` if helpful. You
+   fill the optional defaults without exposing values:
 
    ```
-   python -c "import tomllib; d = tomllib.load(open('equipment.toml', 'rb')); print(sorted(d), len(d['equipment']['roots']))"
+   python spike.py --prepare-config equipment.toml
    ```
 
-   Expected: the four section names and a root count of at least 1.
+   Expected: `{"config_ready": true}`. This command makes no network requests.
+   Missing/blank mandatory fields or invalid TOML return false and leave the
+   file unchanged; ask the engineer to supply those fields locally. An empty
+   file cannot supply FTP credentials. The helper reformats flat TOML tables
+   and removes comments but preserves existing values, including credentials.
+
+   Defaults: FTP port 21, output name `tool`, roots `["/"]` (the FTP account's
+   visible root), deny `[]`, `max_dirs=20`, `max_download_bytes=0`,
+   `sample_bytes=8192`, output `out`, and no LLM. Missing keys and blank strings
+   get defaults; explicit zero budgets and empty lists remain unchanged.
+   Existing narrower roots, limits and configured models must not be replaced.
+   `max_dirs` bounds visited directories, not entries within a listing.
+
+   Start with these metadata-only defaults when nothing else is known.
+   After reading the discovered map, you may fill still-missing search hints
+   from observed directories and record the evidence in `out/`. Narrowing roots
+   for a later pass is allowed; widening existing roots, increasing collection
+   budgets, or starting another pass needs the engineer's instruction. Do not
+   label a guessed category as an observed purpose. If a previously approved
+   internal endpoint and served model are available locally, you may fill both
+   `llm.url` and `llm.model`; otherwise leave both empty and make no LLM calls.
+   One without the other is invalid. Proxy setup in step 1 still applies.
 
 3. **Run.**
 
@@ -86,6 +111,8 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    The last line is one JSON object containing:
 
    - `dirs`, `files`, `md`, and `output_dir` for this invocation.
+   - `mode`: `metadata-only` without LLM or downloads, `samples-only` with a
+     positive download budget but no LLM, or `llm` when a model is configured.
    - `bytes`: actual bytes of successfully received whole files;
      `estimated_bytes`: listed sizes of attempted downloads;
      `overrun_bytes`: successful bytes above `max_download_bytes`.
@@ -95,8 +122,11 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    - `llm_calls` (attempts), `llm_success` (valid response shape), `llm_failed`.
    - `index_exists`, `md_per_dir`, `evidence_tables`.
 
-   Exit 0 requires all three booleans, `files > 0`, `llm_success > 0`,
-   and `usage_unknown == false`. Otherwise exit 1; go to step 5. These checks
+   Exit 0 requires all three booleans, `files > 0`, and
+   `usage_unknown == false`; `llm` mode also requires `llm_success > 0`.
+   Without an LLM, reports explicitly say interpretation was not performed.
+   Exit 0 in discovery mode is a discovery checkpoint, not `00 done`.
+   Otherwise exit 1; go to step 5. These checks
    do not prove complete inventory or accurate interpretation. Review any
    failed LLM calls and skipped samples even when the exit code is 0.
 
@@ -105,7 +135,9 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    Each invocation writes a fresh `out/<name>/<run-id>/`; directory filenames
    use path hashes, and previous output is preserved. This is not checkpoint
    resume: a new invocation starts a new budget and walks the roots again.
-   Judge whether the `## LLM` section is usable: does `### Observed` stay
+   Without an LLM, review file/folder evidence and skipped coverage, record
+   `00 discovery`, and stop; do not treat missing optional LLM settings as a
+   failure to start. With an LLM, judge whether the `## LLM` section is usable: does `### Observed` stay
    within the evidence table and samples, and does it record facts an engineer
    would keep (naming patterns, formats, visible fields) without guessing the
    directory's purpose? Format validation does not establish factual accuracy.
@@ -174,7 +206,9 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    - 00 done <UTC time> | dirs=<n> files=<n> bytes=<n> llm_success=<n> llm_failed=<n> | see office/problems/00-problems.md
    ```
 
-   or `- 00 blocked ... | <one-line reason> | see office/problems/00-problems.md`.
+   For a successful pass without LLM interpretation use
+   `- 00 discovery <UTC time> | dirs=<n> files=<n> | interpretation not performed | see office/problems/00-problems.md`.
+   Otherwise use `- 00 blocked ... | <one-line reason> | see office/problems/00-problems.md`.
    Commit on `main` only `office/` (`git add -- office/`;
    `git diff --cached --stat` must list nothing outside it), message `letter 00: spike <done|blocked>`. `out/` and
    `equipment.toml` are ignored by git and stay on the PC.
@@ -218,7 +252,7 @@ Reference for judging its output; the code is the source of truth.
   `temperature.log` stays), case-insensitive, on any path segment below a
   root. The maintainer extends those lists; a missing noise pattern here is a
   problem entry, not a `deny` workaround hidden in the private config.
-- One LLM call per non-empty directory, `POST <url>/v1/chat/completions`,
+- When configured, one LLM call per non-empty directory, `POST <url>/v1/chat/completions`,
   Bearer header only when `api_key` is set. The heading records the alias
   you asked for and the `model` the endpoint answered with. HTTP 400/413
   becomes `request rejected` in that file and the walk continues. A successful
