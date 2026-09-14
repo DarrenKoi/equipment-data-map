@@ -9,9 +9,12 @@ Letter: equipment-data-parser/00-spike.md.
 import fnmatch
 import hashlib
 import json
+import math
+import os
 import posixpath
 import re
 import sys
+import tempfile
 import tomllib
 from collections import deque
 from datetime import datetime, timezone
@@ -46,9 +49,96 @@ PROMPT = (
 )
 
 
-def main(config_path):
-    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))
+def load_config(config_path, *, require_credentials=True):
+    try:
+        cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        if require_credentials:
+            raise
+        cfg = {}
+    defaults = {
+        "equipment": {"host": "", "user": "", "password": "",
+                      "name": "tool", "port": 21, "roots": ["/"], "deny": []},
+        "budget": {"max_download_bytes": 0, "max_dirs": 20, "sample_bytes": 8192},
+        "llm": {"url": "", "model": "", "api_key": "", "timeout_s": 60},
+        "output": {"dir": "out"},
+    }
+    for section, fields in defaults.items():
+        values = cfg.setdefault(section, {})
+        if not isinstance(values, dict):
+            raise ValueError("Expected a configuration table")
+        for key, value in fields.items():
+            if key not in values or (isinstance(values[key], str) and not values[key].strip()):
+                values[key] = value
     eq, budget, llm = cfg["equipment"], cfg["budget"], cfg["llm"]
+    if any(not isinstance(eq[key], str) or (require_credentials and not eq[key].strip())
+           for key in ("host", "user", "password")):
+        raise ValueError("FTP host, user and password are required for connection")
+    # Empty lists and zero budgets are intentional restrictions, not missing values.
+    if not isinstance(eq["name"], str) or eq["name"] in (".", "..") or any(c in eq["name"] for c in '/\\:'):
+        raise ValueError("Equipment name must be one directory component")
+    if type(eq["port"]) is not int or not 1 <= eq["port"] <= 65535:
+        raise ValueError("Invalid FTP port")
+    for key in ("roots", "deny"):
+        if not isinstance(eq[key], list) or any(not isinstance(v, str) or not v for v in eq[key]):
+            raise ValueError("Paths and patterns must be string lists")
+    if any(not p.startswith("/") for p in eq["roots"]):
+        raise ValueError("FTP roots must be absolute")
+    if any(type(budget[key]) is not int or budget[key] < 0
+           for key in ("max_dirs", "max_download_bytes", "sample_bytes")):
+        raise ValueError("Budgets must be nonnegative integers")
+    if any(not isinstance(llm[key], str) for key in ("url", "model", "api_key")):
+        raise ValueError("LLM settings must be strings")
+    if type(llm["timeout_s"]) not in (int, float) or not math.isfinite(llm["timeout_s"]) or llm["timeout_s"] <= 0:
+        raise ValueError("LLM timeout must be finite and positive")
+    if not isinstance(cfg["output"]["dir"], str):
+        raise ValueError("Output directory must be a string")
+    if bool(llm["url"]) != bool(llm["model"]):
+        raise ValueError("Configure both LLM URL and model, or neither")
+    return cfg
+
+
+def prepare_config(config_path):
+    """Create or fill local configuration; leave unknown credentials blank."""
+    path = Path(config_path)
+    temporary = None
+    try:
+        cfg = load_config(path, require_credentials=False)
+        # The spike config consists of flat TOML tables. Round-trip before replacing
+        # anything, so unsupported custom values leave the original file untouched.
+        body = "\n".join(
+            f'[{json.dumps(section)}]\n' + "".join(
+                f'{json.dumps(key)} = {json.dumps(value, ensure_ascii=False, allow_nan=False)}\n'
+                for key, value in values.items())
+            for section, values in cfg.items())
+        if tomllib.loads(body) != cfg:
+            raise ValueError("Configuration round-trip failed")
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=".equipment-", suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(body)
+        os.replace(temporary, path)
+    except (OSError, ValueError, TypeError, AttributeError):
+        print('{"config_ready": false, "error": "Check TOML syntax, required FTP fields and optional field types locally"}')
+        return 1
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    missing = [f"equipment.{key}" for key in ("host", "user", "password")
+               if not cfg["equipment"][key].strip()]
+    print(json.dumps({"config_ready": False, "missing_fields": missing} if missing
+                     else {"config_ready": True}))
+    return 0
+
+
+def main(config_path):
+    try:
+        cfg = load_config(config_path)
+    except (OSError, ValueError, TypeError):
+        print('{"config_ready": false, "error": "Check TOML syntax, FTP host/user/password and optional settings; LLM URL and model must be paired"}')
+        return 1
+    eq, budget, llm = cfg["equipment"], cfg["budget"], cfg["llm"]
+    llm_enabled = bool(llm["url"] and llm["model"])
     secrets = [s for s in (eq.get("password"), llm.get("api_key")) if s]
 
     def scrub(text):  # rule: secrets never reach stdout or any output file
@@ -82,7 +172,8 @@ def main(config_path):
 
     out = Path(cfg.get("output", {}).get("dir", "out")) / eq["name"] / uuid4().hex
     out.mkdir(parents=True, exist_ok=False)
-    stats = {"dirs": 0, "files": 0, "bytes": 0, "estimated_bytes": 0,
+    stats = {"mode": "llm" if llm_enabled else "metadata-only" if budget["max_download_bytes"] == 0 else "samples-only",
+             "dirs": 0, "files": 0, "bytes": 0, "estimated_bytes": 0,
              "overrun_bytes": 0, "download_failed": 0, "usage_unknown": False,
              "llm_calls": 0, "llm_success": 0, "llm_failed": 0, "md": 0}
     index = ["# " + eq["name"], "", "| directory | files | note |", "|---|---|---|"]
@@ -153,7 +244,9 @@ def main(config_path):
             rows.append(f"| {posixpath.basename(f.remote_path)} | {posixpath.splitext(f.remote_path)[1].lower() or '-'} "
                         f"| {f.size} | {when} | {verdict.get(f.remote_path, '-')} |")
         description = "(empty directory, LLM not called)"
-        if files:
+        if files and not llm_enabled:
+            description = "## LLM\n\nnot configured; interpretation not performed"
+        elif files:
             description, valid = ask_llm(llm, d, rows, samples)
             stats["llm_calls"] += 1
             stats["llm_success"] += valid
@@ -176,7 +269,7 @@ def main(config_path):
                                for p in out.glob("*.md") if p.name != "index.md") == stats["dirs"],
     }
     print(scrub(json.dumps({**stats, **checks, "output_dir": str(out)})))
-    passed = (all(checks.values()) and stats["files"] > 0 and stats["llm_success"] > 0
+    passed = (all(checks.values()) and stats["files"] > 0 and (not llm_enabled or stats["llm_success"] > 0)
               and not stats["usage_unknown"])
     return 0 if passed else 1
 
@@ -221,4 +314,6 @@ def ask_llm(llm, d, rows, samples):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--prepare-config":
+        sys.exit(prepare_config(sys.argv[2] if len(sys.argv) > 2 else "equipment.toml"))
     sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "equipment.toml"))

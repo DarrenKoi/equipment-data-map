@@ -28,8 +28,12 @@ deduplicated by content, honouring allow/deny and `active_candidate`.
   resume skips only matching completed families. Reuse eligible signature
   downloads without retransferring them; usage includes all content reads.
 - Evidence lands in `rollouts/<id>/data-map/evidence/<family>/<sha>`.
-- Update-period inference: from mtime gaps of existing members or the
-  second pass. Weak evidence → `unknown`.
+- Update-period inference: from mtime gaps of existing members or repeated
+  inventory evidence. Preserve internal/source time, file mtime, and inventory
+  time separately. At least three normalized member timestamps are required to
+  record observed gaps and an inferred cadence; weaker evidence → `unknown`.
+  A second pass supplies change state, not by itself a periodic or static
+  lifecycle. Do not emit expected-gap records in version 1.
 - `tests/test_budgets.py`: parametrized over every key in
   `rollout.json.budgets` that letters 05–07 enforce (entries, depth,
   wall time, header files per family, header requests,
@@ -54,6 +58,9 @@ file is `active_candidate` with no download; a file that changed between
 two passes is `active_candidate` even when it is not the newest; identical files produce one
 evidence file; interrupted sampling resumes without re-downloading finished
 families; period is `unknown` when fewer than three members exist.
+
+Also assert that two unchanged passes remain `change_state: unchanged` with
+`lifecycle: unknown`, rather than becoming `static-reference`.
 
 Also cover header+sample cumulative budgets across restart, signature-file
 reuse without another transfer, and changed scope/input invalidating completed

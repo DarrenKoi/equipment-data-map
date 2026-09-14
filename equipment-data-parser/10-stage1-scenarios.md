@@ -23,6 +23,10 @@ the bullet:
 - resume from checkpoint after interruption
 - encrypted and corrupt files survive as `unreadable`
 - byte-identical `data-map/` on fixed input without LLM
+- deterministic observation IDs and new/changed/unchanged/missing state without
+  upgrading unchanged to static
+- bounded observed descriptors for every spec §4.7.2 category-shaped fixture,
+  without copying full events/rows or inventing semantics
 - plan hash mismatch at run time stops
 - concurrent run and unauthorised unlock are blocked
 - next stage refused without previous approval

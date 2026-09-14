@@ -1,9 +1,9 @@
-# Letter 12: Wiki and RAG generation, stage 4 `next`
+# Letter 12: Wiki, Graph and RAG generation, stage 4 `next`
 
 ## Goal
 
-Derive `wiki/` and `rag/` from the approved `data-map/` only, every page
-citing equipment path and typed sample or metadata evidence.
+Derive `wiki/`, graph exchange JSONL and RAG claim JSONL from the approved
+`data-map/` only, every record citing typed sample or metadata evidence.
 
 ## Read
 
@@ -12,19 +12,38 @@ citing equipment path and typed sample or metadata evidence.
 ## Build
 
 - `equipment_map/publish.py`: one Markdown page per family and one index
-  under `data-map/wiki/`; one chunked document per family under
-  `data-map/rag/` with front matter holding family key, equipment path
-  pattern, evidence kind and sha, confidence, and `unresolved` fields.
+  under `data-map/wiki/`; `data-map/graph/nodes.jsonl`,
+  `data-map/graph/edges.jsonl`, and `data-map/rag/chunks.jsonl` per spec
+  §4.7.3. JSONL is UTF-8/LF, one canonical sorted-key JSON record per line,
+  deterministically ordered and reproducible from the current canonical map.
+- Graph node types are exactly `equipment`, `path`, `file_family`, `field`,
+  `claim`. Edges are containment, field/claim support and spec §4.7.1 relation
+  types. Validate stable IDs, endpoints, scope, provenance and typed evidence.
+  Do not add a graph database client, JSON-LD ontology, causal edge or loader.
+- RAG lines are one bounded claim, not one file: `schema_version`, `chunk_id`,
+  `claim_id`, `family_id`, `category`, `claim_type`, `text`, typed `evidence`, confidence,
+  temporal/validity range, sensitivity, producer/version, `unresolved`, and
+  coverage/truncation. Facts use deterministic templates over observed records;
+  inference uses only validated LLM fields.
   Metadata-only families cite their metadata-evidence file, show the skip
   reason and "content not inspected", and publish only observed metadata
   as facts. Never invent sample hashes or infer internal fields from paths.
+- RAG contains no raw representative file, original log line, FDC/measurement
+  row or arbitrary verbatim excerpt. Bound and JSON-escape text and continue to
+  treat it as untrusted data at retrieval time. Every citation resolves to an
+  observation ID plus sample or metadata SHA, and extract SHA/locator when
+  needed; reject unresolvable citations and unsupported causal claims.
+- Use spec §4.7.3's exact deterministic node/edge ID formulas. A RAG
+  `claim_id` must join to the corresponding graph claim node in both
+  directions; sample and metadata citations must join to a current-scope
+  observation record.
 - Follow spec §4.6: all LLM meanings remain `inferred`, regardless of
   self-reported confidence or a general result approval. Only deterministic
   observations enter RAG chunks marked `fact`; low-confidence and unresolved
   fields render in an "unconfirmed" block. Escape data-origin Markdown/HTML
   and forbid generated external images/links; data cannot become instructions.
 - `stage 4 next`: exit 20 if any family lacks both interpretation and an
-  `unresolved` record; otherwise regenerate both, write
+  `unresolved` record; otherwise regenerate Wiki, graph and RAG, write
   `rollouts/<id>/REPORT.md`, `write_manifest`, `next-stop`.
 - `equipment_map/report.py`: `REPORT.md` holds only rollout id, stages
   completed, per-stage counts from the `next-stop` records, CLI version and
@@ -48,7 +67,7 @@ citing equipment path and typed sample or metadata evidence.
 python -m pytest -q tests/test_publish.py
 ```
 
-Covers: every wiki page and RAG chunk contains at least one typed evidence
+Covers: every wiki page, graph claim/relation and RAG chunk contains at least one typed evidence
 sha that exists in `evidence/` or `metadata-evidence/` as appropriate;
 failed-download, denied and active-only families publish without samples or
 invented content facts; low-confidence facts never appear in `fact`
@@ -61,3 +80,8 @@ Also cover navigation in both directions without duplicate stored edges,
 sample-scoped relationship claims, visible truncation/unresolved references,
 and rejection of unsupported causal claims as facts. Raw reference strings
 must remain escaped data; REPORT must not contain matched terms or IDs.
+Graph and RAG files are byte-identical for fixed input, contain no bulk event or
+time-series rows, and reject foreign scope/IDs, missing endpoints, LLM-authored
+facts and citations whose locator is absent from the cited extract.
+Also reject traversal-order/database-generated graph IDs, missing sample or
+metadata observation IDs, and graph/RAG claim IDs that do not match.

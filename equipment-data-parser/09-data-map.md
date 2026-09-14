@@ -17,7 +17,7 @@ Use implementation-reference.md §7 for common records and hash ordering.
 - `equipment_map/datamap.py`: `index.json` (dataset version, per-file
   hashes), `equipment.json`, `file-families.json`, `paths.json`,
   `unreadable.json`. Sorted keys, `\n` line endings, no timestamps other
-  than those from the inventory. `wiki/` and `rag/` stay empty until
+  than those from the inventory. `wiki/`, `graph/` and `rag/` stay empty until
   letter 12.
 - Clock injection: one `now()` in `equipment_map/clock.py` that tests can
   freeze.
@@ -50,6 +50,14 @@ Use implementation-reference.md §7 for common records and hash ordering.
   derived relationships from the same scoped inputs on resume without
   duplicate edges; all computation consumes the existing rollout deadline.
   Do not fetch referenced paths or call an LLM to generate relationships.
+- Add each family's `data_profile` from spec §4.7.2. Stage 1 records observed
+  schema/domain descriptors and temporal/change evidence; category, lifecycle,
+  semantic field roles and meaning remain `unknown` until a validated
+  deterministic rule or letter 11 inference supplies them. Keep `family_id`,
+  inventory `observation_id`, whole-sample SHA, extract SHA and later
+  `claim_id` distinct and validate every typed reference.
+  Samples and metadata-evidence rows carry the supporting `observation_id`;
+  reject a reference whose observation is absent or belongs to another scope.
 
 ## Done when
 
@@ -70,3 +78,6 @@ sample-only support, metadata-only restrictions, source-path preservation,
 invalid evidence rejection, all relationship limits, deadline and resume.
 Assert zero extra source requests during relationship construction and
 byte-identical relationship output for fixed inputs.
+Also cover every category-shaped fixture's bounded observed profile, distinct
+time meanings and IDs, no full event/row replication, insufficient cadence
+remaining unknown, and rejection of an LLM-shaped value in an observed field.

@@ -29,6 +29,19 @@ Use implementation-reference.md §6 for exact limits, output and reason codes.
 - Extraction results are written next to the evidence file as
   `<sha>.extract.json` with `method`, `result`, `failure_reason`, and
   `next_safe_action`.
+- For supported formats, emit the bounded observed descriptors in spec
+  §4.5/§4.7.2: exact field path/name, observed type, explicit unit and
+  schema/version strings; distinct source time fields and observed span;
+  equipment/module/chamber/channel/sensor/recipe/lot/wafer/run/site identifier
+  fields; explicit status, alarm, quality, limit and pass/fail fields; record,
+  null and invalid counts; references; and component/parameter structure.
+  Numeric FDC/measurement summaries are limited to per-sample min/max plus
+  counts. Never infer meanings or copy all log events/time-series rows.
+- A configuration diff is allowed only between approved samples in the same
+  family with compatible observed schemas. Bound added/removed/changed keys by
+  the normal result limits and cite both sample and extract hashes. Do not
+  infer whether a changed value is a setpoint or readback unless the source
+  states that role.
 - `equipment_map/workbench.py` and engineer-only subcommand
   `equipment-map workbench <copy-dir> --method <name>`: works on an
   approved local copy of one sample (a directory the engineer created
@@ -61,3 +74,8 @@ whose inner file exceeds the cap stops without publishing a complete inner sampl
 byte-identical output; `workbench` refuses a copy dir under `rollouts/`,
 appends without rewriting earlier records, and `hermes-gui` produces
 `handoff.json` and no extraction output.
+
+Add category-shaped fixtures for log/alarm, FDC, measurement, configuration,
+recipe, software/firmware, maintenance/calibration and reference data. The
+extractor reports observed structure for each without assigning semantic
+category, lifecycle or causal meaning.

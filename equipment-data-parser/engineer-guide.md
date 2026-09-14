@@ -22,6 +22,12 @@ use normal downloads, including eligible large/unknown-size files, with actual-b
 accounting and best-effort targets. No cap workaround is required. Mock tests
 can guide implementation but cannot waive that blocker.
 
+Letter 00 may begin with no `equipment.toml` or an empty one: the agent runs
+`python spike.py --prepare-config equipment.toml` locally before proxy checks.
+Only FTP host, user and password are required before the first connection.
+The internal interpretation URL/model may remain blank for the initial
+metadata-only checkpoint; blank means no LLM HTTP calls, not a failed setup.
+
 ### Git on the office PC
 
 The office PC pulls from the maintainer's remote and never pushes. The agent
@@ -32,8 +38,9 @@ plus the new files the build letters create, and commits on `main`, ahead of
 no equipment addresses, paths or credentials.
 
 **One model takes the whole sequence.** One approved model runs letters 00
-through 20 to the end — as the agent and as `llm.model` in `equipment.toml`
-alike — before any other model is tried. Do not run the letters with several
+through 20 to the end. It is always the agent model and, once interpretation is
+enabled, is also the `llm.model` in `equipment.toml` before any other model is tried. The
+LLM section may remain blank for letter 00's metadata-only checkpoint. Do not run the letters with several
 models at once, and do not switch models mid-sequence: a half-built CLI or a
 half-interpreted map from two models cannot be reviewed as one result.
 Comparing models is a later exercise, on a finished process.
@@ -77,7 +84,9 @@ M=qwen3-8b                                            # the model slug for this 
 )
 ```
 
-Then set the `llm` section of the copied `equipment.toml` to that model.
+For metadata-only letter 00, leave both `llm.url` and `llm.model` blank. Before
+the interpretation checkpoint, set both fields to that same approved model;
+never configure only one of the pair.
 Launch that model's agent tool, one-shot loop or scheduled task with the
 model folder as the working directory; the letters say "repository root" and
 mean that directory.
@@ -116,6 +125,7 @@ Keep a local readiness sheet with these entries:
 | Input | Owner / proof required |
 |---|---|
 | Internal agent model endpoint | Engineer verifies the agent uses it; no external session for operating letters |
+| Internal interpretation endpoint | Optional for letter 00 metadata-only discovery; required and verified before interpretation |
 | Equipment read-only account | Site owner confirms account restrictions and access approval |
 | Credential/LLM-key aliases | Engineer stores them in the approved OS keystore, never in a prompt |
 | Keystore backend | Confirm actual supported platform; Linux is unsupported until a reviewed backend exists |
@@ -206,7 +216,7 @@ work directory; it is excluded from the published map and must not contain secre
 | 1 | Fixture inventory, evidence, unreadable, coverage and test results | No real access; guards and resume pass; each omission explained |
 | 2 | One measurement and one log family against samples, LLM provenance, coverage | Units/meanings have evidence; unknowns retained; exact model recorded |
 | 3 | Roots/frontier, family rules, selected samples, active/denied metadata, equipment load, interpretation coverage | Approved equipment only; no unexplained gaps or unacceptable load; partial coverage explicitly accepted or scope revised |
-| 4 | Wiki index/family pages, RAG evidence links, manifest, REPORT | Each question answered or unknown; inference not fact; hashes resolve; REPORT contains only allowed summary |
+| 4 | Wiki pages, graph nodes/edges, RAG claim records, manifest, REPORT | Each question answered or unknown; inference not fact; graph endpoints and typed citations resolve in the current scope; no raw log/FDC/measurement rows; REPORT contains only allowed summary |
 | 5 | Next profile schema/mapping, extractor requests, REPORT | Existing extractor names only; missing formats queued for separate release |
 
 Each sheet records rollout/stage, plan hash, result manifest hash, coverage
@@ -244,7 +254,8 @@ review; report wrong results for a code/profile correction and an approved rerun
   macro execution and remote file modification remain prohibited.
 
 The deliverable is the company-local `rollouts/<id>/data-map/`, including Wiki,
-RAG and unresolved coverage. REPORT.md is the only exportable generated summary.
+vendor-neutral graph JSONL, claim-oriented RAG JSONL and unresolved coverage.
+REPORT.md is the only exportable generated summary.
 Do not copy raw diagnostics, result sheets, evidence or model settings outside
 the company. Review retention and cleanup under company policy after completion;
 the agent must not delete evidence or approval history to free space on its own.

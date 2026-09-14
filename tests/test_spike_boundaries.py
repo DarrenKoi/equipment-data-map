@@ -5,6 +5,7 @@ import io
 import json
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -66,6 +67,144 @@ class SpikeTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
+
+    def test_credentials_only_discovers_without_downloads_or_llm(self):
+        config = self.root / "minimal.toml"
+        config.write_text('[equipment]\nhost="fake"\nuser="ro"\npassword="ro-secret"\n'
+                          f'[output]\ndir={json.dumps(str(self.root / "out"))}\n')
+        transport = FakeTransport({"/": ["/log"], "/log": ["/log/a.txt"]})
+        with patch.object(spike, "fleet_downloader", return_value=lambda **kw: transport), \
+                patch.object(spike.requests, "post", side_effect=AssertionError("unexpected LLM call")), \
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
+            code = spike.main(config)
+        self.assertEqual(code, 0)
+        stats = json.loads(stdout.getvalue())
+        self.assertEqual(stats["mode"], "metadata-only")
+        self.assertEqual(stats["llm_calls"], 0)
+        self.assertEqual(stats["bytes"], 0)
+        self.assertIn(("list", "/log"), transport.calls)
+        self.assertFalse(any(op == "download" for op, _ in transport.calls))
+        documents = "\n".join(p.read_text() for p in Path(stats["output_dir"]).glob("dir-*.md"))
+        self.assertIn("not configured", documents)
+
+    def test_missing_credentials_stop_before_network_without_echoing_values(self):
+        for missing in ("host", "user", "password"):
+            with self.subTest(missing=missing):
+                config = self.root / "missing.toml"
+                values = {"host": "private-host", "user": "private-user", "password": "private-password"}
+                values[missing] = ""
+                config.write_text('[equipment]\n' + ''.join(f'{k}={json.dumps(v)}\n' for k, v in values.items()))
+                with patch.object(spike, "fleet_downloader", side_effect=AssertionError("network")), \
+                        contextlib.redirect_stdout(io.StringIO()) as stdout:
+                    code = spike.main(config)
+                self.assertEqual(code, 1)
+                self.assertNotIn("private-", stdout.getvalue())
+
+    def test_prepare_fills_blanks_preserves_credentials_and_existing_limits(self):
+        config = self.root / "prepare.toml"
+        password = 'secret"\\value\nsecond line'
+        config.write_text('[equipment]\nhost="fake"\nuser="ro"\n'
+                          f'password={json.dumps(password)}\nname=""\nroots=["/log"]\n'
+                          '[budget]\nmax_download_bytes=0\nmax_dirs=3\n'
+                          '[llm]\napi_key="private-key"\n')
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(spike.prepare_config(config), 0)
+        cfg = tomllib.loads(config.read_text())
+        self.assertEqual(cfg["equipment"]["password"], password)
+        self.assertEqual(cfg["equipment"]["roots"], ["/log"])
+        self.assertEqual(cfg["budget"]["max_download_bytes"], 0)
+        self.assertEqual(cfg["budget"]["max_dirs"], 3)
+        self.assertTrue(cfg["equipment"]["name"])
+        self.assertEqual(cfg["llm"]["api_key"], "private-key")
+        self.assertNotIn("private-key", stdout.getvalue())
+        self.assertNotIn("secret", stdout.getvalue())
+        before = config.read_bytes()
+        spike.prepare_config(config)
+        self.assertEqual(config.read_bytes(), before)
+
+    def test_prepare_missing_or_empty_file_creates_defaults_without_credentials(self):
+        for initial in (None, "", " \n\t", "# not configured yet\n"):
+            with self.subTest(initial=initial):
+                config = self.root / "empty.toml"
+                config.unlink(missing_ok=True)
+                if initial is not None:
+                    config.write_text(initial)
+                with patch.object(spike, "fleet_downloader", side_effect=AssertionError("network")), \
+                        contextlib.redirect_stdout(io.StringIO()) as stdout:
+                    self.assertEqual(spike.prepare_config(config), 0)
+                status = json.loads(stdout.getvalue())
+                self.assertFalse(status["config_ready"])
+                self.assertEqual(status["missing_fields"], ["equipment.host", "equipment.user", "equipment.password"])
+                cfg = tomllib.loads(config.read_text())
+                self.assertEqual([cfg["equipment"][key] for key in ("host", "user", "password")], ["", "", ""])
+                self.assertEqual(cfg["equipment"]["roots"], ["/"])
+                self.assertEqual(cfg["budget"]["max_download_bytes"], 0)
+                with patch.object(spike, "fleet_downloader", side_effect=AssertionError("network")), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(spike.main(config), 1)
+
+    def test_prepare_partial_credentials_preserves_values_and_lists_only_missing(self):
+        config = self.root / "partial-credentials.toml"
+        config.write_text('[equipment]\nhost="private-host"\npassword="private-password"\n')
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(spike.prepare_config(config), 0)
+        self.assertEqual(json.loads(stdout.getvalue())["missing_fields"], ["equipment.user"])
+        self.assertNotIn("private-", stdout.getvalue())
+        self.assertEqual(tomllib.loads(config.read_text())["equipment"]["password"], "private-password")
+
+    def test_prepare_malformed_file_is_not_replaced(self):
+        config = self.root / "broken.toml"
+        original = '[equipment\npassword="private-password"'
+        config.write_text(original)
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(spike.prepare_config(config), 1)
+        self.assertEqual(config.read_text(), original)
+        self.assertNotIn("private-password", stdout.getvalue())
+
+    def test_minimal_discovery_stops_at_directory_limit(self):
+        config = self.root / "bounded.toml"
+        config.write_text('[equipment]\nhost="fake"\nuser="ro"\npassword="secret"\n'
+                          f'[output]\ndir={json.dumps(str(self.root / "out"))}\n')
+        tree = {"/": [f"/d{i}" for i in range(30)]}
+        tree.update({f"/d{i}": [f"/d{i}/a.txt"] for i in range(30)})
+        transport = FakeTransport(tree)
+        with patch.object(spike, "fleet_downloader", return_value=lambda **kw: transport), \
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(spike.main(config), 0)
+        stats = json.loads(stdout.getvalue())
+        self.assertEqual(stats["dirs"], 20)
+        self.assertIn("not visited", (Path(stats["output_dir"]) / "index.md").read_text())
+        self.assertFalse(any(op == "download" for op, _ in transport.calls))
+
+    def test_prepare_write_failure_preserves_original_and_removes_temporary(self):
+        config = self.root / "preserved.toml"
+        original = '[equipment]\nhost="fake"\nuser="ro"\npassword="secret"\n'
+        config.write_text(original)
+        with patch.object(spike.os, "replace", side_effect=OSError("private-secret")), \
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(spike.prepare_config(config), 1)
+        self.assertEqual(config.read_text(), original)
+        self.assertNotIn("private-secret", stdout.getvalue())
+        self.assertEqual(list(self.root.glob(".equipment-*.tmp")), [])
+
+    def test_partial_llm_configuration_stops_before_network(self):
+        config = self.root / "partial.toml"
+        config.write_text('[equipment]\nhost="fake"\nuser="ro"\npassword="secret"\n'
+                          '[llm]\nurl="http://private"\n')
+        with patch.object(spike, "fleet_downloader", side_effect=AssertionError("network")), \
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(spike.main(config), 1)
+        self.assertNotIn("http://private", stdout.getvalue())
+
+    def test_invalid_optional_settings_stop_before_network(self):
+        for extra in ('roots="/log"', 'name="../outside"', 'port=0',
+                      '[budget]\nmax_dirs=-1', '[llm]\ntimeout_s=nan'):
+            with self.subTest(extra=extra):
+                config = self.root / "invalid.toml"
+                config.write_text('[equipment]\nhost="fake"\nuser="ro"\npassword="secret"\n' + extra)
+                with patch.object(spike, "fleet_downloader", side_effect=AssertionError("network")), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(spike.main(config), 1)
 
     def run_spike(self, transport, roots=None, deny=None, budget=100, response=None):
         config = self.root / "fake.toml"

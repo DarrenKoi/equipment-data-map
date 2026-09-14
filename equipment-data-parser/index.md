@@ -7,7 +7,9 @@ root `AGENTS.md` guides maintaining this repository, which is a different job.
 **Current letter: [00-spike.md](00-spike.md).** The immediate objective is a
 first-pass file-structure map. FTP host, user and password are enough to start
 bounded metadata discovery; the office agent fills missing optional TOML
-settings under letter 00. LLM observations are a later checkpoint when configured.
+settings under letter 00. A missing or empty `equipment.toml` is created by
+the agent before proxy checks; FTP credentials are needed only before connecting.
+LLM observations are a later checkpoint when configured.
 Follow that letter's scope and overrides. Stop after its checkpoint, including
 success; do not advance to letters 01–20 until the engineer explicitly asks.
 An existing `00 done` or `00 discovery` entry means report the recorded result and wait, not
@@ -35,7 +37,7 @@ rather than silently inventing a resolution.
 
 Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
-`rollouts/<id>/data-map/` with `wiki/` and `rag/`. One rollout id runs from
+`rollouts/<id>/data-map/` with `wiki/`, `graph/` and `rag/`. One rollout id runs from
 stage 1 to stage 5; the engineer re-runs `init` on it at stage boundaries.
 For a new equipment type, start a new rollout and repeat 16–20 with the
 profile registered at stage 5 (see letter 13 for profiles).
@@ -63,10 +65,10 @@ Before any other step, `git branch --show-current` must print `main` and
 engineer to run the office setup, and stop without writing or committing.
 
 Write only in `office/`: `office/progress.md`, `office/problems/NN-problems.md`,
-and `office/spike.py` when letter 00 needs a changed spike. The build letters
-and letter 00's explicit `equipment.toml`/`out/` permissions are exceptions to
-this write boundary. Never commit the private TOML or discovery output. The build letters
-also create new files at the repository root. Everything else in the
+and `office/spike.py` when letter 00 needs a changed spike. Letter 00 also
+permits local `equipment.toml` updates and `out/` results; never commit either.
+The build letters permit their specified new files at the repository root.
+Everything else in the
 repository — this folder, `spike.py`, `ftp_handler/`, the home tests — is
 the maintainer's: read it, and report what is wrong here in a problem entry.
 The maintainer never writes in `office/`, so merges leave it untouched.
@@ -419,7 +421,7 @@ fake tree, not about live equipment or model accuracy.
 | 09 | Data map output and stage 1 `next` | 1 |
 | 10 | Stage 1 verification scenarios | 1 |
 | 11 | Local LLM analysis and stage 2 `next` | 2 |
-| 12 | Wiki and RAG generation, stage 4 `next` | 4 |
+| 12 | Wiki, Graph and RAG generation, stage 4 `next` | 4 |
 | 13 | Equipment profiles, access window, stage 3 and 5 | 3, 5 |
 | 14 | Skill suite and installers | all |
 | 15 | Cross-tool scenario validation | all |

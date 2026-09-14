@@ -1,7 +1,7 @@
-# equipment-data-parser와 LLM의 동작 방식 — Markdown 지시와 Markdown/HTML 산출물
+# equipment-data-parser와 LLM의 동작 방식 — Markdown 지시와 Data Map 산출물
 
 이 문서는 `equipment-data-parser/`의 Markdown 파일이 LLM을 어떻게 움직이고,
-그 결과가 어떤 Markdown과 HTML로 나오는지 설명한다. 규칙의 원본은
+그 결과가 어떤 canonical JSON, Markdown, graph/RAG JSONL로 나오는지 설명한다. 규칙의 원본은
 `equipment-data-map.md`(스펙)와 `equipment-data-parser/index.md`(사무실
 에이전트 계약)이며, 이 문서는 그 둘 사이의 흐름을 한 장에 그린 안내다.
 차이가 나면 스펙과 계약이 이긴다.
@@ -49,7 +49,7 @@ office/progress.md. Reach the next checkpoint, commit it, and stop.
 ```
 
 **모델은 하나가 끝까지 맡는다.** 승인된 모델 하나가 에이전트 역할과
-`equipment.toml`의 `llm.model` 역할을 함께 맡아 편지 00부터 20까지 완주한
+해석을 설정한 뒤에는 `equipment.toml`의 `llm.model` 역할도 함께 맡아 편지 00부터 20까지 완주한
 뒤에야 다른 모델을 시험한다. 여러 모델을 나란히 돌리거나 중간에 바꾸지
 않는다. 반쯤 만든 CLI와 반쯤 해석한 지도를 두 모델이 나눠 가지면 하나의
 결과로 검토할 수 없기 때문이다. 모델 비교는 완주한 뒤의 별도 작업이다.
@@ -57,7 +57,8 @@ office/progress.md. Reach the next checkpoint, commit it, and stop.
 모델에게는 저장소를 통째로 복사한 폴더 하나(`<repo>-<model>/`)를 주고, 그
 폴더의 작업 디렉터리가 곧 정체성이다. 다음 모델은 새 복사본을 받는다. 각
 폴더는 `main`에서 로컬 커밋을 쌓고, 허브 클론 하나만 원격을 본다. 원장 첫
-줄과 `equipment.toml`의 `llm` 절이 모델을 기록한다(`engineer-guide.md` §1).
+줄이 에이전트 모델을 기록하고, 해석을 시작할 때 `equipment.toml`의 `llm`
+절이 내부 해석 모델을 기록한다(`engineer-guide.md` §1).
 
 Markdown 지시가 하는 일과 하지 않는 일:
 
@@ -71,10 +72,17 @@ Markdown 지시가 하는 일과 하지 않는 일:
 
 ### 3.1 편지 00 — spike
 
-`spike.py`는 디렉터리마다 한 번, `POST <url>/v1/chat/completions`를 부른다.
-보내는 것은 그 디렉터리의 증거표(파일명·확장자·크기·mtime·샘플 여부)와
-확장자별 최신 파일 한 개의 앞부분(`sample_bytes`, UTF-8 또는 CP949로
-디코딩될 때만)이다. 요구하는 답은 Markdown이지만 형식이 좁다.
+먼저 `spike.py --prepare-config equipment.toml`이 없거나 빈 설정 파일에 안전한
+기본값을 채운다. FTP host/user/password는 실제 연결 전에만 필요하다. LLM URL과
+model이 둘 다 비어 있으면 metadata-only 또는 samples-only discovery를 수행하고
+내부 LLM HTTP 요청을 전혀 보내지 않으며 Markdown에 `interpretation not performed`를
+남긴다.
+
+LLM URL과 model이 둘 다 설정된 경우에만 `spike.py`는 파일이 있는 디렉터리마다
+한 번 `POST <url>/v1/chat/completions`를 부른다. 보내는 것은 그 디렉터리의
+증거표(파일명·확장자·크기·mtime·샘플 여부)와 확장자별 최신 파일 한 개의
+앞부분(`sample_bytes`, UTF-8 또는 CP949로 디코딩될 때만)이다. 요구하는 답은
+Markdown이지만 형식이 좁다.
 
 - 정확히 `### Observed` 절 하나. 목록과 샘플에 보이는 이름 규칙, 형식,
   필드명·값만 적는다.
@@ -89,8 +97,9 @@ Markdown 지시가 하는 일과 하지 않는 일:
 CLI는 LLM에게 JSON을 만들게 하지 않는다. 필드 하나씩 짧게 묻고, 코드가
 검증하고 조립한다(스펙 §4.6, implementation-reference §8).
 
-- 필드: description, field meanings, producer, expected period, operational
-  use, sensitivity, confidence, evidence. 각 필드에 검증기가 붙는다.
+- 필드: description, data category, field meanings/semantic roles, producer,
+  lifecycle, expected period, operational use, sensitivity, confidence,
+  evidence. 각 필드에 검증기가 붙는다.
 - 답은 평문 또는 `UNKNOWN`. Markdown 펜스, JSON, 명령은 필요 없고 거부된다.
   `UNKNOWN`은 유효한 `unresolved: insufficient-evidence`이지 실패가 아니다.
 - evidence는 이 패킷에 실제로 든 sample SHA-256만 인용할 수 있다. 밖의
@@ -101,9 +110,10 @@ CLI는 LLM에게 JSON을 만들게 하지 않는다. 필드 하나씩 짧게 묻
 - raw prompt/response는 기본 보존하지 않는다. 해시와 검증된 필드 값만
   `work/llm.sqlite`와 `data-map/`에 남는다.
 - 검증을 통과해도 LLM 유래 값은 끝까지 `inferred`다. `fact`는 코드가
-  결정론적으로 관측한 값에만 붙는다.
+  결정론적으로 관측한 값에만 붙는다. schema에는 LLM이 `observed` 위치에
+  쓸 수 있는 경로가 없다.
 
-## 4. 나오는 Markdown과 HTML
+## 4. 나오는 Data Map, Markdown과 JSONL
 
 ### 4.1 spike의 Markdown
 
@@ -117,28 +127,35 @@ out/<equipment name>/<run-id>/
 모델이 쓴 문장이다. 비밀번호와 API 키는 파일에 쓰기 전에 `***`로 지운다.
 `out/`은 git이 무시하고 사무실 PC에만 남는다.
 
-### 4.2 CLI의 Markdown
+### 4.2 CLI의 Data Map
 
 ```text
 rollouts/<id>/
   data-map/
-    wiki/                  # 파일군마다 한 페이지 + 색인. 사람이 읽는다
-    rag/                   # 파일군마다 front matter가 붙은 청크 문서
+    *.json                 # canonical 장비·경로·파일군·coverage 지도
+    wiki/                  # 파일군마다 한 Markdown 페이지 + 색인
+    graph/nodes.jsonl      # graph DB import용 파생 node
+    graph/edges.jsonl      # graph DB import용 파생 edge
+    rag/chunks.jsonl       # 근거가 있는 claim 단위 검색 record
   REPORT.md                # rollout id, 단계별 개수, 버전만. 경로·모델 없음
 ```
 
-`wiki/`와 `rag/`는 `data-map/`의 JSON에서 결정론적으로 다시 만든다.
-페이지마다 `evidence/` 또는 `metadata-evidence/`에 실제로 있는 typed
-evidence SHA를 하나 이상 인용한다. 샘플이 없는 파일군은 관측 메타데이터만
+`wiki/`, `graph/`, `rag/`는 `data-map/`의 canonical JSON에서 결정론적으로 다시
+만드는 파생물이다. graph는 특정 DB 없이 `nodes.jsonl`과 `edges.jsonl`을
+제공하고, RAG는 파일 전체가 아니라 claim 하나를 한 줄로 저장한다. 각 claim과
+관계는 `evidence/` 또는 `metadata-evidence/`에 실제로 있는 typed evidence SHA,
+observation ID와 locator를 인용한다. 샘플이 없는 파일군은 관측 메타데이터만
 사실로 싣고 "content not inspected"를 표시한다. 낮은 신뢰도와 `unresolved`
-필드는 "unconfirmed" 블록으로 분리된다.
+필드는 "unconfirmed"로 남는다. raw log line, FDC/측정 row와 임의의 원문 발췌는
+RAG에 복제하지 않는다.
 
 ### 4.3 HTML의 위치
 
 이 파이프라인은 HTML을 **만들지 않는다**. HTML은 입력 쪽에서만 나타난다.
 
 - 장비 파일 안의 HTML, Markdown 문법, 파일명에 섞인 태그는 모두 **데이터**다.
-  wiki와 rag를 쓸 때 데이터 유래 Markdown/HTML은 이스케이프하고, 생성물에
+  Wiki를 쓸 때 데이터 유래 Markdown/HTML을 이스케이프하고, graph/RAG JSONL은
+  JSON escaping과 길이 제한을 적용한다. 생성물에
   외부 이미지나 링크를 넣지 않는다. 데이터가 뷰어나 다음 LLM에게 지시가
   되는 경로를 막기 위해서다.
 - 내부 해석 LLM에 가는 샘플 발췌는 라벨이 붙은 데이터 경계 안에 넣고,
@@ -156,11 +173,14 @@ Markdown 지시 ──읽기──▶ 에이전트 LLM ──코드·커밋─�
                                                        │        │
                                                        ◀── 짧은 평문 필드
                                                        ▼
-                               data-map/ JSON ──▶ wiki/ (Markdown), rag/ (청크)
-                                                  HTML 없음, 데이터 유래 태그는 이스케이프
+                               canonical Data Map JSON
+                                  ├─▶ wiki/ (Markdown)
+                                  ├─▶ graph/ (nodes/edges JSONL)
+                                  └─▶ rag/ (claim JSONL)
+                                      HTML 없음, 데이터 유래 값은 이스케이프
 ```
 
 - 지시는 Markdown, 상태는 디스크, 안전은 코드.
 - 모델은 짧은 평문만 돌려주고, 조립·검증·인용 확인은 코드가 한다.
-- 산출물은 Markdown이며 HTML은 생성하지 않는다. 입력에 든 HTML은 데이터로
-  취급해 이스케이프한다.
+- 사람이 읽는 산출물은 Markdown이고 graph/RAG 교환 형식은 JSONL이다. HTML은
+  생성하지 않으며 입력에 든 HTML은 데이터로 취급해 이스케이프한다.

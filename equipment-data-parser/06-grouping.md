@@ -32,6 +32,9 @@ Use implementation-reference.md §5 for normalization, size buckets and ties.
   sample succeeds, retain `signature: none` with the actual no-sample reason.
 - Output table `families` in the sqlite: key, rule, member count, size
   stats, signature, exceptions (members that broke the rule and why).
+  `family_id` is the canonical hash of that family tuple within the current
+  collection scope. Do not present it as a lifetime ID across changed scopes
+  or profile rules.
 
 ## Done when
 

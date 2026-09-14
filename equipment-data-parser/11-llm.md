@@ -33,13 +33,20 @@ Read implementation-reference.md §8 for prompts, field validators and limits.
   `unresolved: service-unavailable`; other HTTP errors → `unresolved: api-error`.
   Authentication errors stop further calls and mark remaining fields api-error.
 - `equipment_map/llm/fields.py`: one short prompt per field — description,
-  field meanings, producer, expected period, operational use, sensitivity,
+  data category, field meanings and semantic roles, producer, lifecycle,
+  expected period, operational use, sensitivity,
   confidence (`high`|`medium`|`low`), evidence (newline-separated actual sample
   SHA-256 under the current family's `evidence/`, assembled into a list by code) — each with a validator.
   Input is family rule/stats, bounded extract, extractor structure, glossary,
   and the deterministic sample SHA identifiers needed to cite that bundle.
   No sample → skip API calls and mark content interpretation `unresolved:
   no-sample`; metadata evidence comes from the CLI, never the model.
+- Validate category against spec §4.7.2's fixed enum and lifecycle against
+  `append-series`, `rolling-or-rotating`, `replaced-snapshot`,
+  `immutable-per-run`, `static-reference`, `unknown`. LLM-derived category,
+  lifecycle, field role and meaning are schema-forced to `inferred`; the model
+  cannot address or overwrite any `observed` field. A pathname or two unchanged
+  inventories are insufficient evidence for `static-reference`.
 - Two semantic response slots per field. A received invalid answer consumes
   one slot; transient transport errors do not. Each slot has the independent
   finite transport limit above. Two invalid answers → `confidence: low`,
@@ -91,6 +98,10 @@ permanent outage terminating within the exact transport/request/time limits;
 Retry-After exceeding the remaining deadline causing no extra call; 401
 causing no further calls; request budget 1 leaving later fields unresolved;
 no-sample families making zero API calls; missing or foreign sample SHA rejected.
+Also cover invalid category/lifecycle enums and a response that attempts to set
+`observed`; the validator rejects the former and the schema makes the latter
+unrepresentable. Weak cadence evidence stays unknown even if the model guesses
+a period.
 
 Kill at each boundary: before send after reservation, after response before
 commit, after commit before export, and before family completion. Recover

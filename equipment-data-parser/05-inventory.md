@@ -12,7 +12,10 @@ budgets, resume from the last completed directory.
 ## Build
 
 - `equipment_map/inventory.py` writing `rollouts/<id>/work/inventory.sqlite`
-  with the §4.2 columns plus `visited_at`, `status`, `error_kind`.
+  with the §4.2 columns plus `visited_at`, `status`, `error_kind`, and a
+  deterministic `observation_id` over collection scope, pass, normalized path,
+  raw size/mtime, and status. Keep source/file time and inventory observation
+  time separate.
 - Directory-level checkpoint table: a directory is `done` only after all its
   entries are stored. Key by collection scope + pass_id + directory. Resume
   skips `done` directories only in that same scope and pass.
@@ -24,6 +27,10 @@ budgets, resume from the last completed directory.
   unlisted paths keep `pass_id` 1 only, and sampling treats their newest
   and real-time candidates as metadata-only with period `unknown`. Stage 5
   performs no inventory.
+- Compare completed passes by path and record `change_state` as `single-pass`,
+  `new`, `changed`, `unchanged`, or `missing`, plus the compared observation
+  ID. These are metadata observations only: unchanged does not mean static,
+  and changed does not distinguish append from overwrite.
 - Budgets enforced here: max entries, max depth, requests per second,
   connections (always 1). Rate limits pace requests; exceeding a count/time budget stops the walk immediately
   with reason recorded; it is not an error.
@@ -50,3 +57,6 @@ then stop.
 A completed fake-tree directory with the same path as a real-tree directory
 must not suppress the stage 3 walk; pass 1 completion must not skip pass 2.
 Reconfiguration creates a fresh scope; a process restart preserves it.
+Observation IDs are byte-deterministic, distinct across passes, and change-state
+tests cover new/changed/unchanged/missing without claiming content change or a
+permanent lifecycle.

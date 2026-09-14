@@ -32,8 +32,9 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
 
 ## Where this letter overrides index.md
 
-- **Equipment facts live in `equipment.toml`.** The engineer supplies only
-  FTP `equipment.host`, `equipment.user`, and `equipment.password` initially.
+- **Equipment facts live in `equipment.toml`.** You may start with no file or a completely empty file and create it locally.
+  The engineer supplies FTP `equipment.host`, `equipment.user`, and
+  `equipment.password` before the first connection.
   You may fill missing optional settings in this ignored local file. Use
   `--prepare-config` for defaults; it reads and writes locally without printing
   values. There is no `init`, keystore, or alias in the spike. Never display
@@ -54,33 +55,27 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
 
 ## Steps
 
-1. **Proxy ready.** The engineer fills `.env` from `.env.example`. Then:
-
-   ```
-   python tests/test_ftp_transport.py
-   python tests/check_proxy.py
-   ```
-
-   The first prints five `ok` lines. The second prints `no-token 200` when
-   `FTP_PROXY_TOKEN` is empty (trusted no-auth proxy), or `no-token 401` then
-   `token 200` when it is set. Any other output means the proxy is not
-   deployed, or does not match the token setting in `.env`: write the problem
-   entry, append a `blocked` line, and stop.
-   This step contacts the proxy only, never equipment.
-
-2. **Prepare missing settings.** The engineer supplies the three FTP fields
-   in local `equipment.toml`, using `equipment.toml.example` if helpful. You
-   fill the optional defaults without exposing values:
+1. **Create or fill configuration.** Run this even if `equipment.toml` does
+   not exist, is completely empty, or contains only whitespace/comments. No
+   manual copy of the example or FTP credentials are needed for this local
+   setup step:
 
    ```
    python spike.py --prepare-config equipment.toml
    ```
 
-   Expected: `{"config_ready": true}`. This command makes no network requests.
-   Missing/blank mandatory fields or invalid TOML return false and leave the
-   file unchanged; ask the engineer to supply those fields locally. An empty
-   file cannot supply FTP credentials. The helper reformats flat TOML tables
-   and removes comments but preserves existing values, including credentials.
+   Exit 0 means the local file was created or filled. If all three FTP fields
+   are present, stdout is `{"config_ready": true}`. Otherwise it reports
+   `config_ready: false` with `missing_fields` listing only the missing key
+   names. This is successful setup with credentials pending, not a setup
+   failure: defaults are saved and unknown FTP values remain blank. Ask the
+   engineer to fill those fields locally, then rerun this preparation command
+   before advancing. Never invent credentials or attempt a connection while
+   they are missing. This command makes no network requests.
+
+   Invalid TOML or invalid field types return exit 1 and leave the original
+   file unchanged. The helper reformats flat TOML tables and removes comments
+   but preserves existing values, including credentials.
 
    Defaults: FTP port 21, output name `tool`, roots `["/"]` (the FTP account's
    visible root), deny `[]`, `max_dirs=20`, `max_download_bytes=0`,
@@ -97,7 +92,21 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    label a guessed category as an observed purpose. If a previously approved
    internal endpoint and served model are available locally, you may fill both
    `llm.url` and `llm.model`; otherwise leave both empty and make no LLM calls.
-   One without the other is invalid. Proxy setup in step 1 still applies.
+   One without the other is invalid. Proxy setup in step 2 still applies before connection.
+
+2. **Proxy ready.** The engineer fills `.env` from `.env.example`. Then:
+
+   ```
+   python tests/test_ftp_transport.py
+   python tests/check_proxy.py
+   ```
+
+   The first prints five `ok` lines. The second prints `no-token 200` when
+   `FTP_PROXY_TOKEN` is empty (trusted no-auth proxy), or `no-token 401` then
+   `token 200` when it is set. Any other output means the proxy is not
+   deployed, or does not match the token setting in `.env`: write the problem
+   entry, append a `blocked` line, and stop.
+   This step contacts the proxy only, never equipment.
 
 3. **Run.**
 
@@ -210,7 +219,7 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    `- 00 discovery <UTC time> | dirs=<n> files=<n> | interpretation not performed | see office/problems/00-problems.md`.
    Otherwise use `- 00 blocked ... | <one-line reason> | see office/problems/00-problems.md`.
    Commit on `main` only `office/` (`git add -- office/`;
-   `git diff --cached --stat` must list nothing outside it), message `letter 00: spike <done|blocked>`. `out/` and
+   `git diff --cached --stat` must list nothing outside it), message `letter 00: spike <done|discovery|blocked>`. `out/` and
    `equipment.toml` are ignored by git and stay on the PC.
 
 ## Done when
