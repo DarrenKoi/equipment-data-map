@@ -143,9 +143,11 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
 
    **Known office runner limit: 30 minutes.** With `llm.timeout_s = 300`,
    six requests waiting about five minutes each already consume that window,
-   before FTP work. The root script makes one request per non-empty directory
-   and has no automatic LLM retry loop; check an office copy or the serving
-   layer before attributing repeated waits to retries. Its final JSON and
+   before FTP work. `spike.py` makes one request per non-empty directory
+   and has no LLM retry loop. While `office/spike.py` does not exist, the root
+   script is what ran, so repeated waits are not script retries: they come
+   from the serving layer (gateway queueing or retries) or from the runner
+   relaunching the command. Record which one; a retry loop is not the fix. Its final JSON and
    `index.md` are written only after the walk, so no final print at the runner
    limit is not evidence of an LLM failure or a completed run.
    Before another launch, have the engineer check whether the old process is
