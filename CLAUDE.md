@@ -29,7 +29,7 @@ on the unexpected side of the firewall. Deployment facts stay out of the source
 tree: copy `.env.example` to `.env` (untracked) for `FTP_PROXY_URL` and
 `FTP_PROXY_TOKEN` — `ftp_handler.load_dotenv()` folds it into the environment at
 import, and a real env var wins. `tests/test_ftp_transport.py` pins that branch
-and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
+and runs bare (`python tests/test_ftp_transport.py`).
 
 `equipment-data-parser/` is the self-contained build-and-operate sequence for the company LLM: `index.md` is both the office agent's contract and the workflow, then letters in order, tracking state in `office/progress.md`. `equipment-data-parser/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes. `office/` (ledger, problem entries, `spike.py` workaround) exists only on the office PC's local branch — never create it here; read the summaries the user relays before rewriting a letter.
 
