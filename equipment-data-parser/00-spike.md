@@ -37,9 +37,11 @@ not a pass.
    python tests/check_proxy.py
    ```
 
-   The first prints five `ok` lines. The second prints `no-token 401` then
-   `token 200`. Any other pair means the proxy is not deployed or not enforcing
-   its token: write the problem entry, append a `blocked` line, and stop.
+   The first prints five `ok` lines. The second prints `no-token 200` when
+   `FTP_PROXY_TOKEN` is empty (trusted no-auth proxy), or `no-token 401` then
+   `token 200` when it is set. Any other output means the proxy is not
+   deployed, or does not match the token setting in `.env`: write the problem
+   entry, append a `blocked` line, and stop.
    This step contacts the proxy only, never equipment.
 
 2. **Config present.** The engineer copies `equipment.toml.example` to
