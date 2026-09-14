@@ -26,50 +26,70 @@ can guide implementation but cannot waive that blocker.
 
 The office PC pulls from the maintainer's remote and never pushes. The agent
 writes in `office/` (ledger, problem entries, a changed `office/spike.py`)
-plus the new files the build letters create, and commits on a local `office`
+plus the new files the build letters create, and commits on a local office
 branch. Findings travel home by hand: relay a sanitized summary of
 `office/problems/` and the `office/progress.md` result to the maintainer, with
 no equipment addresses, paths or credentials.
 
-Set it up once, in Git Bash at the repository root, with a clean tree. If this
-clone already holds agent work in the old `equipment-data-parser/progress.md`
-or `problems/NN-problems.md`, copy those into `office/progress.md` and
-`office/problems/` and commit that on `office` before the first merge.
+**One model, one worktree.** Every agent model that runs the letters gets its
+own git worktree on its own branch `office-<model>`, so parallel runs never
+share a ledger, a `office/spike.py`, root build outputs, `out/` or
+`rollouts/`. The working directory is the whole identity: the prompt never
+names the model, and an agent launched in `<repo>-<model>/` is that model's
+run. The first line of that worktree's `office/progress.md` names the model,
+and `equipment.toml` in that worktree names the served model for `spike.py`.
+`<model>` is a short slug of letters, digits and dashes (`qwen3-8b`), never
+a host, path or credential.
+
+Set each up once, in Git Bash at the clone's root, with a clean tree. If this
+clone already holds agent work on a plain `office` branch, leave it: the
+checks accept `office` as well as `office-<model>`, and it keeps working as
+one more worktree.
 
 ```sh
+M=qwen3-8b                                            # the model slug for this worktree
 (
   set -e
   test -z "$(git status --porcelain)"
   git config --local remote.origin.pushurl DISABLED   # git push to origin fails
   git config --local push.default nothing             # a bare git push fails
   git fetch origin
-  git switch --no-track -c office
+  git worktree add --no-track -b "office-$M" "../$(basename "$PWD")-$M" origin/main
+  cp .env "../$(basename "$PWD")-$M/" 2>/dev/null || true   # untracked site files travel by copy
+  cd "../$(basename "$PWD")-$M"
   mkdir -p office/problems
-  printf '# Progress\n\nAppend-only. Format is in equipment-data-parser/index.md.\n' > office/progress.md
+  printf '# Progress\n\nModel: %s. Append-only. Format is in equipment-data-parser/index.md.\n' "$M" > office/progress.md
   git add -- office/progress.md
-  git commit -q -m "office: start the ledger"
+  git commit -q -m "office: start the ledger for $M"
 )
 ```
+
+Then copy `equipment.toml` into the new worktree and set its `llm` section to
+that model. Launch that model's agent tool, one-shot loop or scheduled task
+with the new worktree as the working directory; the letters say "repository
+root" and mean that directory.
 
 The push guard stops accidents only. Give this PC read-only access to the
 remote so a deliberate push also fails.
 
-Merge maintainer updates between agent sessions: disable the schedule first
-and let any running agent and its child processes finish.
+Merge maintainer updates between agent sessions: disable every schedule first
+and let any running agent and its child processes finish. This walks every
+office worktree; a failed merge names its directory and the loop goes on.
 
 ```sh
-(
+git fetch origin
+git worktree list --porcelain | sed -n 's/^worktree //p' | while read -r w; do (
   set -e
-  test "$(git branch --show-current)" = office
+  cd "$w"
+  case "$(git branch --show-current)" in office|office-*) ;; *) exit 0 ;; esac
   test -z "$(git status --porcelain)"
-  git fetch origin
   git -c merge.autoStash=false merge --no-edit origin/main
-)
+) || echo "merge failed in $w"; done
 ```
 
 The maintainer never writes in `office/`, so the merge is normally clean. On
-any conflict, run `git merge --abort` and reconcile by hand before the next
-session; choosing a side wholesale can discard work. When the merge changed
+any conflict, run `git merge --abort` in that worktree and reconcile by hand
+before the next session; choosing a side wholesale can discard work. When the merge changed
 `spike.py` and `office/spike.py` exists, compare them
 (`git diff --no-index spike.py office/spike.py`): delete the copy if the
 maintainer's version covers the workaround, otherwise port the new changes

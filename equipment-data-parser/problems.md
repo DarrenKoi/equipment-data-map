@@ -21,7 +21,7 @@ what to change, and the next session reads it instead of rediscovering it.
   supersedes it and say so.
 - Write the entry when you hit the problem, not at the end of the letter.
 - Commit it with the build item it came from, message
-  `letter NN: problem — <short title>`, on the local `office` branch. It
+  `letter NN: problem — <short title>`, on the local office branch. It
   never leaves this PC by git; the engineer relays a sanitized summary to the
   maintainer.
 - A problem file is **not** a substitute for `office/progress.md`. If the problem

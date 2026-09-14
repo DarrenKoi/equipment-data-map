@@ -52,9 +52,10 @@ translate one into the other.
   snapshot of the architecture doc, and `problems.md` is the format of the
   office agent's problem entries. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
   The office PC pulls `main` and never pushes; its commits stay on a local
-  `office` branch that merges your updates (`engineer-guide.md` §1).
+  `office` branch — one worktree and branch `office-<model>` per agent model
+  run in parallel — that merges your updates (`engineer-guide.md` §1).
 - `office/` — the office agent's ledger (`progress.md`), problem entries and
-  `spike.py` workaround. It exists only on the local `office` branch.
+  `spike.py` workaround. It exists only on the local office branches.
   During maintenance, do not create or modify `office/`, or create root-level
   outputs assigned to the office agent by a build letter. During office
   execution, the office agent may create and update files in `office/` and
