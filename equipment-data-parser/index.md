@@ -22,10 +22,8 @@ These references refine implementation and handoff details; `spec.md` wins.
 Run every command from the repository root (the parent of this folder), not
 from `equipment-data-parser/`. This folder holds the instructions; building
 also needs the repository's `ftp_handler/` and writes code and tests at the
-repository root. Problem reports live in the repository-root `problems/`
-directory, alongside `equipment-data-parser/`, not inside it. All `problems/`
-paths below are relative to the repository root; from this file the guide is
-[../problems/README.md](../problems/README.md). `spec.md` is a local snapshot of the specification: when the
+repository root. Your ledger and problem reports live in the repository-root
+`office/` folder; the problem entry format is [problems.md](problems.md). `spec.md` is a local snapshot of the specification: when the
 architecture document is available and differs,
 `docs/architecture/equipment-data-map.md` wins, and you report the conflict
 rather than silently inventing a resolution.
@@ -44,6 +42,24 @@ approvals, stale-lock recovery and unsupported-format workbench sessions still
 need the engineer. A completed command may report partial inventory or
 unresolved interpretations; inspect coverage before calling the map complete.
 
+## Git: the local `office` branch and the `office/` folder
+
+This PC pulls the repository from the maintainer's remote and never pushes to
+it. Commit on the local branch `office`. The maintainer's updates arrive only
+when the engineer merges them between sessions
+([engineer-guide.md](engineer-guide.md) §1).
+
+Before any other step, `git branch --show-current` must print `office` and
+`office/progress.md` must exist. When either fails, print one line asking the
+engineer to run the office setup, and stop without writing or committing.
+
+Write only in `office/`: `office/progress.md`, `office/problems/NN-problems.md`,
+and `office/spike.py` when letter 00 needs a changed spike. The build letters
+also create new files at the repository root. Everything else in the
+repository — this folder, `spike.py`, `ftp_handler/`, the home tests — is
+the maintainer's: read it, and report what is wrong here in a problem entry.
+The maintainer never writes in `office/`, so merges leave it untouched.
+
 ## Build versus operate
 
 - Letters 01–15: implement and test the CLI and skills. Preserve unrelated
@@ -58,9 +74,9 @@ unresolved interpretations; inspect coverage before calling the map complete.
 Your prompt carries no equipment facts, and you do not accept any. If one
 arrives anyway — a tool name, host or IP, an account and password, a target
 directory, a budget — do not act on it, do not put it in a file, a command, a
-commit message or `progress.md`, and do not repeat a password back in your
+commit message or `office/progress.md`, and do not repeat a password back in your
 output. Say once that these belong in `init` and the keystore, and continue
-from `progress.md` as if the prompt had named nothing. Tell the engineer to
+from `office/progress.md` as if the prompt had named nothing. Tell the engineer to
 rotate a password that reached you this way: it is in a transcript now,
 wherever that tool keeps one, and no later care on your side takes it back.
 
@@ -81,7 +97,7 @@ A session may finish only one checkpoint or report one blocker. That is progress
 not permission to skip the current letter or restart the whole sequence.
 
 When a letter fails at the office, append the problem to the root
-`problems/NN-problems.md` and record the checkpoint or blocker in `progress.md`.
+`office/problems/NN-problems.md` and record the checkpoint or blocker in `office/progress.md`.
 The maintainer revises the instructions when needed; the engineer supplies any
 missing site decisions. In the next session, read those updates, verify the
 recorded resume condition, and continue the same unfinished letter. Repeat its
@@ -95,7 +111,7 @@ verified checkpoints, not through an assumed single uninterrupted run.
 
 ## Loop
 
-1. Read `progress.md`. For the first build, the first letter without a `done`
+1. Read `office/progress.md`. For the first build, the first letter without a `done`
    line is your current letter — "letter" meaning a row in the table at the
    bottom of this file, so a number with no row (04) is skipped, never waited on. For a later rollout, preserve all build history;
    the engineer appends `- 16 confirmed <UTC date> | rollout: <opaque id>`.
@@ -108,7 +124,7 @@ verified checkpoints, not through an assumed single uninterrupted run.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
    the source of truth; the letter only orders the work.
 3. Do the **Build** items in order. After each item run the checkpoint
-   protocol below. Work on disk plus `progress.md` is the only state you
+   protocol below. Work on disk plus `office/progress.md` is the only state you
    may rely on; never assume you remember an earlier session.
 4. Run every command under **Done when**. All must pass exactly as stated.
 5. Append a `done` line, commit with message `letter NN: <title>`, and go
@@ -117,7 +133,8 @@ verified checkpoints, not through an assumed single uninterrupted run.
 At any step, whenever something does not match this office — the network, the
 PCs, credentials, FTP behaviour, equipment directory habits, file formats,
 the LLM endpoint, or an instruction that is simply wrong here — append an
-entry to `problems/NN-problems.md` (format in `problems/README.md`) before
+entry to `office/problems/NN-problems.md` (format in
+`equipment-data-parser/problems.md`) before
 moving on.
 These letters were written without knowing your site; that gap is what the
 engineer needs back from you. Record the problem and the workaround you used;
@@ -126,10 +143,10 @@ rewriting a letter is the engineer's call, not yours.
 Stop and report when: a **Done when** command still fails after three fix
 attempts; the letter conflicts with `spec.md`; a step needs a credential,
 real equipment, or a human decision that is not yet given. Record the reason
-in `progress.md` with a sanitized error code, one line, and put safe detail
-in `problems/NN-problems.md`.
+in `office/progress.md` with a sanitized error code, one line, and put safe detail
+in `office/problems/NN-problems.md`.
 
-## progress.md format
+## office/progress.md format
 
 ```
 - NN wip <UTC datetime> | <build item, or <item>.<n> part of one> | next: <the very next action>
@@ -164,14 +181,14 @@ The work and the ledger line go in **one** commit:
 git status --short                       # inspect; list the paths this item created or edited
 git add -- PATH...                       # template: substitute those exact paths, nothing else
 printf -- '- NN wip %s | <build item> | next: <next action>\n' "$(date -u +%FT%TZ)" \
-  >> equipment-data-parser/progress.md
-git add equipment-data-parser/progress.md
-git diff --cached --stat                 # must list only those paths plus progress.md
+  >> office/progress.md
+git add office/progress.md
+git diff --cached --stat                 # must list only those paths plus office/progress.md
 git commit -q -m "letter NN wip: <build item>"
 ```
 
 `waiting`, `blocked`, and `done` lines follow the same shape; when there is no
-code to go with them, the commit holds only `progress.md` and its message is
+code to go with them, the commit holds only `office/progress.md` and its message is
 `letter NN: progress`. Changes you did not make stay unstaged and untouched.
 
 Tests need not pass at a checkpoint — a checkpoint is a save point, not a
@@ -181,7 +198,7 @@ pass`). Only the `done` line requires the letter's **Done when** commands.
 ## Context budget
 
 Your context window is finite and will fill during long letters. Treat it as
-disposable: disk plus `progress.md` is the state, your memory is not.
+disposable: disk plus `office/progress.md` is the state, your memory is not.
 
 - Session end is always safe after a checkpoint commit. Keep going while the
   window allows it, and finish the letter in one session when you can. When
@@ -193,7 +210,7 @@ disposable: disk plus `progress.md` is the state, your memory is not.
 - Read only what the current step needs. From `spec.md` read only the
   sections the letter names: `grep -n '^##' equipment-data-parser/spec.md` for line ranges, then
   print that range. Read one letter at a time. Never print `spec.md`,
-  `progress.md` history you already acted on, generated JSON, sqlite dumps,
+  `office/progress.md` history you already acted on, generated JSON, sqlite dumps,
   or evidence files in full.
 - Keep command output short: `python -m pytest -q -x --tb=short`, `head`,
   `grep`, `wc -l`. Print a file only when you are about to edit it.
@@ -206,14 +223,14 @@ disposable: disk plus `progress.md` is the state, your memory is not.
 You may be run as a single non-interactive prompt that exits when it is done
 — `claude -p`, `codex exec`, `opencode run`, or the same idea in another
 tool — and started again from scratch, over and over, with no memory between
-runs. The whole design above exists so that works: `progress.md` plus the
+runs. The whole design above exists so that works: `office/progress.md` plus the
 repository is the entire handover.
 
 The prompt is always the same, and it names no letter and no step:
 
 ```
 Read equipment-data-parser/index.md and continue the letters from
-progress.md. Reach the next checkpoint, commit it, and stop.
+office/progress.md. Reach the next checkpoint, commit it, and stop.
 ```
 
 In a one-shot run:
@@ -224,7 +241,7 @@ In a one-shot run:
   saying what the next action is.
 - Never ask a question — there is nobody to answer it. A choice the letters
   and `spec.md` do not settle is a `blocked` line plus an entry in
-  `problems/NN-problems.md`, and the run ends there.
+  `office/problems/NN-problems.md`, and the run ends there.
 - Never wait or poll. If the current letter has a `waiting` line, run the
   check it names once; if it does not pass, stop.
 - Assume nothing survives the run: no environment variables you exported, no
@@ -234,10 +251,10 @@ For the first build/rollout only, drive it from the repository root, one run per
 stopping on its own when the work is finished or a human is needed:
 
 ```sh
-P='equipment-data-parser/progress.md'
+P='office/progress.md'
 until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked) '; do
   before=$(git rev-parse HEAD)
-  claude -p "Read equipment-data-parser/index.md and continue the letters from progress.md. Reach the next checkpoint, commit it, and stop." || break
+  claude -p "Read equipment-data-parser/index.md and continue the letters from office/progress.md. Reach the next checkpoint, commit it, and stop." || break
   [ "$(git rev-parse HEAD)" != "$before" ] || break
   sleep 2
 done
@@ -249,9 +266,9 @@ do not reuse this first-rollout loop's historical `20 done` check.
 
 Substitute the tool: `codex exec "<same prompt>"`, `opencode run "<same
 prompt>"`. The loop is the same because the state is on disk, not in the tool.
-A run that changes nothing — no new commit, no new `progress.md` line — means
-the agent is stuck; stop the loop and read the last lines of `progress.md` and
-the newest file under `problems/`.
+A run that changes nothing — no new commit, no new `office/progress.md` line — means
+the agent is stuck; stop the loop and read the last lines of `office/progress.md` and
+the newest file under `office/problems/`.
 
 ## Unattended runs on Windows
 
@@ -259,11 +276,11 @@ The engineer PCs are Windows, and a scheduler (Task Scheduler, or anything
 that fires a command on a timer) has no memory between runs and nobody to
 answer a prompt. Five things decide whether such a run does real work or
 quietly does nothing. If any of them bites here, that is a problem entry —
-`problems/NN-problems.md`, and say which one.
+`office/problems/NN-problems.md`, and say which one.
 
 **Every command in these letters is bash.** `printf`, `date -u +%FT%TZ`,
 `grep -c`, `$(...)`, heredocs. Git for Windows ships all of them: run in Git
-Bash, not `cmd.exe` and not PowerShell. Never hand-translate a `progress.md`
+Bash, not `cmd.exe` and not PowerShell. Never hand-translate a `office/progress.md`
 line into another shell's quoting — letter 15 and several **Done when**
 commands `grep` for `^- NN <state>` with exact spacing, and a line that is
 merely close breaks them. If bash is genuinely unavailable on a PC, stop and
@@ -274,7 +291,7 @@ tool-approval prompt exits having changed nothing, and it does not look like
 a failure — it looks like an empty run, repeated forever. Before scheduling
 anything, run the prompt once by hand and confirm a commit appears. Whatever
 flag or settings allowlist your tool needs for unattended file edits and
-commands, set it, and record the exact invocation in `progress.md` the way
+commands, set it, and record the exact invocation in `office/progress.md` the way
 letter 01 records the pip install line.
 
 **Scheduler settings that are wrong by default.** The start-in directory is
@@ -288,14 +305,14 @@ one you tested in.
 
 **Guard the trigger, not the prompt.** A schedule has no `until` loop, so
 once the ledger's last line is `waiting` or `blocked` every later trigger
-spends a whole model run to re-read `progress.md` and stop. Check first with
+spends a whole model run to re-read `office/progress.md` and stop. Check first with
 the same two greps the loop above uses — `^- 20 done`, and a trailing
 `waiting`/`blocked` — and skip the run when either hits. A grep is free; a
 model run is not.
 
 **Watch for empty runs.** Two consecutive triggers with no new commit and no
-new `progress.md` line mean the agent is stuck, not slow. Stop the schedule
-and read the tail of `progress.md` and the newest file under `problems/`.
+new `office/progress.md` line mean the agent is stuck, not slow. Stop the schedule
+and read the tail of `office/progress.md` and the newest file under `office/problems/`.
 
 None of this needs a script in this repository. If the engineer wants one, a
 wrapper that does the two greps, changes directory, and invokes the tool is
@@ -356,14 +373,14 @@ fake tree, not about live equipment or model accuracy.
   Metadata comes from `size_dirs` — path, size and UTC mtime in one connection,
   on both transports — never from `list_dirs`, which carries paths only.
   The package is otherwise read-only: a change to it belongs upstream in
-  `skewnono_v3_nuxt`, and a letter that needs one records why in `progress.md`
+  `skewnono_v3_nuxt`, and a letter that needs one records why in `office/progress.md`
   first. One change has already been made here and ported upstream — `size_dirs`
   carries a UTC `modified` per file, MDTM alongside SIZE, on both transports.
   Do not re-derive it, and do not treat it as licence for another.
 - Standard library first: `argparse`, `sqlite3`, `hashlib`, `json`, `zipfile`.
   Allowed third-party: `requests` (the `ftp_handler` proxy client) only. Dev
   only: `pytest`, `pyftpdlib` (fake FTP), `flask` (fake proxy server in
-  tests). Add nothing else without recording why in `progress.md`.
+  tests). Add nothing else without recording why in `office/progress.md`.
 - Every CLI exit goes through one function that prints the final `NEXT:` line
   and returns the exit code. No other code prints `NEXT:`.
 - Every timestamp on disk is UTC ISO-8601. Every hash is SHA-256 hex.
@@ -396,5 +413,5 @@ fake tree, not about live equipment or model accuracy.
 
 Letter 04 was SMB. There is no SMB at this site yet, so it was removed rather
 than built ahead of a need; number 04 stays vacant so every later letter keeps
-the number `progress.md` already refers to. Adding SMB later means a new letter
+the number `office/progress.md` already refers to. Adding SMB later means a new letter
 behind the same `Source` interface, not a renumbering.

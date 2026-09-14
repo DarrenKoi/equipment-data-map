@@ -22,6 +22,60 @@ use normal downloads, including eligible large/unknown-size files, with actual-b
 accounting and best-effort targets. No cap workaround is required. Mock tests
 can guide implementation but cannot waive that blocker.
 
+### Git on the office PC
+
+The office PC pulls from the maintainer's remote and never pushes. The agent
+writes in `office/` (ledger, problem entries, a changed `office/spike.py`)
+plus the new files the build letters create, and commits on a local `office`
+branch. Findings travel home by hand: relay a sanitized summary of
+`office/problems/` and the `office/progress.md` result to the maintainer, with
+no equipment addresses, paths or credentials.
+
+Set it up once, in Git Bash at the repository root, with a clean tree. If this
+clone already holds agent work in the old `equipment-data-parser/progress.md`
+or `problems/NN-problems.md`, copy those into `office/progress.md` and
+`office/problems/` and commit that on `office` before the first merge.
+
+```sh
+(
+  set -e
+  test -z "$(git status --porcelain)"
+  git config --local remote.origin.pushurl DISABLED   # git push to origin fails
+  git config --local push.default nothing             # a bare git push fails
+  git fetch origin
+  git switch --no-track -c office
+  mkdir -p office/problems
+  printf '# Progress\n\nAppend-only. Format is in equipment-data-parser/index.md.\n' > office/progress.md
+  git add -- office/progress.md
+  git commit -q -m "office: start the ledger"
+)
+```
+
+The push guard stops accidents only. Give this PC read-only access to the
+remote so a deliberate push also fails.
+
+Merge maintainer updates between agent sessions: disable the schedule first
+and let any running agent and its child processes finish.
+
+```sh
+(
+  set -e
+  test "$(git branch --show-current)" = office
+  test -z "$(git status --porcelain)"
+  git fetch origin
+  git -c merge.autoStash=false merge --no-edit origin/main
+)
+```
+
+The maintainer never writes in `office/`, so the merge is normally clean. On
+any conflict, run `git merge --abort` and reconcile by hand before the next
+session; choosing a side wholesale can discard work. When the merge changed
+`spike.py` and `office/spike.py` exists, compare them
+(`git diff --no-index spike.py office/spike.py`): delete the copy if the
+maintainer's version covers the workaround, otherwise port the new changes
+into it. Run the home checks against the merged tree before restarting the
+schedule.
+
 Keep a local readiness sheet with these entries:
 
 | Input | Owner / proof required |
@@ -88,7 +142,7 @@ built CLI; retain prior letter history and all earlier rollout directories.
 Use this agent prompt:
 
 ```text
-Read equipment-data-parser/index.md and continue from progress.md.
+Read equipment-data-parser/index.md and continue from office/progress.md.
 Reach the next checkpoint, record it, and stop. Do not execute human gates.
 ```
 

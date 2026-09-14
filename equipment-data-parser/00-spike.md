@@ -23,7 +23,7 @@ not a pass.
   writes and from its own output, and exception text is reduced to a class
   name. Keep that property in any edit you make.
 - **No staged CLI exit-code contract, no `NEXT:` line, no per-item checkpoint.**
-  The spike uses the 0/1 smoke-check verdict in step 3 and one `progress.md`
+  The spike uses the 0/1 smoke-check verdict in step 3 and one `office/progress.md`
   line at the end (step 6).
 - Dependencies are stdlib, `ftp_handler/` (read-only, as in `AGENTS.md`), and
   `requests`. `pip install requests` if the import fails.
@@ -60,6 +60,9 @@ not a pass.
    python spike.py equipment.toml
    ```
 
+   Once step 5 has created `office/spike.py`, run that copy instead:
+   `PYTHONPATH=. python office/spike.py equipment.toml`.
+
    The last line is one JSON object containing:
 
    - `dirs`, `files`, `md`, and `output_dir` for this invocation.
@@ -88,33 +91,33 @@ not a pass.
    One or two sentences of judgement go into the problem entry. An unusable
    analysis is not a pass, even with exit 0.
    Read only from `out/`; never paste a directory file into a commit or
-   `progress.md`.
+   `office/progress.md`.
 
-5. **When it fails, fix `spike.py`, then rerun step 3.** If `usage_unknown`
+5. **When it fails, fix `office/spike.py`, then rerun step 3.** If `usage_unknown`
    is true, first stop and ask the engineer to verify the previous transfer
    has ended and reconcile its usage before authorizing a new invocation.
    A new output directory does not settle unknown usage. The likely site
    differences: LLM reply not shaped as `choices[0].message.content`, an FTP
    server that rejects a command the library sends, a text encoding beyond
-   UTF-8 and CP949, a listing format the library normalizes wrongly. Change
-   `spike.py` only, keep it read-only (no upload, no path outside `roots`
+   UTF-8 and CP949, a listing format the library normalizes wrongly. The
+   root `spike.py` is the maintainer's: the first time you need a change,
+   `cp spike.py office/spike.py` and edit only the copy. Keep it read-only (no upload, no path outside `roots`
    reaches the wire), and keep every change in a problem entry with the
    symptom and the diff summary. A fault inside `ftp_handler/` is a
    `blocked` line with the sanitized error, not an edit.
 
-6. **Record.** Append one entry to `problems/00-problems.md` (format in
-   `problems/README.md`) even on success: the JSON numbers from step 3, the
+6. **Record.** Append one entry to `office/problems/00-problems.md` (format in
+   `problems.md`) even on success: the JSON numbers from step 3, the
    judgement from step 4, where the letter or script stopped you, and the
-   number of sessions used. Then one line to `progress.md`:
+   number of sessions used. Then one line to `office/progress.md`:
 
    ```
-   - 00 done <UTC time> | dirs=<n> files=<n> bytes=<n> llm_success=<n> llm_failed=<n> | see problems/00-problems.md
+   - 00 done <UTC time> | dirs=<n> files=<n> bytes=<n> llm_success=<n> llm_failed=<n> | see office/problems/00-problems.md
    ```
 
-   or `- 00 blocked ... | <one-line reason> | see problems/00-problems.md`.
-   Commit only `spike.py`, `problems/00-problems.md` and `progress.md`
-   (`git add` those three paths, `git diff --cached --stat` must list nothing
-   else), message `letter 00: spike <done|blocked>`. `out/` and
+   or `- 00 blocked ... | <one-line reason> | see office/problems/00-problems.md`.
+   Commit on the `office` branch only `office/` (`git add -- office/`;
+   `git diff --cached --stat` must list nothing outside it), message `letter 00: spike <done|blocked>`. `out/` and
    `equipment.toml` are ignored by git and stay on the PC.
 
 ## Done when

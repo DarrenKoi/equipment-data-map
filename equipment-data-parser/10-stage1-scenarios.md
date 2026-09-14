@@ -31,7 +31,7 @@ the bullet:
 
 Where an existing test proves a bullet, reference its test node in a coverage
 table in `scenarios/README.md`; do not import test functions to inflate counts. Fix any gap found in the earlier modules; note the fix in
-`progress.md`.
+`office/progress.md`.
 
 ## Done when
 

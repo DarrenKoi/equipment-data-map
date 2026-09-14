@@ -55,7 +55,7 @@ python -m pytest -q tests/test_check_audit.py tests/test_normalize_transcript.py
 ```
 
 Then hand off to the human. This letter is `done` only after a human has
-appended these four `confirmed` lines to `progress.md`, each with real
+appended these four `confirmed` lines to `office/progress.md`, each with real
 values in place of the angle-bracket fields and `all-scenarios-pass`
 literally:
 

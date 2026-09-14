@@ -36,12 +36,16 @@ translate one into the other.
 - `docs/architecture/equipment-data-map.md` — the spec, in Korean. It wins.
 - `equipment-data-parser/` — the ordered build-and-operate sequence for the
   company LLM. `index.md` is its contract and entry point, `spec.md` is a
-  snapshot of the architecture doc, `progress.md` is the append-only state
-  ledger. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
-- `problems/` — where the office agent reports what the
-  letters got wrong about its site, one `NN-problems.md` per letter. Those
-  entries are the input for fixing a letter or the spec. That agent does not
-  edit the letters; you do.
+  snapshot of the architecture doc, and `problems.md` is the format of the
+  office agent's problem entries. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
+  The office PC pulls `main` and never pushes; its commits stay on a local
+  `office` branch that merges your updates (`engineer-guide.md` §1).
+- `office/` — the office agent's ledger (`progress.md`), problem entries and
+  `spike.py` workaround. It exists only on the office branch: never create
+  it here, and create nothing at a root path a build letter tells the office
+  agent to create. Nothing comes back by git; the user relays sanitized
+  summaries, and those are the input for fixing a letter or the spec. The
+  office agent does not edit the letters; you do.
 - `agent_build_steps/` — hands-on course for the maintainer on growing
   `spike.py` into a harness and then an agent. Korean, like `docs/`: it is
   read by the user, not by the office agent. It prescribes no behavior; when

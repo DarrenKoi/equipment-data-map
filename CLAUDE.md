@@ -31,7 +31,7 @@ tree: copy `.env.example` to `.env` (untracked) for `FTP_PROXY_URL` and
 import, and a real env var wins. `tests/test_ftp_transport.py` pins that branch
 and runs bare (`python tests/test_ftp_transport.py`) until pytest lands.
 
-`equipment-data-parser/` is the self-contained build-and-operate sequence for the company LLM: `index.md` is both the office agent's contract and the workflow, then letters in order, tracking state in `progress.md`. `equipment-data-parser/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes. `problems/` is where the office agent reports where the letters miss its site — one `NN-problems.md` per letter, read them before rewriting a letter.
+`equipment-data-parser/` is the self-contained build-and-operate sequence for the company LLM: `index.md` is both the office agent's contract and the workflow, then letters in order, tracking state in `office/progress.md`. `equipment-data-parser/spec.md` is a snapshot of the architecture doc; refresh it when the doc changes. `office/` (ledger, problem entries, `spike.py` workaround) exists only on the office PC's local branch — never create it here; read the summaries the user relays before rewriting a letter.
 
 `docs/architecture/equipment-data-map.md` (Korean) is the source of truth. Section map:
 

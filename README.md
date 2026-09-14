@@ -16,7 +16,8 @@ home checks do not establish live-equipment readiness.
   supplies concrete schemas, limits, prompts and acceptance behavior.
 - **Maintainers:** follow [AGENTS.md](AGENTS.md) and the
   [authoritative architecture](docs/architecture/equipment-data-map.md).
-- **Office problem reports:** use the root [problems/](problems/README.md) folder.
+- **Office ledger and problem reports:** the office agent writes them to `office/`
+  on its local branch; they never come back by git ([format](equipment-data-parser/problems.md)).
 - **Review:** see [the readiness review](docs/reviews/2026-09-10-office-guide.md)
   for corrected gaps, remaining dependencies and verification limits.
 
