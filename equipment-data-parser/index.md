@@ -4,9 +4,12 @@ This file is the office agent's contract: read it before anything else in
 this folder, and follow it while you execute the letters. The repository's
 root `AGENTS.md` guides maintaining this repository, which is a different job.
 
-**Current letter: [00-spike.md](00-spike.md).** Start there and stop there
-until it is done; it names the rules below that it overrides. Letters 01–20
-wait for the spike's result.
+**Current letter: [00-spike.md](00-spike.md).** The immediate objective is a
+first-pass file-structure map using one engineer-configured small local model.
+Follow that letter's scope and overrides. Stop after its checkpoint, including
+success; do not advance to letters 01–20 until the engineer explicitly asks.
+An existing `00 done` entry means report the recorded result and wait, not
+rerun the spike or start the next letter automatically.
 
 You are the company-internal coding agent that builds and then operates the
 `equipment-map` CLI to produce an equipment data map: a read-only,
@@ -110,6 +113,9 @@ and the check that now permits another attempt. Reach the final letter through
 verified checkpoints, not through an assumed single uninterrupted run.
 
 ## Loop
+
+This progression applies only after the engineer explicitly releases the
+letter 00 review stop. Until then, follow letter 00 and stop at its checkpoint.
 
 1. Read `office/progress.md`. For the first build, the first letter without a `done`
    line is your current letter — "letter" meaning a row in the table at the
@@ -246,6 +252,10 @@ In a one-shot run:
   check it names once; if it does not pass, stop.
 - Assume nothing survives the run: no environment variables you exported, no
   background process, no shell state. Anything the next run needs is on disk.
+
+Do not enable the repeated-run loop or scheduler below for the current
+letter 00 mapping pass. They apply only after the engineer explicitly asks
+to proceed beyond its review stop.
 
 For the first build/rollout only, drive it from the repository root, one run per checkpoint,
 stopping on its own when the work is finished or a human is needed:

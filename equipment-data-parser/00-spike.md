@@ -2,14 +2,30 @@
 
 ## Goal
 
-Run `spike.py` on one approved equipment through the office proxy until it
-writes markdown, then record what happened. The script exists; this letter is
+Use `spike.py` on one approved equipment through the office proxy to produce
+a first-pass map of its file structure with one engineer-configured small
+local model, then record what happened. The script exists; this letter is
 about running it at this site. Nothing else in this folder is needed until it
 passes: read this letter, `equipment.toml.example`, and all of `spike.py`,
 and skip `spec.md` and letters 01–20.
 
 Pass means markdown from one real equipment. A fake tree running at home is
 not a pass.
+
+Prioritize directory paths, file metadata (names, extensions, sizes and
+modification times), and brief directory descriptions from limited samples.
+Keep observed facts separate from inferred purposes. Do not attempt complete
+content extraction, cross-folder relationship analysis, or multi-model
+orchestration. Possible relationships remain unverified observations for a
+later investigation; they do not trigger more collection in this pass.
+
+Report inventory, sampling and interpretation coverage separately, including
+exclusions, listing failures, skipped samples, failed LLM calls and budget
+stops visible in the output. If an exact count or unexplored scope is not
+available, record it as unknown; do not invent a complete coverage figure.
+Keep the map in `out/`, outside this read-only instruction folder.
+After recording the checkpoint, stop for engineer review even on success.
+Do not start letters 01–20 or rerun a completed pass without an explicit request.
 
 ## Where this letter overrides index.md
 
@@ -46,7 +62,9 @@ not a pass.
 
 2. **Config present.** The engineer copies `equipment.toml.example` to
    `equipment.toml` and fills it for one approved equipment with small roots
-   and a small budget. Confirm shape without reading values:
+   and a small budget. Select an approved small local model for preliminary
+   directory descriptions; model size does not prove accuracy. Confirm shape
+   without reading values:
 
    ```
    python -c "import tomllib; d = tomllib.load(open('equipment.toml', 'rb')); print(sorted(d), len(d['equipment']['roots']))"
@@ -105,6 +123,42 @@ not a pass.
    reaches the wire), and keep every change in a problem entry with the
    symptom and the diff summary. A fault inside `ftp_handler/` is a
    `blocked` line with the sanitized error, not an edit.
+
+   **For a timeout, identify the failing layer before editing.** Record the
+   exception class or HTTP status without credentials: an LLM failure in a
+   directory report, an FTP/proxy failure, or an agent/terminal run limit.
+   `llm.timeout_s` controls each LLM HTTP request, not the total walk or FTP
+   calls; its default is 60 seconds. Each non-empty directory sends its full
+   evidence table plus sampled heads, so large listings can make requests
+   slow. A report containing `call failed: ReadTimeout` retains that
+   directory's evidence and the script continues; it is failed interpretation,
+   not proof the directory could not be inventoried.
+   For a confirmed slow LLM request, the engineer may set a longer finite
+   `llm.timeout_s` in the private config. This does not resolve context-size
+   rejection, FTP/proxy timeouts or a runner terminating the whole process.
+   Do not automatically retry the whole walk or increase collection budgets.
+   If the runner interrupted a transfer, verify it has ended and reconcile
+   usage before another invocation. Preserve partial output; the spike has no
+   checkpoint resume and may lack `index.md` if interrupted before completion.
+
+   **Known office runner limit: 30 minutes.** With `llm.timeout_s = 300`,
+   six requests waiting about five minutes each already consume that window,
+   before FTP work. The root script makes one request per non-empty directory
+   and has no automatic LLM retry loop; check an office copy or the serving
+   layer before attributing repeated waits to retries. Its final JSON and
+   `index.md` are written only after the walk, so no final print at the runner
+   limit is not evidence of an LLM failure or a completed run.
+   Before another launch, have the engineer check whether the old process is
+   still running; a tool timeout does not establish that it was terminated.
+   If it is still running, do not start a duplicate. For a new authorized run,
+   use the tool's documented persistent-process support if available, or have
+   the engineer run the command in a separate terminal that can remain open
+   beyond 30 minutes. Follow the same process to completion; do not restart
+   the walk at every tool timeout. Keep existing roots and collection budgets.
+   In a non-interactive session without such process support, record the
+   runner limitation and stop for the engineer rather than launching a job
+   whose lifetime cannot be tracked. A longer LLM timeout or unbuffered Python
+   output alone does not fix this runner limit.
 
 6. **Record.** Append one entry to `office/problems/00-problems.md` (format in
    `problems.md`) even on success: the JSON numbers from step 3, the

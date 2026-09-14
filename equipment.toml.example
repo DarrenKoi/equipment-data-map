@@ -18,9 +18,9 @@ sample_bytes = 8192        # head of each sampled file sent to the LLM
 
 [llm]
 url = "http://llm.host:8000"   # base URL; spike posts to <url>/v1/chat/completions
-model = "HCP-Medium-Latest"
+model = "approved-small-model" # placeholder: engineer supplies the actual served model/alias
 api_key = ""               # empty: no Authorization header
-timeout_s = 60
+timeout_s = 60             # per LLM request, not whole run; engineer may raise for slow responses
 
 [output]
 dir = "out"               # writes <dir>/<name>/<run-id>/; see output_dir in JSON
