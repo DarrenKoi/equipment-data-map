@@ -260,6 +260,28 @@ class SpikeTests(unittest.TestCase):
         self.run_spike(transport, roots=["/private"], deny=["private"])
         self.assertEqual(transport.calls, [])
 
+    def test_absolute_deny_pattern_is_scoped_to_one_root_and_blocks_subtree(self):
+        transport = FakeTransport({
+            "/target-a": [
+                "/target-a/MACFILE",
+                "/target-a/MACFILE_2024",
+                "/target-a/MACFILE_2024/untrusted.log",
+            ],
+            "/target-a/MACFILE": ["/target-a/MACFILE/current.log"],
+            "/target-a/MACFILE_2024": ["/target-a/MACFILE_2024/backup.log"],
+            "/target-b": ["/target-b/MACFILE_2024"],
+            "/target-b/MACFILE_2024": ["/target-b/MACFILE_2024/current.log"],
+        })
+        self.run_spike(
+            transport,
+            roots=["/target-a", "/target-b"],
+            deny=["/target-a/MACFILE_*"],
+        )
+        touched = {path for _, path in transport.calls}
+        self.assertFalse(any(path.startswith("/target-a/MACFILE_2024") for path in touched))
+        self.assertIn("/target-a/MACFILE", touched)
+        self.assertIn("/target-b/MACFILE_2024", touched)
+
     def test_normalized_root_aliases_are_visited_once(self):
         transport = FakeTransport({"/log": ["/log/a.txt"]})
         code, stats = self.run_spike(transport, roots=["/log", "/log/", "/x/../log"])

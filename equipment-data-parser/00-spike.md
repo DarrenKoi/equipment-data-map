@@ -84,6 +84,14 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    Existing narrower roots, limits and configured models must not be replaced.
    `max_dirs` bounds visited directories, not entries within a listing.
 
+   `deny` entries are glob patterns matched against basenames, paths relative
+   to each configured root, and absolute paths. A basename pattern such as
+   `MACFILE_*` applies below every root but keeps `MACFILE`; an absolute pattern
+   such as `/target-a/MACFILE_*` applies only to that target when several roots
+   are configured. Matching a directory excludes its whole subtree, including
+   descendants returned unexpectedly in a parent listing. Keep site-specific
+   paths and patterns only in this local ignored file.
+
    Start with these metadata-only defaults when nothing else is known.
    After reading the discovered map, you may fill still-missing search hints
    from observed directories and record the evidence in `out/`. Narrowing roots

@@ -75,6 +75,8 @@ rollout CLI를 만들기 전 `equipment-data-parser/00-spike.md`의 초기 탐�
 
 기본값은 port 21, name `tool`, roots `["/"]`(계정에 보이는 FTP 루트), deny `[]`, 디렉터리 20개, 내용 다운로드 0바이트, sample preview 8192바이트, output `out`이다. 항목별 목록 크기를 제한하는 값은 아니며 실제 미탐색 범위를 출력에 남긴다. LLM endpoint/model이 없으면 호출하지 않고 관측 메타데이터만 발행한다. 알려진 승인 사내 endpoint와 model이 있으면 에이전트가 두 값을 함께 채울 수 있지만 임의로 추측하지 않는다. discovery 성공과 LLM 해석 완료는 별도 체크포인트이며 재실행·기존 범위 확대·수집 budget 증가는 엔지니어 지시를 따른다. 이 초기 설정 예외가 아래 정식 rollout의 계획 승인·keystore·필수 budget 계약을 완화하지 않는다.
 
+초기 spike의 `deny`는 basename, 각 허용 root 기준 상대 경로 또는 `/`로 시작하는 절대 경로 glob을 받는다. basename 패턴은 모든 root에 적용하고 절대 경로 패턴은 여러 root 중 한 대상에만 적용한다. 패턴에 일치한 디렉터리는 그 하위 전체를 제외하며 상위 목록이 하위 경로를 예외적으로 직접 반환해도 같은 규칙을 적용한다. 예를 들어 `MACFILE_*`는 `MACFILE`은 유지하고 모든 root의 backup 이름을 제외하며, `/target-a/MACFILE_*`는 지정한 target에만 적용한다. 실제 장비 경로와 현장별 패턴은 ignored 로컬 설정에만 둔다.
+
 ## 4. 모듈 구조
 
 ### 4.1 Source

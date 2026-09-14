@@ -152,14 +152,21 @@ def main(config_path):
         p = posixpath.normpath(path)
         return any(p == r or p.startswith(r.rstrip("/") + "/") for r in roots)
 
-    def denied(path):  # deny patterns match the path relative to its root, or the basename
-        base = posixpath.basename(path)
+    def denied(path):  # patterns match absolute paths, root-relative paths, or basenames
         below = [posixpath.relpath(path, root).split("/") for root in roots
                  if path.startswith(root.rstrip("/") + "/")]
-        return any(NOISE.search(part) for parts in below for part in parts) or any(fnmatch.fnmatch(base, pattern) or
-                   any(fnmatch.fnmatch(posixpath.relpath(path, root), pattern)
-                       for root in roots if path == root or path.startswith(root.rstrip("/") + "/"))
-                   for pattern in eq.get("deny", []))
+        candidates = {path, posixpath.basename(path)}
+        for root in roots:
+            if path != root and not path.startswith(root.rstrip("/") + "/"):
+                continue
+            relative = posixpath.relpath(path, root)
+            while relative not in ("", "."):
+                candidates.update((relative, posixpath.basename(relative),
+                                   posixpath.normpath(posixpath.join(root, relative))))
+                relative = posixpath.dirname(relative)
+        return any(NOISE.search(part) for parts in below for part in parts) or any(
+            fnmatch.fnmatch(candidate, pattern)
+            for pattern in eq.get("deny", []) for candidate in candidates)
 
     def allowed(path):
         return inside(path) and not denied(posixpath.normpath(path))

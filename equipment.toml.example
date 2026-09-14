@@ -15,7 +15,9 @@ password = ""             # required: FTP password
 # name = "tool"
 # port = 21
 # roots = ["/"]           # account-visible root; set known narrower roots if available
-# deny = []               # fnmatch on basename or root-relative path; site noise also excluded
+# deny = []               # glob on basename, root-relative path, or absolute path
+# Example values: ["MACFILE_*"] applies to all roots; ["/target-a/MACFILE_*"]
+# applies to one root. Both keep MACFILE and skip matching folders and descendants.
 
 # [budget]
 # max_dirs = 20           # visited directories, not entries in each listing
