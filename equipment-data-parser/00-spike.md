@@ -175,7 +175,7 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    ```
 
    or `- 00 blocked ... | <one-line reason> | see office/problems/00-problems.md`.
-   Commit on the local office branch only `office/` (`git add -- office/`;
+   Commit on `main` only `office/` (`git add -- office/`;
    `git diff --cached --stat` must list nothing outside it), message `letter 00: spike <done|blocked>`. `out/` and
    `equipment.toml` are ignored by git and stay on the PC.
 

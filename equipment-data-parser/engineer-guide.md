@@ -26,15 +26,15 @@ can guide implementation but cannot waive that blocker.
 
 The office PC pulls from the maintainer's remote and never pushes. The agent
 writes in `office/` (ledger, problem entries, a changed `office/spike.py`)
-plus the new files the build letters create, and commits on a local office
-branch. Findings travel home by hand: relay a sanitized summary of
+plus the new files the build letters create, and commits on `main`, ahead of
+`origin/main`. There is no office branch. Findings travel home by hand: relay a sanitized summary of
 `office/problems/` and the `office/progress.md` result to the maintainer, with
 no equipment addresses, paths or credentials.
 
 **One hub, one folder per model.** The clone that talks to the maintainer's
 remote is the hub: it stays on `main`, only ever pulls, and no agent runs in
 it. Every agent model that runs the letters gets its own plain copy of the
-hub, `<repo>-<model>/`, on its own branch `office-<model>`, so parallel runs
+hub, `<repo>-<model>/`, on its own `main`, so parallel runs
 never share a ledger, a `office/spike.py`, root build outputs, `out/` or
 `rollouts/`. A model folder's `origin` is the hub directory, not the remote.
 The working directory is the whole identity: the prompt never names the
@@ -45,9 +45,10 @@ slug of letters, digits and dashes (`qwen3-8b`), never a host, path or
 credential.
 
 Set each up once, in Git Bash at the hub's root, with a clean tree on `main`.
-If an older clone already holds agent work on a plain `office` branch, leave
-it: the checks accept `office` as well as `office-<model>`, and it keeps
-working as one more model folder once its `origin` points at the hub.
+If an older clone already holds agent work on an `office` branch, merge that
+branch into its `main` (`git switch main && git merge office`) and delete it;
+the folder then keeps working as one more model folder once its `origin`
+points at the hub.
 
 ```sh
 M=qwen3-8b                                            # the model slug for this folder
@@ -61,7 +62,6 @@ M=qwen3-8b                                            # the model slug for this 
   git remote set-url origin "$OLDPWD"                  # updates come from the hub only
   git config --local remote.origin.pushurl DISABLED   # git push to origin fails
   git config --local push.default nothing             # a bare git push fails
-  git switch --no-track -c "office-$M"
   mkdir -p office/problems
   printf '# Progress\n\nModel: %s. Append-only. Format is in equipment-data-parser/index.md.\n' "$M" > office/progress.md
   git add -- office/progress.md
@@ -88,10 +88,9 @@ git pull --ff-only          # in the hub, on main
 ```sh
 (                           # in each model folder
   set -e
-  case "$(git branch --show-current)" in office|office-*) ;; *) exit 1 ;; esac
+  test "$(git branch --show-current)" = main
   test -z "$(git status --porcelain)"
-  git fetch origin
-  git -c merge.autoStash=false merge --no-edit origin/main
+  git -c merge.autoStash=false pull --no-rebase --no-edit origin main
 )
 ```
 

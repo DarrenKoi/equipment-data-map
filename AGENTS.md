@@ -51,11 +51,11 @@ translate one into the other.
   company LLM. `index.md` is its contract and entry point, `spec.md` is a
   snapshot of the architecture doc, and `problems.md` is the format of the
   office agent's problem entries. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
-  The office PC pulls `main` and never pushes; its commits stay on a local
-  `office` branch — one local copy and branch `office-<model>` per agent model
-  run in parallel — that merges your updates (`engineer-guide.md` §1).
+  The office PC pulls `main` and never pushes; its commits stay local on
+  `main`, ahead of `origin/main` — one local copy per agent model run in
+  parallel — and merge your updates on pull (`engineer-guide.md` §1).
 - `office/` — the office agent's ledger (`progress.md`), problem entries and
-  `spike.py` workaround. It exists only on the local office branches.
+  `spike.py` workaround. It exists only in the office PC's local copies.
   During maintenance, do not create or modify `office/`, or create root-level
   outputs assigned to the office agent by a build letter. During office
   execution, the office agent may create and update files in `office/` and

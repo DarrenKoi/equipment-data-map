@@ -45,20 +45,20 @@ approvals, stale-lock recovery and unsupported-format workbench sessions still
 need the engineer. A completed command may report partial inventory or
 unresolved interpretations; inspect coverage before calling the map complete.
 
-## Git: the local `office` branch and the `office/` folder
+## Git: local commits on `main` and the `office/` folder
 
 This PC pulls the repository from the maintainer's remote and never pushes to
-it. Commit on the local office branch you are already on: `office`, or
-`office-<model>` when the engineer runs several agent models in parallel, each
-in its own local copy of the repository ([engineer-guide.md](engineer-guide.md)
-§1). Your working directory is your whole identity: never read, write or commit
-in another copy, and never take a model name from the prompt. The maintainer's
-updates arrive only when the engineer merges them between sessions.
+it. Commit on `main`; your commits stay local, ahead of `origin/main`. Never
+create or switch to another branch. When the engineer runs several agent
+models in parallel, each has its own local copy of the repository
+([engineer-guide.md](engineer-guide.md) §1). Your working directory is your
+whole identity: never read, write or commit in another copy, and never take a
+model name from the prompt. The maintainer's updates arrive only when the
+engineer pulls them between sessions.
 
-Before any other step, `git branch --show-current` must print `office` or a
-name starting with `office-`, and `office/progress.md` must exist. When either
-fails, print one line asking the engineer to run the office setup, and stop
-without writing or committing.
+Before any other step, `git branch --show-current` must print `main` and
+`office/progress.md` must exist. When either fails, print one line asking the
+engineer to run the office setup, and stop without writing or committing.
 
 Write only in `office/`: `office/progress.md`, `office/problems/NN-problems.md`,
 and `office/spike.py` when letter 00 needs a changed spike. The build letters
