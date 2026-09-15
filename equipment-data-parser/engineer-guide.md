@@ -79,6 +79,9 @@ D="../$(basename "$PWD")-$M"
 The same script restarts a model from scratch: first delete everything in
 its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
 
+`python tools/reset_model_folder.py <model folder> <slug>` from the hub does
+both the first setup and a restart in one step.
+
 For metadata-only letter 00, leave both `llm.url` and `llm.model` blank. Before
 the interpretation checkpoint, set both fields to that same approved model;
 never configure only one of the pair.
