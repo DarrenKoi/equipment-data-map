@@ -160,7 +160,7 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    directory's purpose? Format validation does not establish factual accuracy.
    One or two sentences of judgement go into the problem entry. An unusable
    analysis is not a pass, even with exit 0.
-   Read only from `out/`; never paste a directory file into a commit or
+   Read only from `out/`; never paste a directory file into a problem entry or
    `office/progress.md`.
 
 5. **When it fails, fix `office/spike.py`, then rerun step 3.** If `usage_unknown`
@@ -226,16 +226,15 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    For a successful pass without LLM interpretation use
    `- 00 discovery <UTC time> | dirs=<n> files=<n> | interpretation not performed | see office/problems/00-problems.md`.
    Otherwise use `- 00 blocked ... | <one-line reason> | see office/problems/00-problems.md`.
-   Commit on `main` only `office/` (`git add -- office/`;
-   `git diff --cached --stat` must list nothing outside it), message `letter 00: spike <done|discovery|blocked>`. `out/` and
-   `equipment.toml` are ignored by git and stay on the PC.
+   `out/` and `equipment.toml` stay on the PC and never go into a
+   problem entry.
 
 ## Done when
 
 `python spike.py equipment.toml` on one approved equipment, through the
 proxy, exits 0 with three true booleans, `files > 0`, `llm_success > 0` and
 `usage_unknown == false`. The engineer judges the analysis usable, and the
-`done` line is committed. Home fake tests never complete this letter.
+`done` line is appended. Home fake tests never complete this letter.
 
 ## What the script does
 

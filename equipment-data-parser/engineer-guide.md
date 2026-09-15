@@ -9,8 +9,7 @@ untracked; this repository contains blank guidance and synthetic examples only.
 ## 1. Before the first office session
 
 Prepare one company PC, a company-approved local model connection for the agent,
-Python 3.11+, Git Bash on Windows, pip access to approved packages, and Git user
-identity. Check the repository root is the task's working directory. Use one
+Python 3.11+, Git Bash on Windows, and pip access to approved packages. Check the repository root is the task's working directory. Use one
 running agent instance. Verify permissions with one supervised build checkpoint
 before scheduling it; do not grant blanket approval to equipment operations.
 
@@ -28,14 +27,16 @@ Only FTP host, user and password are required before the first connection.
 The internal interpretation URL/model may remain blank for the initial
 metadata-only checkpoint; blank means no LLM HTTP calls, not a failed setup.
 
-### Git on the office PC
+### The hub clone and the model folders
 
-The office PC pulls from the maintainer's remote and never pushes. The agent
-writes in `office/` (ledger, problem entries, a changed `office/spike.py`)
-plus the new files the build letters create, and commits on `main`, ahead of
-`origin/main`. There is no office branch. Findings travel home by hand: relay a sanitized summary of
-`office/problems/` and the `office/progress.md` result to the maintainer, with
-no equipment addresses, paths or credentials.
+The office PC holds one git clone, the hub: it tracks the maintainer's
+remote, stays on `main`, only ever pulls, and no agent runs in it. Give this
+PC read-only access to the remote so a push fails. The agent never uses git.
+It writes in `office/` (ledger, problem entries, a changed `office/spike.py`)
+plus the new files the build letters create, as plain files. Findings travel
+home by hand: relay a sanitized summary of `office/problems/` and the
+`office/progress.md` result to the maintainer, with no equipment addresses,
+paths or credentials.
 
 **One model takes the whole sequence.** One approved model runs letters 00
 through 20 to the end. It is always the agent model and, once interpretation is
@@ -45,44 +46,38 @@ models at once, and do not switch models mid-sequence: a half-built CLI or a
 half-interpreted map from two models cannot be reviewed as one result.
 Comparing models is a later exercise, on a finished process.
 
-**One hub, one folder per model.** The clone that talks to the maintainer's
-remote is the hub: it stays on `main`, only ever pulls, and no agent runs in
-it. The model that runs the letters gets its own plain copy of the hub,
-`<repo>-<model>/`, on its own `main`. When a later model is tried it gets a
-fresh copy, so the two never share a ledger, a `office/spike.py`, root build
-outputs, `out/` or `rollouts/`. A model folder's `origin` is the hub
-directory, not the remote.
+**One hub, one folder per model.** The model that runs the letters gets its
+own plain copy of the hub, `<repo>-<model>/`, with no `.git` inside. When a
+later model is tried it gets a fresh copy, so the two never share a ledger,
+an `office/spike.py`, root build outputs, `out/` or `rollouts/`.
 The working directory is the whole identity: the prompt never names the
 model, and an agent launched in `<repo>-<model>/` is that model's run. The
 first line of that folder's `office/progress.md` names the model, and its
 `equipment.toml` names the served model for `spike.py`. `<model>` is a short
 slug of letters, digits and dashes (`qwen3-8b`), never a host, path or
-credential.
+credential. A `.venv` made inside the model folder stays there; git ignores
+it and the copies below never touch it.
 
 Set each up once, in Git Bash at the hub's root, with a clean tree on `main`.
-If an older clone already holds agent work on an `office` branch, merge that
-branch into its `main` (`git switch main && git merge office`) and delete it;
-the folder then keeps working as one more model folder once its `origin`
-points at the hub.
+A file-manager copy that leaves out `.git` and `out/` is the same thing.
 
 ```sh
 M=qwen3-8b                                            # the model slug for this folder
+D="../$(basename "$PWD")-$M"
 (
   set -e
   test "$(git branch --show-current)" = main
   test -z "$(git status --porcelain)"
   git pull --ff-only
-  cp -r . "../$(basename "$PWD")-$M"                   # .env, equipment.toml, out/ travel with it
-  cd "../$(basename "$PWD")-$M"
-  git remote set-url origin "$OLDPWD"                  # updates come from the hub only
-  git config --local remote.origin.pushurl DISABLED   # git push to origin fails
-  git config --local push.default nothing             # a bare git push fails
-  mkdir -p office/problems
-  printf '# Progress\n\nModel: %s. Append-only. Format is in equipment-data-parser/index.md.\n' "$M" > office/progress.md
-  git add -- office/progress.md
-  git commit -q -m "office: start the ledger for $M"
+  cp -r . "$D"                                        # .env and equipment.toml travel with it
+  rm -rf "$D/.git" "$D/out"                           # no git in the model folder, no stale results
+  mkdir -p "$D/office/problems"
+  printf '# Progress\n\nModel: %s. Append-only. Format is in equipment-data-parser/index.md.\n' "$M" > "$D/office/progress.md"
 )
 ```
+
+The same script restarts a model from scratch: first delete everything in
+its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
 
 For metadata-only letter 00, leave both `llm.url` and `llm.model` blank. Before
 the interpretation checkpoint, set both fields to that same approved model;
@@ -91,34 +86,25 @@ Launch that model's agent tool, one-shot loop or scheduled task with the
 model folder as the working directory; the letters say "repository root" and
 mean that directory.
 
-The push guard stops accidents only. Give this PC read-only access to the
-remote so a deliberate push from the hub also fails.
-
-Merge maintainer updates between agent sessions: disable the schedule first
-and let the running agent and its child processes finish. Pull once in the
-hub, then merge in the active model folder.
-
-```sh
-git pull --ff-only          # in the hub, on main
-```
+Bring maintainer updates over between agent sessions: disable the schedule
+first and let the running agent and its child processes finish. Pull once in
+the hub, then copy the tracked files into the active model folder. There is
+no merge: the maintainer never writes in `office/`, `.env`,
+`equipment.toml`, `out/`, `.venv/` or the root build outputs, so every
+tracked file can simply be replaced by the hub's copy.
 
 ```sh
-(                           # in the model folder
-  set -e
-  test "$(git branch --show-current)" = main
-  test -z "$(git status --porcelain)"
-  git -c merge.autoStash=false pull --no-rebase --no-edit origin main
-)
+D=../equipment-data-map-qwen3-8b                      # the active model folder
+git pull --ff-only                                    # in the hub, on main
+git ls-files | while read -r f; do mkdir -p "$D/$(dirname "$f")"; cp "$f" "$D/$f"; done
 ```
 
-The maintainer never writes in `office/`, so the merge is normally clean. On
-any conflict, run `git merge --abort` in that folder and reconcile by hand
-before the next session; choosing a side wholesale can discard work. When the merge changed
-`spike.py` and `office/spike.py` exists, compare them
-(`git diff --no-index spike.py office/spike.py`): delete the copy if the
-maintainer's version covers the workaround, otherwise port the new changes
-into it. Run the home checks against the merged tree before restarting the
-schedule.
+A file the maintainer deleted stays behind in the model folder; a fresh copy
+clears it when that matters. When the update changed `spike.py` and
+`office/spike.py` exists, compare them in the model folder
+(`diff spike.py office/spike.py`): delete the copy if the maintainer's
+version covers the workaround, otherwise port the new changes into it. Run
+the home checks in the model folder before restarting the schedule.
 
 Keep a local readiness sheet with these entries:
 

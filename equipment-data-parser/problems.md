@@ -1,7 +1,7 @@
 # Problems
 
 Problem entries live in the repository-root `office/problems/` folder on the
-office PC, committed on `main`. The office-agent contract and progress format are in
+office PC. The office-agent contract and progress format are in
 [index.md](index.md).
 
 One file per letter, `office/problems/NN-problems.md` (`16-problems.md` for letter 16), created
@@ -20,9 +20,7 @@ what to change, and the next session reads it instead of rediscovering it.
 - Append only. Never edit or delete an earlier entry; add a new one that
   supersedes it and say so.
 - Write the entry when you hit the problem, not at the end of the letter.
-- Commit it with the build item it came from, message
-  `letter NN: problem — <short title>`, on `main`. It
-  never leaves this PC by git; the engineer relays a sanitized summary to the
+- It never leaves this PC; the engineer relays a sanitized summary to the
   maintainer.
 - A problem file is **not** a substitute for `office/progress.md`. If the problem
   stops you, still append the `blocked` (or `waiting`) line to `office/progress.md`
@@ -32,7 +30,7 @@ what to change, and the next session reads it instead of rediscovering it.
   describe them (`the tool's log root`, `the shared read-only account`).
   Never paste raw transport exceptions, requests, or model responses. Detailed
   diagnostics stay in access-controlled local runtime files for the engineer;
-  refer to a diagnostic id only. Do not commit them with this report.
+  refer to a diagnostic id only. Do not paste them into this report.
 - Do not fix the letters yourself. Record the problem and the workaround you
   used; changing a letter is the engineer's call.
 

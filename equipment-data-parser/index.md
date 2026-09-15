@@ -49,29 +49,28 @@ approvals, stale-lock recovery and unsupported-format workbench sessions still
 need the engineer. A completed command may report partial inventory or
 unresolved interpretations; inspect coverage before calling the map complete.
 
-## Git: local commits on `main` and the `office/` folder
+## Your folder and the `office/` folder
 
-This PC pulls the repository from the maintainer's remote and never pushes to
-it. Commit on `main`; your commits stay local, ahead of `origin/main`. Never
-create or switch to another branch. One model runs the whole sequence, in
-its own local copy of the repository ([engineer-guide.md](engineer-guide.md)
-§1); another model gets another copy only after this one is finished. Your
-working directory is your whole identity: never read, write or commit in
-another copy, and never take a model name from the prompt. The maintainer's updates arrive only when the
-engineer pulls them between sessions.
+Your working directory is a plain copy of the repository with no git in it;
+never run git here. One model runs the whole sequence, in its own copy
+([engineer-guide.md](engineer-guide.md) §1); another model gets another copy
+only after this one is finished. Your working directory is your whole
+identity: never read or write in another copy, and never take a model name
+from the prompt. The maintainer's updates arrive only when the engineer
+copies them in between sessions.
 
-Before any other step, `git branch --show-current` must print `main` and
-`office/progress.md` must exist. When either fails, print one line asking the
-engineer to run the office setup, and stop without writing or committing.
+Before any other step, `office/progress.md` must exist in the working
+directory. When it does not, print one line asking the engineer to run the
+office setup, and stop without writing.
 
 Write only in `office/`: `office/progress.md`, `office/problems/NN-problems.md`,
 and `office/spike.py` when letter 00 needs a changed spike. Letter 00 also
-permits local `equipment.toml` updates and `out/` results; never commit either.
+permits local `equipment.toml` updates and `out/` results; both stay on this PC.
 The build letters permit their specified new files at the repository root.
 Everything else in the
 repository — this folder, `spike.py`, `ftp_handler/`, the home tests — is
 the maintainer's: read it, and report what is wrong here in a problem entry.
-The maintainer never writes in `office/`, so merges leave it untouched.
+The maintainer never writes in `office/`, so updates leave it untouched.
 
 ## Build versus operate
 
@@ -87,7 +86,7 @@ The maintainer never writes in `office/`, so merges leave it untouched.
 Your prompt carries no equipment facts, and you do not accept any. If one
 arrives anyway — a tool name, host or IP, an account and password, a target
 directory, a budget — do not act on it, do not put it in a file, a command, a
-commit message or `office/progress.md`, and do not repeat a password back in your
+`office/progress.md`, and do not repeat a password back in your
 output. Say once that these belong in `init` and the keystore, and continue
 from `office/progress.md` as if the prompt had named nothing. Tell the engineer to
 rotate a password that reached you this way: it is in a transcript now,
@@ -143,8 +142,7 @@ letter 00 review stop. Until then, follow letter 00 and stop at its checkpoint.
    protocol below. Work on disk plus `office/progress.md` is the only state you
    may rely on; never assume you remember an earlier session.
 4. Run every command under **Done when**. All must pass exactly as stated.
-5. Append a `done` line, commit with message `letter NN: <title>`, and go
-   back to step 1 in the same session.
+5. Append a `done` line and go back to step 1 in the same session.
 
 At any step, whenever something does not match this office — the network, the
 PCs, credentials, FTP behaviour, equipment directory habits, file formats,
@@ -175,14 +173,13 @@ in `office/problems/NN-problems.md`.
 Append only. Never edit or delete earlier lines.
 
 Operating letters may read their instructions and progress ledger and append
-sanitized progress/problem entries, using the checkpoint Git commands only
-for those instruction-ledger files. The equipment command allowlist still
+sanitized progress/problem entries, and nothing else. The equipment command allowlist still
 applies: no shell inspection of rollout files except `REPORT.md`, no code
-edits, no test execution, and no commits of runtime data. A released skill
-has no Git or progress-ledger duties. Test-only fake approvals in letters
+edits, and no test execution. A released skill
+has no progress-ledger duties. Test-only fake approvals in letters
 01–15 are allowed inside isolated tests, never against an operational rollout.
 
-## Checkpoint protocol (one commit per Build item)
+## Checkpoint protocol (one ledger line per Build item)
 
 A **checkpoint** is a finished Build item: the work on disk is coherent enough
 that a different session could pick it up cold. Checkpoint at the end of each
@@ -191,21 +188,16 @@ would lose serious work — a module plus its tests, several subcommands —
 checkpoint mid-item and name the part in the item field (`3.2 exit.py`), but
 that is the exception, not the routine.
 
-The work and the ledger line go in **one** commit:
+The work stays on disk and the ledger line records it:
 
 ```
-git status --short                       # inspect; list the paths this item created or edited
-git add -- PATH...                       # template: substitute those exact paths, nothing else
 printf -- '- NN wip %s | <build item> | next: <next action>\n' "$(date -u +%FT%TZ)" \
   >> office/progress.md
-git add office/progress.md
-git diff --cached --stat                 # must list only those paths plus office/progress.md
-git commit -q -m "letter NN wip: <build item>"
+tail -n 1 office/progress.md             # must be the line you just appended
 ```
 
-`waiting`, `blocked`, and `done` lines follow the same shape; when there is no
-code to go with them, the commit holds only `office/progress.md` and its message is
-`letter NN: progress`. Changes you did not make stay unstaged and untouched.
+`waiting`, `blocked`, and `done` lines follow the same shape. Files you did
+not make stay untouched.
 
 Tests need not pass at a checkpoint — a checkpoint is a save point, not a
 release. Say so in `next:` (`next: make test_cli_contract.py::test_exit_30
@@ -216,10 +208,10 @@ pass`). Only the `done` line requires the letter's **Done when** commands.
 Your context window is finite and will fill during long letters. Treat it as
 disposable: disk plus `office/progress.md` is the state, your memory is not.
 
-- Session end is always safe after a checkpoint commit. Keep going while the
+- Session end is always safe after a checkpoint line. Keep going while the
   window allows it, and finish the letter in one session when you can. When
   the harness warns that context is nearly full, finish the current Build
-  item, append `wip` with `next:`, commit, and end the session with one
+  item, append `wip` with `next:`, and end the session with one
   sentence: "Restart with the same command." The next session resumes from
   the `next:` field. A half-written item with no `wip` line costs a whole
   redo — that is the only thing worth stopping early to avoid.
@@ -246,12 +238,12 @@ The prompt is always the same, and it names no letter and no step:
 
 ```
 Read equipment-data-parser/index.md and continue the letters from
-office/progress.md. Reach the next checkpoint, commit it, and stop.
+office/progress.md. Reach the next checkpoint, record it, and stop.
 ```
 
 In a one-shot run:
 
-- Work through as many checkpoints as the context window allows, committing
+- Work through as many checkpoints as the context window allows, recording
   each, and prefer finishing the whole letter. Stop at a checkpoint when the
   window is nearly full, or at a `waiting`/`blocked` line, and print one line
   saying what the next action is.
@@ -273,9 +265,9 @@ stopping on its own when the work is finished or a human is needed:
 ```sh
 P='office/progress.md'
 until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked) '; do
-  before=$(git rev-parse HEAD)
-  claude -p "Read equipment-data-parser/index.md and continue the letters from office/progress.md. Reach the next checkpoint, commit it, and stop." || break
-  [ "$(git rev-parse HEAD)" != "$before" ] || break
+  before=$(wc -l < "$P")
+  claude -p "Read equipment-data-parser/index.md and continue the letters from office/progress.md. Reach the next checkpoint, record it, and stop." || break
+  [ "$(wc -l < "$P")" != "$before" ] || break
   sleep 2
 done
 tail -n 3 "$P"
@@ -286,7 +278,7 @@ do not reuse this first-rollout loop's historical `20 done` check.
 
 Substitute the tool: `codex exec "<same prompt>"`, `opencode run "<same
 prompt>"`. The loop is the same because the state is on disk, not in the tool.
-A run that changes nothing — no new commit, no new `office/progress.md` line — means
+A run that changes nothing — no new `office/progress.md` line — means
 the agent is stuck; stop the loop and read the last lines of `office/progress.md` and
 the newest file under `office/problems/`.
 
@@ -309,7 +301,7 @@ write the problem entry rather than inventing a second ledger format.
 **Non-interactive tool permissions.** A one-shot run that hits a
 tool-approval prompt exits having changed nothing, and it does not look like
 a failure — it looks like an empty run, repeated forever. Before scheduling
-anything, run the prompt once by hand and confirm a commit appears. Whatever
+anything, run the prompt once by hand and confirm a new `office/progress.md` line appears. Whatever
 flag or settings allowlist your tool needs for unattended file edits and
 commands, set it, and record the exact invocation in `office/progress.md` the way
 letter 01 records the pip install line.
@@ -317,9 +309,9 @@ letter 01 records the pip install line.
 **Scheduler settings that are wrong by default.** The start-in directory is
 not the repository — set it to the repository root (that model's folder), or
 every relative path in these letters misses. Set the task to *not* start a second instance while one
-is running: a checkpoint can take twenty minutes, and two runs committing at
+is running: a checkpoint can take twenty minutes, and two runs appending at
 once corrupt the ledger. Run it as the account that actually holds the CLI
-credentials and a `git config user.name` / `user.email`; a task set to run
+credentials; a task set to run
 whether the user is logged on or not gets a different environment than the
 one you tested in.
 
@@ -330,7 +322,7 @@ the same two greps the loop above uses — `^- 20 done`, and a trailing
 `waiting`/`blocked` — and skip the run when either hits. A grep is free; a
 model run is not.
 
-**Watch for empty runs.** Two consecutive triggers with no new commit and no
+**Watch for empty runs.** Two consecutive triggers with no
 new `office/progress.md` line mean the agent is stuck, not slow. Stop the schedule
 and read the tail of `office/progress.md` and the newest file under `office/problems/`.
 
@@ -405,7 +397,7 @@ fake tree, not about live equipment or model accuracy.
   and returns the exit code. No other code prints `NEXT:`.
 - Every timestamp on disk is UTC ISO-8601. Every hash is SHA-256 hex.
 - Test fixtures never contain real equipment addresses, paths, or credentials.
-- Code, comments, and commit messages are English.
+- Code and comments are English.
 
 ## Letters
 

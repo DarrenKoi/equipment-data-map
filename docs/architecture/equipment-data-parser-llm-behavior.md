@@ -12,7 +12,7 @@
 
 | 역할 | 무엇인가 | 무엇을 읽나 | 무엇을 쓰나 |
 |---|---|---|---|
-| **에이전트 LLM** | 사무실 PC에서 Claude Code, Codex, OpenCode, pi 등으로 돌아가는 코딩 에이전트. 회사 승인 모델을 뒤에 둔다. | `equipment-data-parser/`의 Markdown 지시, `office/progress.md` | 코드·테스트(저장소 루트), `office/` 원장과 문제 보고, git 커밋 |
+| **에이전트 LLM** | 사무실 PC에서 Claude Code, Codex, OpenCode, pi 등으로 돌아가는 코딩 에이전트. 회사 승인 모델을 뒤에 둔다. | `equipment-data-parser/`의 Markdown 지시, `office/progress.md` | 코드·테스트(저장소 루트), `office/` 원장과 문제 보고 |
 | **내부 해석 LLM** | 회사망 안의 OpenAI 호환 HTTP endpoint. `spike.py`와 `equipment-map` CLI가 코드로 호출한다. | 코드가 조립한 짧은 프롬프트: 파일군 규칙·통계, 제한된 샘플 발췌, 용어집, sample SHA, pass 2부터 직전 pass의 `prior_inferred`(같은·연결 파일군의 category·description, 인용 불가) | 필드 하나짜리 짧은 답. 파일에 직접 쓰지 않는다. |
 
 에이전트 LLM은 장비 원본이나 추출 내용을 보지 않는다. 내부 해석 LLM은
@@ -45,7 +45,7 @@ equipment-data-parser/
 
 ```text
 Read equipment-data-parser/index.md and continue the letters from
-office/progress.md. Reach the next checkpoint, commit it, and stop.
+office/progress.md. Reach the next checkpoint, record it, and stop.
 ```
 
 **모델은 하나가 끝까지 맡는다.** 승인된 모델 하나가 에이전트 역할과
@@ -130,7 +130,7 @@ out/<equipment name>/<run-id>/
 
 `index.md`는 코드가 만든 표, 디렉터리 파일의 `## LLM` 아래 `### Observed`만
 모델이 쓴 문장이다. 비밀번호와 API 키는 파일에 쓰기 전에 `***`로 지운다.
-`out/`은 git이 무시하고 사무실 PC에만 남는다.
+`out/`은 사무실 PC에만 남는다.
 
 ### 4.2 CLI의 Data Map
 
