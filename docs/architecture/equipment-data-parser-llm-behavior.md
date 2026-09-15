@@ -13,7 +13,7 @@
 | 역할 | 무엇인가 | 무엇을 읽나 | 무엇을 쓰나 |
 |---|---|---|---|
 | **에이전트 LLM** | 사무실 PC에서 Claude Code, Codex, OpenCode, pi 등으로 돌아가는 코딩 에이전트. 회사 승인 모델을 뒤에 둔다. | `equipment-data-parser/`의 Markdown 지시, `office/progress.md` | 코드·테스트(저장소 루트), `office/` 원장과 문제 보고, git 커밋 |
-| **내부 해석 LLM** | 회사망 안의 OpenAI 호환 HTTP endpoint. `spike.py`와 `equipment-map` CLI가 코드로 호출한다. | 코드가 조립한 짧은 프롬프트: 파일군 규칙·통계, 제한된 샘플 발췌, 용어집, sample SHA | 필드 하나짜리 짧은 답. 파일에 직접 쓰지 않는다. |
+| **내부 해석 LLM** | 회사망 안의 OpenAI 호환 HTTP endpoint. `spike.py`와 `equipment-map` CLI가 코드로 호출한다. | 코드가 조립한 짧은 프롬프트: 파일군 규칙·통계, 제한된 샘플 발췌, 용어집, sample SHA, pass 2부터 직전 pass의 `prior_inferred`(같은·연결 파일군의 category·description, 인용 불가) | 필드 하나짜리 짧은 답. 파일에 직접 쓰지 않는다. |
 
 에이전트 LLM은 장비 원본이나 추출 내용을 보지 않는다. 내부 해석 LLM은
 지시문을 보지 않고, 명령을 실행하거나 파일을 더 요청할 도구도 없다. 이
@@ -104,6 +104,11 @@ CLI는 LLM에게 JSON을 만들게 하지 않는다. 필드 하나씩 짧게 묻
   `UNKNOWN`은 유효한 `unresolved: insufficient-evidence`이지 실패가 아니다.
 - evidence는 이 패킷에 실제로 든 sample SHA-256만 인용할 수 있다. 밖의
   해시는 거부된다.
+- 반복 pass(스펙 §4.4.1)의 2회차부터는 직전 pass가 검증한 같은·연결 파일군의
+  category·description이 `prior_inferred` 블록으로 함께 간다. "이전 추정이며
+  틀릴 수 있다"는 고정 문장이 앞에 붙고, 이 블록은 evidence로 인용할 수 없으며
+  결과는 pass에 관계없이 `inferred`다. 관측 입력이 같으면 prior가 바뀌어도
+  다시 묻지 않는다.
 - 필드당 의미 응답 슬롯 2개, 슬롯당 전송 재시도 1–3회, 전체 요청 수와
   시간 한도는 `rollout.json`에 묶인다. 모두 소진하면 `unresolved` 사유를
   남기고 다음 필드로 간다.

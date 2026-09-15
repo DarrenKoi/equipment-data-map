@@ -179,6 +179,23 @@ LLM 호출 전에 파일군을 만든다.
 - 최대 목록 항목 수와 디렉터리 깊이
 - 사전 파일군별 헤더 읽기 파일 수와 전체 헤더 요청 수
 
+#### 4.4.1 반복 pass
+
+`rollout.json`의 `max_passes`(양의 정수, 기본 1)는 한 `next` 호출 안에서 같은 collection scope의 미완료 작업을 몇 번까지 다시 도는지의 상한이다. pass 1은 위 파이프라인 그대로다. pass N+1은 직전 pass가 남긴 `data-map/` 전체를 prior로 읽고 다음 순서로 대상을 고른다.
+
+1. `coverage.json`의 미완료 frontier — 미탐색 디렉터리의 inventory를 이어간다.
+2. 표본이 없는 적격 파일군 — Sampling, Extraction, LLM 해석을 이어간다. deny 대상, `active_candidate`, 전송 시도를 소진한 파일군, `usage-unknown` 전송이 걸린 파일군은 적격이 아니다.
+
+동률은 정규화 경로, family ID 순이다. LLM 자기평가 `confidence`는 선택에 쓰지 않는다. 선택 규칙 버전(`selection_rule_version`)은 CLI 버전에 고정하고 계획에 기록한다.
+
+`max_passes`는 budget을 쪼개지 않는다. 위의 모든 budget과 4.6절의 `llm_max_requests`는 pass를 넘어 누적 소진되며 별도 pass budget은 없다. 루프는 다음 중 먼저 오는 사유로 끝나고 사유를 `coverage.json`과 감사 기록에 남긴다.
+
+- `no-eligible-work`: 1·2의 대상이 남지 않음. 작업상 수렴이며 정확도 달성을 뜻하지 않는다.
+- `max-passes`: 대상은 남았지만 pass 상한 도달.
+- `budget`: 어느 budget이든 먼저 소진.
+
+세 사유 모두 5.2절의 정상 종료(`completed: true`, exit 0)다. pass 경계마다 감사 기록에 `pass-start`/`pass-end`(pass 번호, prior manifest hash, 선택 목록 hash, 종료 사유)를 남기고, 선택 목록과 prior snapshot은 scope 체크포인트에 보존해 재개 시 검증한다. 재개는 pass 번호와 budget 사용량을 초기화하지 않는다. pass 반복으로 허용 루트·allow/deny·budget을 넓히지 않는다.
+
 모든 내용 다운로드는 Grouping의 signature 조회와 Sampling 모두 같은 `download_guard`를 거친다. 사전 파일군을 메타데이터로 먼저 만들고 최신·실시간·변경 중 후보를 표시한 후에만 signature 후보를 고른다. 허용 루트, allow/deny, `active_candidate`, 남은 전체 목표 바이트·파일 수·요청·시간 budget을 전송 전에 검사한다. 파일별 크기는 참고값으로 기록하며 다운로드 허용 조건으로 사용하지 않는다. 헤더용 전체 파일도 전체 다운로드 budget에 포함하고, 이미 받은 동일 입력은 Sampling에서 재사용한다. 후보가 없으면 signature 없이 메타데이터와 생략 사유를 남긴다. 두 번의 목록이 같다는 사실만으로 최신·실시간 후보가 쓰기 완료됐다고 판단하지 않는다. 안정성을 확인할 근거가 없으면 내용을 받지 않는다.
 
 direct와 proxy의 바이트 budget은 best-effort다. 전송 중 성장한 파일이나 크기를
@@ -237,6 +254,9 @@ CLI는 회사 내부의 승인된 OpenAI 호환 endpoint를 직접 호출한다.
 - extractor가 만든 구조
 - 이미 알려진 장비·공정 용어집
 - 근거 인용을 위한 해당 입력 묶음의 sample SHA-256 식별자
+- pass 2 이상에서만, 직전 완료 pass의 검증된 `inferred` 값 중 같은 파일군과 검증된 관계로 직접 연결된 파일군의 `category`·`description` (`prior_inferred` 블록)
+
+`prior_inferred` 블록은 항목마다 family ID, pass 번호, 값, provenance를 담고 `rollout.json`의 `prior_max_bytes`(양의 정수, 계획 hash에 결합)를 넘지 않는다. 넘치면 같은 파일군을 먼저 남기고 연결 파일군을 family ID 순으로 잘라낸다. 프롬프트는 이 블록이 이전 추정이며 틀릴 수 있고, 현재 관측 근거로 유지·수정·`unknown`을 판단하라고 명시한다. evidence 검증기는 `prior_inferred` 항목의 인용을 거부하며 인용 가능한 근거는 종전대로 해당 파일군 evidence 디렉터리의 SHA-256뿐이다. 결과는 pass에 관계없이 `inferred`다. 필드 키의 family 입력 hash에는 직접 연결된 파일군의 Observed 요약 hash를 포함하고, 전달한 `prior_inferred` 블록 hash는 provenance에만 기록한다. 따라서 현재 파일군과 연결 파일군의 관측 입력이 바뀌지 않았으면 prior가 바뀌어도 재호출하지 않는다.
 
 LLM에는 파일군 설명, 데이터 category, field 의미·역할, 생성 주체, lifecycle, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 신뢰도(`confidence`: `high`|`medium`|`low`)와 근거 샘플(`evidence`: 해당 파일군 evidence 디렉터리에 실제로 존재하는 SHA-256 목록)도 각각 별도 요청과 검증기를 거치는 필드다. 필드당 의미 검증 응답 슬롯은 최대 2개다. 일시적인 전송 실패는 의미 검증 실패로 세지 않으며 아래의 별도 상한을 따른다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다. schema validator는 LLM 결과를 `observed` 위치에 쓸 수 없게 하고 모든 LLM category·lifecycle·field role과 의미를 `inferred`로 고정한다.
 
@@ -370,6 +390,7 @@ equipment-map status --rollout <ID>
 - 장비 식별자, 프로토콜, 접속 정보(host, port)
 - 허용 루트, 실시간 데이터 후보 경로, 샘플 allow/deny 패턴
 - 4.4절의 모든 budget과 LLM 요청 수 budget
+- `max_passes`(4.4.1절)와 `prior_max_bytes`(4.6절, 2단계 `plan`부터 필수)
 - 자격 증명 별칭, 장비 접근 허용 시간대(`always` 또는 UTC 구간)
 - 장비 프로필 이름(`profile`)
 - LLM endpoint URL, 키 별칭, 용어집 경로와 버전 및 4.6절의 모델·생성·timeout·재시도 설정(2단계 `plan`부터 필수)
@@ -386,7 +407,7 @@ equipment-map status --rollout <ID>
 
 엔지니어 전용 명령은 `equipment-map operator approve-plan`, `equipment-map operator approve-result`, `equipment-map operator unlock`과 4.5절의 `equipment-map workbench`다. 이 명령은 LLM에 대한 보안 경계가 아니라 사람의 운영 절차다. 스킬이 대신 호출하면 시나리오 검증 실패로 처리한다.
 
-`next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다.
+`next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 4.4.1절의 pass 반복은 이 한 호출 안에서 끝나며 pass마다 호출을 끊는 별도 프로토콜은 없다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다.
 
 CLI 종료 코드와 마지막 출력 행은 고정한다.
 
@@ -426,7 +447,7 @@ rollout 단계·승인 상태의 진실 원천은 `audit.jsonl`이며 `status`�
 
 자격 증명, LLM 비밀 설정과 허용 범위를 넘는 원본 파일은 rollout 디렉터리에 넣지 않는다. 자격 증명은 `rollout.json`의 별칭으로만 참조하며 CLI가 OS의 승인된 비밀 저장소에서 직접 조회한다. command argument, 환경 변수와 stdout으로 전달하지 않는다. 민감한 대표 샘플을 포함해야 하면 회사 내부 접근 권한과 보존 기간이 적용되는 로컬 위치만 사용한다. Skill Market은 rollout 데이터를 배포하지 않는다.
 
-collection scope는 수집 단계(1 또는 3), 그 단계의 최신 `init` epoch, 정규화된 source 설정 hash로 식별한다. source 설정에는 장비·protocol·host·port·share·root·pattern·profile 내용 hash가 포함된다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트는 모두 이 scope에 속한다. 새 stage 3 수집이나 stage 3 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. stage 2와 4는 명시적으로 승인된 이전 단계의 collection scope와 manifest를 입력으로 삼는다. 새 collection을 활성화할 때 이전 `data-map/`은 `work/history/<scope>/`에 보존하고 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
+collection scope는 수집 단계(1 또는 3), 그 단계의 최신 `init` epoch, 정규화된 source 설정 hash로 식별한다. source 설정에는 장비·protocol·host·port·share·root·pattern·profile 내용 hash가 포함된다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트와 4.4.1절의 pass 선택 목록·prior snapshot은 모두 이 scope에 속한다. 새 stage 3 수집이나 stage 3 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. stage 2와 4는 명시적으로 승인된 이전 단계의 collection scope와 manifest를 입력으로 삼는다. 새 collection을 활성화할 때 이전 `data-map/`은 `work/history/<scope>/`에 보존하고 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
 
 ### 5.2 상태 전이와 결과 무결성
 
@@ -451,7 +472,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 `index.json`은 자신을 제외한 `data-map/` 파일을 hash하고 마지막에 작성한다.
 외부 `result-manifest.json`은 `index.json`을 포함한다.
 
-목록·표본 budget 소진은 부분 coverage와 생략 사유를 파일에 확정한 뒤
+목록·표본 budget 소진과 4.4.1절의 `max-passes`·`no-eligible-work` 종료는 부분 coverage와 생략 사유를 파일에 확정한 뒤
 `completed: true`, exit 0으로 끝낼 수 있다. 연결·무결성·잠금·시간대 오류는
 `completed: false`, exit 20이며 결과 승인을 허용하지 않는다. LLM의 유한 실패는
 4.6절의 unresolved 기록으로 확정한다. 시간 상한 도달 뒤 장비/API 요청은
@@ -465,6 +486,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 명시적인 다운로드/시간 budget 없이는 실행 거부
 - 정규화된 실행 계획의 hash에 승인을 결합하고 실행 직전에 다시 대조
 - 승인 후 계획, 대상, 경로 또는 budget이 바뀌면 재승인 요구
+- 승인된 선택 규칙이 같은 collection scope 안에서 고른 pass 대상은 계획의 파생 결과이며 재승인 대상이 아님; 허용 루트, `max_passes`, `prior_max_bytes`, 선택 규칙 버전 변경은 재승인 요구
 - rollout별 lock에 호스트, PID와 시각을 기록해 동시 실행 차단
 - stale lock은 자동 삭제하지 않고 상태를 보여준 뒤 엔지니어의 대화형 해제 요구
 - 경로 이탈 방지
@@ -497,6 +519,8 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - CLI가 없거나 계약 버전이 맞지 않을 때 스킬이 실행을 계속하지 않는지
 
 추가 필수 시나리오: signature와 sample 경로 모두에서 보호 파일 내용 요청 0건, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분을 검증한다.
+
+pass 반복은 다음을 검증한다. pass 경계에서 강제 종료한 뒤 재개해도 중복 전송·중복 LLM 요청이 없고 pass 번호와 budget이 초기화되지 않는지, 적격 대상 소진이 `no-eligible-work`로 끝나고 `max_passes`·budget 도달이 각각의 사유로 끝나는지, 세 종료 모두 `completed: true`·exit 0이고 `NEXT: STOP`이 아닌지, `confidence` 값을 바꿔도 선택 순서가 변하지 않는지, 연결 파일군의 Observed가 바뀌면 재호출하고 prior만 바뀌면 재호출하지 않는지, `prior_inferred` 항목을 evidence로 인용한 응답이 거부되는지, 그리고 의도적으로 틀린 prior와 반대되는 Observed를 넣었을 때 결과가 `inferred`로 남고 관측 fact가 바뀌지 않는지다. 라벨이 pass 사이에 안정됐다는 사실을 정확도 증명으로 보고하지 않는다.
 
 추가로 결과 파일 추가·삭제·변조, 완료 전 결과 승인, 과거·미래 단계 호출,
 남의 lock 해제 방지, 실행 중 시간대 종료, parser/압축 해제 상한, 파일 속 지시문,
@@ -539,7 +563,7 @@ FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검�
 
 엔지니어가 같은 rollout ID로 `init`을 다시 실행해 실장비 접속 정보, 좁은 허용 루트와 작은 budget을 입력한다. 실시간 데이터 후보 경로가 있으면 함께 입력한다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
 
-3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
+3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. `max_passes`가 1보다 크면 4.4.1절의 pass 반복이 같은 `next` 안에서 이어진다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
 
 방화벽과 접속 승인은 스킬 외부의 선행조건이다. 스킬은 방화벽 변경이나 승인 시스템 조회를 시도하지 않는다. 연결되지 않으면 원인을 단정하거나 우회하지 않고 진단 결과를 남긴 후 중단한다.
 

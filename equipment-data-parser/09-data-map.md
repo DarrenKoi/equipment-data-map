@@ -23,7 +23,22 @@ Use implementation-reference.md §7 for common records and hash ordering.
   freeze.
 - `result-manifest.json`: sorted `/`-separated relative paths under
   `data-map/` with raw-byte SHA-256; `.lock` and `work/` excluded.
-- `stage 1 next`: runs the four steps in order with checkpoints, records a
+- `equipment_map/passes.py`: the spec §4.4.1 pass loop shared by stage 1
+  and stage 3 `next`. Pass 1 is the pipeline as-is. Each later pass, up to
+  `rollout.json.max_passes`, selects targets deterministically from the
+  current `data-map/`: first the incomplete inventory frontier in
+  `coverage.json`, then eligible families without a sample (never deny
+  members, `active_candidate`, exhausted attempts or `usage-unknown`),
+  ties by normalized path then family ID; `confidence` is never an input.
+  Every budget is cumulative across passes. Stop on the first of
+  `no-eligible-work`, `max-passes`, `budget`; write the reason to
+  `coverage.json` and to `pass-start`/`pass-end` audit records carrying pass
+  number, prior manifest hash and selection-list hash. Persist the selection
+  list and prior snapshot in the scope checkpoint; resume never resets the
+  pass number or usage. All three reasons are `completed: true`, exit 0,
+  `NEXT: equipment-map status` — never `NEXT: STOP`. Record
+  `selection_rule_version` in the plan.
+- `stage 1 next`: runs the four steps in order with checkpoints inside that pass loop, records a
   `next-stop` audit entry with counts (files listed, families, samples,
   extracted, unreadable) and the manifest hash. stdout shows counts and
   hashes only.

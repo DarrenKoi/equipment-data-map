@@ -25,7 +25,9 @@ Use implementation-reference.md §2 and §5 for the profile and window contract.
   `rollout.json` (`host`, `port`, `share`), then `interpret_families` from
   letter 11 over current-scope families without a matching durable field
   result (scope/input/model/prompt/glossary hashes must match), then
-  `write_manifest`. Connection failure writes a diagnostic file, one audit
+  `write_manifest`. Both halves run inside the letter 09 pass loop when
+  `max_passes` > 1: later passes interpret only families whose input hash
+  changed or that are still unresolved, with the letter 11 prior block. Connection failure writes a diagnostic file, one audit
   entry, exit 20. No firewall or approval-system calls exist anywhere.
 - `stage 5 plan`: refused unless `rollout.json.next_profile` names an
   existing `profiles/<type>.json` that differs from `profile`.
@@ -61,3 +63,12 @@ sharing paths but different bytes. Stage 3 must inventory and interpret the
 new source with no old evidence in its manifest. Reconfigure stage 3 roots
 and repeat; interrupt during scope activation and verify safe recovery.
 Restart without reconfiguration must reuse completed current-scope work.
+
+Pass loop (spec §7 pass bullets), with `max_passes` 3 over a fixture whose
+frontier and unsampled families exceed one pass: kill at a pass boundary and
+resume with no duplicate transfer or LLM request and no reset of pass number
+or usage; exhausting eligible work ends `no-eligible-work`, the ceiling ends
+`max-passes`, a small budget ends `budget`, each `completed: true`, exit 0,
+`NEXT: equipment-map status`; permuting `confidence` values changes no
+selection order; a changed linked-family Observed summary triggers one
+re-interpretation while a changed prior alone triggers none.

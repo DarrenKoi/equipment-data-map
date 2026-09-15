@@ -39,6 +39,16 @@ Read implementation-reference.md §8 for prompts, field validators and limits.
   SHA-256 under the current family's `evidence/`, assembled into a list by code) — each with a validator.
   Input is family rule/stats, bounded extract, extractor structure, glossary,
   and the deterministic sample SHA identifiers needed to cite that bundle.
+  From pass 2 (spec §4.6) add a `prior_inferred` data block: the previous
+  completed pass's validated `category` and `description` for this family
+  and for families linked to it by a validated relationship, each with
+  family ID, pass number, value and provenance, capped by
+  `llm.prior_max_bytes` (keep this family first, then linked families in
+  family-ID order). The prompt states it is a previous inference that may be
+  wrong and must be kept, corrected or set to UNKNOWN on current evidence.
+  The evidence validator rejects any citation of a prior item; citable
+  evidence stays this family's own sample SHAs. Results are `inferred` in
+  every pass.
   No sample → skip API calls and mark content interpretation `unresolved:
   no-sample`; metadata evidence comes from the CLI, never the model.
 - Validate category against spec §4.7.2's fixed enum and lifecycle against
@@ -53,8 +63,11 @@ Read implementation-reference.md §8 for prompts, field validators and limits.
   `unresolved: invalid-response`. Any unresolved field has low confidence.
 - `work/llm.sqlite`: durable per-field results and request reservations in
   transactions with SQLite synchronous FULL. Key results by collection scope,
-  family input SHA (rule, stats, sample/extract hashes), field, and hashes of
-  model settings, prompt and glossary. Store a reservation before each call;
+  family input SHA (rule, stats, sample/extract hashes, and the Observed
+  summary hash of directly linked families), field, and hashes of
+  model settings, prompt and glossary. The `prior_inferred` block hash is
+  provenance only, never part of the key: an unchanged Observed input is not
+  re-requested because the prior changed. Store a reservation before each call;
   commit response disposition, validated field value or unresolved reason,
   provenance and counters in one transaction before advancing. A committed
   valid field is never requested again, even if the family is incomplete.
@@ -97,7 +110,11 @@ transient failures followed by success without using extra semantic slots;
 permanent outage terminating within the exact transport/request/time limits;
 Retry-After exceeding the remaining deadline causing no extra call; 401
 causing no further calls; request budget 1 leaving later fields unresolved;
-no-sample families making zero API calls; missing or foreign sample SHA rejected.
+no-sample families making zero API calls; missing or foreign sample SHA rejected;
+a pass-2 packet carrying `prior_inferred` within `prior_max_bytes`, truncated
+linked families in family-ID order when over it; a response citing a prior
+item rejected; a deliberately wrong prior against contradicting Observed
+leaving the result `inferred` and every observed field untouched.
 Also cover invalid category/lifecycle enums and a response that attempts to set
 `observed`; the validator rejects the former and the schema makes the latter
 unrepresentable. Weak cadence evidence stays unknown even if the model guesses

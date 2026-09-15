@@ -20,7 +20,7 @@ supplies it in your environment before this letter (for example
 1. Ask the engineer to run `equipment-map init --rollout "$ROLLOUT"` again
    and fill the `llm` block (approved internal endpoint, key alias,
    glossary path/version, requested model, generation limits, timeouts,
-   elapsed limit and retry settings from letter 11). You wait; `stage 2 plan` refuses until it
+   elapsed limit, retry settings and `prior_max_bytes` from letter 11). You wait; `stage 2 plan` refuses until it
    is present.
 2. `equipment-map preflight --stage 2 --contract 1`, then
    `equipment-map stage 2 plan --rollout "$ROLLOUT"`; report the hash and

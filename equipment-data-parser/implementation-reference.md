@@ -59,6 +59,13 @@ Budget keys and units (all required; no implicit operational defaults):
 | `header_max_requests` | integer >= 0 | Total signature content attempts; skip further signatures at limit |
 | `llm_max_requests` | integer >= 0 | Every HTTP analysis attempt including retries and lost replies |
 
+`max_passes` (top-level, integer >= 1) is not a budget: it caps how many
+times one `next` call re-enters the spec §4.4.1 selection over the same
+collection scope, and every budget above keeps counting across passes.
+`llm.prior_max_bytes` (integer >= 1, required from stage 2 plan) bounds the
+`prior_inferred` block in §8. Both are part of the canonical plan hash, as is
+the CLI-fixed `selection_rule_version`.
+
 There is no hidden aggregate equipment-request counter limit; requests are
 paced, listing entries and transfers have counts, and elapsed time is finite.
 Record actual operation counts for audit. Version 1 adapters must expose enough
@@ -416,7 +423,12 @@ units, column meanings, a producer or a period. Cite only supplied sample IDs.
 
 Each user message is assembled by code with the requested field, its format,
 family rule/stats, sample IDs, deterministic extract and glossary excerpt inside
-clearly labeled data boundaries. Entire UTF-8 user message <= 32 KiB, glossary
+clearly labeled data boundaries. From pass 2 a `prior_inferred` boundary holds
+the previous pass's validated category/description for this family and its
+linked families (family ID, pass number, value, provenance), <= `prior_max_bytes`,
+prefixed by one fixed sentence: it is a previous inference, may be wrong, and
+must be kept, corrected or answered UNKNOWN on the current evidence only.
+Prior items are never citable evidence. Entire UTF-8 user message <= 32 KiB, glossary
 portion <= 4 KiB; build it deterministically and record omitted/truncated inputs.
 Reject an over-budget packet that cannot retain its identifiers; do not silently
 send original files. Do not copy a rejected response into the second prompt;

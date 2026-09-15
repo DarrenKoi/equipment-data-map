@@ -26,8 +26,9 @@ supplies it in your environment before this letter (for example
 2. Engineer runs `equipment-map init --rollout "$ROLLOUT"` again on the
    same rollout and enters: host, port, share, allowed roots, real-time
    candidate paths, allow/deny patterns, budgets including
-   `llm_max_requests`, credential alias, profile name, access window
-   (`always` if none). The CLI refuses while a `.lock` exists.
+   `llm_max_requests`, `max_passes` (1 unless the engineer wants the
+   spec §4.4.1 pass loop; budgets are cumulative across passes), credential
+   alias, profile name, access window (`always` if none). The CLI refuses while a `.lock` exists.
 3. `equipment-map preflight --stage 3 --contract 1`, then
    `equipment-map stage 3 plan --rollout "$ROLLOUT"`. Report the hash and
    the window it includes; append `waiting` until `operator approve-plan`.
@@ -35,7 +36,10 @@ supplies it in your environment before this letter (for example
    exit `20` for a connection failure, relay that a diagnostic file exists
    under the rollout directory and stop; the engineer decides.
 5. Report the counts: files listed, families, samples, extracted,
-   unreadable, budget stops, families interpreted, families `unresolved`.
+   unreadable, budget stops, families interpreted, families `unresolved`,
+   passes run and the pass termination reason (`no-eligible-work`,
+   `max-passes` or `budget`; only the first means no eligible work is left,
+   none means accuracy).
    Ask the engineer to review family accuracy, sample representativeness,
    equipment load, and `coverage.json` (inventory frontier, sample coverage,
    unresolved interpretations by reason). Exit 0 is not proof of complete

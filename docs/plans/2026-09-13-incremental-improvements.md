@@ -52,11 +52,31 @@ proxy 경유 실행 결과를 검토한다. 완료 근거는 해당 letter의 �
 반복하지 않으며, 예산과 사용량 미상 상태가 초기화되지 않는다. 설정이 달라진
 실행은 이전 결과를 묵시적으로 재사용하지 않는다.
 
+같은 승인 안의 반복 pass(스펙 §4.4.1, 2026-09-15 확정): `max_passes`(기본 1)
+만큼 한 `next` 호출 안에서 직전 pass의 `data-map/` 전체를 prior로 읽고
+미완료 frontier와 표본 없는 파일군만 다시 돈다. 선택은 코드가 결정론적으로
+하고 LLM `confidence`는 쓰지 않는다. budget은 pass를 넘어 누적 소진되며
+`no-eligible-work`, `max-passes`, `budget` 중 먼저 오는 사유로 exit 0으로
+끝난다. pass 2부터 LLM에 직전 pass의 category·description을
+`prior_inferred`로 넣되 인용 불가, 결과는 항상 `inferred`다(§4.6). 프레임워크
+(LangChain `create_agent`, LangGraph)는 쓰지 않는다. 도구 없는 필드별 호출에
+이점이 없고 사내 미러에 올릴 의존만 늘기 때문이다
+(`docs/research/2026-09-15-agent-framework-and-data-format.md`).
+
+통과 조건: pass 경계에서 강제 종료 후 재개해도 중복 전송·요청이 없고, 세
+종료 사유가 구분되며, `confidence`를 바꿔도 선택 순서가 같고, 틀린 prior와
+반대되는 관측을 넣어도 관측 fact가 바뀌지 않는다.
+
 ## 4. 검토된 Data Map에서 Wiki·Graph·RAG 생성
 
 구조화 Data Map을 단일 원본으로 삼는다. 메타데이터와 추출 사실, LLM 추론,
 미확인을 분리한다. Wiki Markdown, graph node/edge JSONL과 claim 단위 RAG
 JSONL은 그 결과에서 파생한다. 답변은 원래 장비 경로와 근거 종류·hash로 연결한다.
+Wiki는 Obsidian에서 그대로 열리는 Markdown이다: `index.md`와
+`families/<family_id>.md`, 표준 상대 링크, frontmatter는 `family_id`·`pass_id`·
+`generated_by` 3키만, Observed 절에 장비 디렉터리 경로를 그대로 쓴다
+(2026-09-15 결정). 무결성은 manifest의 파일 hash가 맡고 frontmatter는 표시용이다.
+`[[wikilink]]`·`aliases`·`tags`는 실제 Obsidian 사용자가 생기면 더한다.
 
 통과 조건: 엔지니어가 만든 실제 질문으로 경로·형식·필드 탐색을 검증하고,
 표본이 없거나 해석에 실패한 항목을 확정 사실로 답하지 않는다.

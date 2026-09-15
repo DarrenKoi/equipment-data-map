@@ -20,11 +20,13 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   `equipment_id`, `protocol` (`ftp`; the only value the CLI accepts today),
   `host`, `port`, `allowed_roots`, `realtime_candidates`, `allow_patterns`,
   `deny_patterns`, `budgets` (every §4.4 budget plus `llm_max_requests`),
-  `credential_alias`, `access_window` (`always` or `{start, end}` UTC),
+  `max_passes` (integer >= 1, default 1; spec §4.4.1 — a pass ceiling, not
+  a budget), `credential_alias`, `access_window` (`always` or `{start, end}` UTC),
   `profile`, `llm` (`endpoint`, `key_alias`, `glossary_path`,
   `glossary_version`, `model`, `temperature`, `max_tokens`,
   `connect_timeout_seconds`, `request_timeout_seconds`, `max_elapsed_seconds`,
-  `transport_max_attempts`, `retry_backoff_seconds`, optional `retention_location`), `next_profile`
+  `transport_max_attempts`, `retry_backoff_seconds`, `prior_max_bytes`
+  (integer >= 1, spec §4.6), optional `retention_location`), `next_profile`
   (optional). Missing budgets fail validation (§6 "no budget, no run").
   `init` requires everything except `llm` and `next_profile`; `stage N plan`
   refuses when the fields that stage needs are absent (`llm` from stage 2,
