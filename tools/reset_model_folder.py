@@ -1,6 +1,7 @@
 """Set up or reset a model folder from the hub clone, without git in the model folder.
 
-    python tools/reset_model_folder.py ../equipment-data-map-qwen3 qwen3
+    python tools/reset_model_folder.py                 # uses MODEL_DIR and SLUG below
+    python tools/reset_model_folder.py ../other-dir x  # or override both
 
 Run from the hub after `git pull --ff-only`. Keeps .venv, .env and
 equipment.toml in the model folder; replaces everything else with the hub's
@@ -13,6 +14,8 @@ import sys
 from pathlib import Path
 
 HUB = Path(__file__).resolve().parent.parent
+MODEL_DIR = HUB.parent / "equipment-data-map-qwen3"   # the model folder, beside the hub
+SLUG = "qwen3"                                        # first line of its ledger
 KEEP = {".venv", ".env", "equipment.toml"}
 
 
@@ -39,6 +42,9 @@ def main(model: Path, slug: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) == 1:
+        main(MODEL_DIR, SLUG)
+    elif len(sys.argv) == 3:
+        main(Path(sys.argv[1]).resolve(), sys.argv[2])
+    else:
         sys.exit(__doc__)
-    main(Path(sys.argv[1]).resolve(), sys.argv[2])

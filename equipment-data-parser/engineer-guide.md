@@ -79,7 +79,8 @@ D="../$(basename "$PWD")-$M"
 The same script restarts a model from scratch: first delete everything in
 its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
 
-`python tools/reset_model_folder.py <model folder> <slug>` from the hub does
+`python tools/reset_model_folder.py` from the hub (folder and slug are set at the
+top of the file; two arguments override them) does
 both the first setup and a restart in one step.
 
 For metadata-only letter 00, leave both `llm.url` and `llm.model` blank. Before
