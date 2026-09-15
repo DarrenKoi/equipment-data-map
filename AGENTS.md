@@ -78,10 +78,12 @@ translate one into the other.
   case, constant-time token compare) was ported the same way. Covered by `tests/test_sizing_mtime.py` and
   `tests/test_worker_isolation.py` here and by each repo's own suite there.
   The three copies of the changed files are byte-identical,
-  so a re-vendor is safe; the only standing difference in `ftp_handler/` is this
-  repo's `.env` handling of `PROXY_URL`/`PROXY_TOKEN`, which is deliberate and
-  must not be pushed upstream — it is what keeps the deployment's real host out
-  of the source tree.
+  so a re-vendor is safe; the standing differences in `ftp_handler/` are this
+  repo's `.env` handling of `PROXY_URL`/`PROXY_TOKEN`, which keeps the
+  deployment's real host out of the source tree, and `fleet_downloader`
+  refusing `FTP_TRANSPORT=direct` on Windows, since the company allows no
+  direct FTP from engineer PCs. Both are deliberate and must not be pushed
+  upstream.
 
 ## Skill deliverables
 

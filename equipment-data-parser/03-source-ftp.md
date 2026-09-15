@@ -157,7 +157,7 @@ class exposes no method whose name contains `write`, `delete`, `rename`,
 `mkdir`, `put`, or `range`; the fake server logs no STOR/DELE/RNFR/MKD
 command during the test; the same assertions pass against both transports,
 with `FTP_TRANSPORT=proxy` pointed at `fake_proxy`; `fleet_downloader`
-returns the proxy class for `win32` and the direct class otherwise; `preflight` exits 30 without touching equipment when the proxy
+returns the proxy class for `win32`, refuses `FTP_TRANSPORT=direct` there, and returns the direct class otherwise; `preflight` exits 30 without touching equipment when the proxy
 health endpoint refuses the connection or answers non-200, and when the
 health endpoint is fine but the empty-spec list POST returns 401, and when a
 token is configured but the POST without a token returns 200; with no token

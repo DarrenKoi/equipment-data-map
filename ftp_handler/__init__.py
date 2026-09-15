@@ -64,9 +64,10 @@ def fleet_downloader(platform: str = sys.platform):
     equipment directly. Both classes expose the same surface, so the transport
     is the only thing that differs.
 
-    ``FTP_TRANSPORT=direct|proxy`` overrides the platform guess — the mapping is
-    about where the firewall sits, not about the OS, and a machine can sit on
-    the wrong side of it.
+    ``FTP_TRANSPORT=proxy`` forces the proxy on a non-Windows machine that also
+    sits behind the firewall. ``FTP_TRANSPORT=direct`` is refused on Windows:
+    the company allows no direct FTP from the engineer PCs, so a Windows
+    machine gets the proxy or nothing.
 
     The import is lazy on purpose: the direct path never loads ``requests``.
     """
@@ -75,6 +76,11 @@ def fleet_downloader(platform: str = sys.platform):
     )
     if transport == "proxy":
         from .proxy import FtpFleetDownloader
+    elif transport == "direct" and platform.startswith("win"):
+        raise ValueError(
+            "FTP_TRANSPORT=direct is not allowed on Windows: "
+            "engineer PCs must use the FTP proxy"
+        )
     elif transport == "direct":
         from .direct_downloader import FtpFleetDownloader
     else:

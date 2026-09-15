@@ -26,10 +26,21 @@ def test_windows_gets_the_proxy():
     assert fleet_downloader("darwin") is Direct
 
 
-def test_env_overrides_the_platform():
+def test_env_forces_proxy_but_never_direct_on_windows():
+    os.environ["FTP_TRANSPORT"] = "proxy"
+    try:
+        assert fleet_downloader("linux") is Proxy
+    finally:
+        del os.environ["FTP_TRANSPORT"]
     os.environ["FTP_TRANSPORT"] = "direct"
     try:
-        assert fleet_downloader("win32") is Direct
+        assert fleet_downloader("linux") is Direct
+        try:
+            fleet_downloader("win32")
+        except ValueError as exc:
+            assert "Windows" in str(exc)
+        else:
+            raise AssertionError("direct FTP must be refused on Windows")
     finally:
         del os.environ["FTP_TRANSPORT"]
 

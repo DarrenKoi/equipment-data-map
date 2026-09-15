@@ -381,7 +381,8 @@ fake tree, not about live equipment or model accuracy.
   is not a call-site choice; `ftp_handler.fleet_downloader()` decides. The
   operating machine is a Windows engineer PC with no FTP egress, so **proxy is
   the path that must work**; direct is the development convenience, and a
-  feature that works only on direct is not done.
+  feature that works only on direct is not done. `fleet_downloader` refuses
+  `FTP_TRANSPORT=direct` on Windows; never work around that.
   Metadata comes from `size_dirs` — path, size and UTC mtime in one connection,
   on both transports — never from `list_dirs`, which carries paths only.
   The package is otherwise read-only: a change to it belongs upstream in

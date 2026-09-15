@@ -24,8 +24,8 @@ client, `flask` on the server. The upstream `web_app` subpackage was left behind
 **Transport is a platform fact, not a call-site choice.** The Windows engineer PCs have
 no FTP egress and must go through the proxy; Linux hosts reach the equipment directly.
 Call `ftp_handler.fleet_downloader()` for the right class instead of importing one of
-the two by hand; `FTP_TRANSPORT=direct|proxy` overrides the guess for a machine sitting
-on the unexpected side of the firewall. Deployment facts stay out of the source
+the two by hand; `FTP_TRANSPORT=proxy` forces the proxy on a non-Windows machine
+behind the firewall, and `direct` is refused on Windows since the company allows no direct FTP from engineer PCs. Deployment facts stay out of the source
 tree: copy `.env.example` to `.env` (untracked) for `FTP_PROXY_URL` and
 `FTP_PROXY_TOKEN` — `ftp_handler.load_dotenv()` folds it into the environment at
 import, and a real env var wins. `tests/test_ftp_transport.py` pins that branch
