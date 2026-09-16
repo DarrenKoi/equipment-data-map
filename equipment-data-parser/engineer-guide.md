@@ -21,11 +21,10 @@ use normal downloads, including eligible large/unknown-size files, with actual-b
 accounting and best-effort targets. No cap workaround is required. Mock tests
 can guide implementation but cannot waive that blocker.
 
-Letter 00 may begin with no `equipment.toml` or an empty one: the agent runs
-`python spike.py --prepare-config equipment.toml` locally before proxy checks.
-Only FTP host, user and password are required before the first connection.
-The internal interpretation URL/model may remain blank for the initial
-metadata-only checkpoint; blank means no LLM HTTP calls, not a failed setup.
+Letter 00 has completed repeated office validation and is retired. Start the
+active sequence at letter 01. Keep its `spike.py`, `equipment.toml`, and `out/`
+artifacts only as local diagnostic fallback until letter 18 proves the formal
+CLI on one real equipment; do not rerun or modify them in the active sequence.
 
 ### The hub clone and the model folders
 
@@ -38,10 +37,9 @@ home by hand: relay a sanitized summary of `office/problems/` and the
 `office/progress.md` result to the maintainer, with no equipment addresses,
 paths or credentials.
 
-**One model takes the whole sequence.** One approved model runs letters 00
+**One model takes the whole sequence.** One approved model runs letters 01
 through 20 to the end. It is always the agent model and, once interpretation is
-enabled, is also the `llm.model` in `equipment.toml` before any other model is tried. The
-LLM section may remain blank for letter 00's metadata-only checkpoint. Do not run the letters with several
+enabled, is also the approved internal interpretation model before any other model is tried. Do not run the letters with several
 models at once, and do not switch models mid-sequence: a half-built CLI or a
 half-interpreted map from two models cannot be reviewed as one result.
 Comparing models is a later exercise, on a finished process.
@@ -52,8 +50,8 @@ later model is tried it gets a fresh copy, so the two never share a ledger,
 an `office/spike.py`, root build outputs, `out/` or `rollouts/`.
 The working directory is the whole identity: the prompt never names the
 model, and an agent launched in `<repo>-<model>/` is that model's run. The
-first line of that folder's `office/progress.md` names the model, and its
-`equipment.toml` names the served model for `spike.py`. `<model>` is a short
+first line of that folder's `office/progress.md` names the agent model, and
+the rollout configuration names the internal interpretation model. `<model>` is a short
 slug of letters, digits and dashes (`qwen3-8b`), never a host, path or
 credential. A `.venv` made inside the model folder stays there; git ignores
 it and the copies below never touch it.
@@ -83,9 +81,9 @@ its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
 top of the file; two arguments override them) does
 both the first setup and a restart in one step.
 
-For metadata-only letter 00, leave both `llm.url` and `llm.model` blank. Before
-the interpretation checkpoint, set both fields to that same approved model;
-never configure only one of the pair.
+Leave the historical `equipment.toml` untouched. Supply internal interpretation
+settings only when the current letter requests them, through the engineer-run
+`init` flow.
 Launch that model's agent tool, one-shot loop or scheduled task with the
 model folder as the working directory; the letters say "repository root" and
 mean that directory.
@@ -115,7 +113,7 @@ Keep a local readiness sheet with these entries:
 | Input | Owner / proof required |
 |---|---|
 | Internal agent model endpoint | Engineer verifies the agent uses it; no external session for operating letters |
-| Internal interpretation endpoint | Optional for letter 00 metadata-only discovery; required and verified before interpretation |
+| Internal interpretation endpoint | Required and verified before stage 2 interpretation |
 | Equipment read-only account | Site owner confirms account restrictions and access approval |
 | Credential/LLM-key aliases | Engineer stores them in the approved OS keystore, never in a prompt |
 | Keystore backend | Confirm actual supported platform; Linux is unsupported until a reviewed backend exists |

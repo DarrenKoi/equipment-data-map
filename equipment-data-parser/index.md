@@ -1,19 +1,16 @@
 # Letters to agent
 
-This file is the office agent's contract: read it before anything else in
-this folder, and follow it while you execute the letters. The repository's
-root `AGENTS.md` guides maintaining this repository, which is a different job.
+This file is the letter-execution contract: read it before anything else in
+this folder when the user asks you to execute the letters. Use the requested
+job, not your machine, network, working directory, or physical location, to
+choose this role. The repository's root `AGENTS.md` guides maintenance, which
+is a different job.
 
-**Current letter: [00-spike.md](00-spike.md).** The immediate objective is a
-first-pass file-structure map. FTP host, user and password are enough to start
-bounded metadata discovery; the office agent fills missing optional TOML
-settings under letter 00. A missing or empty `equipment.toml` is created by
-the agent before proxy checks; FTP credentials are needed only before connecting.
-LLM observations are a later checkpoint when configured.
-Follow that letter's scope and overrides. Stop after its checkpoint, including
-success; do not advance to letters 01–20 until the engineer explicitly asks.
-An existing `00 done` or `00 discovery` entry means report the recorded result and wait, not
-rerun the spike or start the next letter automatically.
+**The current sequence starts at letter 01.** Letter 00 is retired after
+repeated successful runs. Do not execute it or wait on its historical
+`00 discovery` or `00 done` entries. Read `office/progress.md` and select the
+first unfinished letter from the table at the bottom of this file; a new model
+folder therefore starts at 01.
 
 You are the company-internal coding agent that builds and then operates the
 `equipment-map` CLI to produce an equipment data map: a read-only,
@@ -61,14 +58,15 @@ copies them in between sessions.
 
 Before any other step, `office/progress.md` must exist in the working
 directory. When it does not, print one line asking the engineer to run the
-office setup, and stop without writing.
+execution-workspace setup, and stop without writing.
 
-Write only in `office/`: `office/progress.md`, `office/problems/NN-problems.md`,
-and `office/spike.py` when letter 00 needs a changed spike. Letter 00 also
-permits local `equipment.toml` updates and `out/` results; both stay on this PC.
-The build letters permit their specified new files at the repository root.
+Write only in `office/`: `office/progress.md` and
+`office/problems/NN-problems.md`. Historical `office/spike.py`,
+`equipment.toml`, and `out/` files may remain on this PC, but the active
+sequence does not run or change them. The build letters permit their specified
+new files at the repository root.
 Everything else in the
-repository — this folder, `spike.py`, `ftp_handler/`, the home tests — is
+repository — this folder, `spike.py`, `ftp_handler/`, the maintainer tests — is
 the maintainer's: read it, and report what is wrong here in a problem entry.
 The maintainer never writes in `office/`, so updates leave it untouched.
 
@@ -108,7 +106,7 @@ Expect several sessions and correction rounds before letter 20 is complete.
 A session may finish only one checkpoint or report one blocker. That is progress,
 not permission to skip the current letter or restart the whole sequence.
 
-When a letter fails at the office, append the problem to the root
+When a letter fails in the execution workspace, append the problem to the root
 `office/problems/NN-problems.md` and record the checkpoint or blocker in `office/progress.md`.
 The maintainer revises the instructions when needed; the engineer supplies any
 missing site decisions. In the next session, read those updates, verify the
@@ -123,8 +121,8 @@ verified checkpoints, not through an assumed single uninterrupted run.
 
 ## Loop
 
-This progression applies only after the engineer explicitly releases the
-letter 00 review stop. Until then, follow letter 00 and stop at its checkpoint.
+The active progression starts at letter 01. Historical letter 00 records do
+not gate it.
 
 1. Read `office/progress.md`. For the first build, the first letter without a `done`
    line is your current letter — "letter" meaning a row in the table at the
@@ -144,9 +142,10 @@ letter 00 review stop. Until then, follow letter 00 and stop at its checkpoint.
 4. Run every command under **Done when**. All must pass exactly as stated.
 5. Append a `done` line and go back to step 1 in the same session.
 
-At any step, whenever something does not match this office — the network, the
-PCs, credentials, FTP behaviour, equipment directory habits, file formats,
-the LLM endpoint, or an instruction that is simply wrong here — append an
+At any step, whenever something does not match the available environment or
+resources — the network, system image, credentials, FTP behaviour, equipment
+directory habits, file formats, the LLM endpoint, or an instruction that is
+simply wrong here — append an
 entry to `office/problems/NN-problems.md` (format in
 `equipment-data-parser/problems.md`) before
 moving on.
@@ -255,9 +254,8 @@ In a one-shot run:
 - Assume nothing survives the run: no environment variables you exported, no
   background process, no shell state. Anything the next run needs is on disk.
 
-Do not enable the repeated-run loop or scheduler below for the current
-letter 00 mapping pass. They apply only after the engineer explicitly asks
-to proceed beyond its review stop.
+The repeated-run loop and scheduler below apply to the active letters 01–20.
+Historical letter 00 records do not block them.
 
 For the first build/rollout only, drive it from the repository root, one run per checkpoint,
 stopping on its own when the work is finished or a human is needed:

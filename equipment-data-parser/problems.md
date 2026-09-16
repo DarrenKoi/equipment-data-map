@@ -1,19 +1,20 @@
 # Problems
 
-Problem entries live in the repository-root `office/problems/` folder on the
-office PC. The office-agent contract and progress format are in
+Problem entries live in the repository-root `office/problems/` folder in the
+execution workspace. The letter-execution contract and progress format are in
 [index.md](index.md).
 
 One file per letter, `office/problems/NN-problems.md` (`16-problems.md` for letter 16), created
 the first time that letter meets something the letters did not anticipate:
-this office's network, PC image, credentials, FTP behaviour, equipment
+the available network, system image, credentials, FTP behaviour, equipment
 directory habits, file formats, the local LLM endpoint, or an instruction that
 turns out to be wrong or impossible here.
 
-The letters were written without knowledge of this office and these FAB tools.
-They are a plan, not a description of your site. When reality differs, the
-difference is the deliverable of this folder — the engineer reads it to decide
-what to change, and the next session reads it instead of rediscovering it.
+The letters were written without knowledge of the execution environment or
+these FAB tools. They are a plan, not a description of the available resources.
+When reality differs, the difference is the deliverable of this folder — the
+engineer reads it to decide what to change, and the next session reads it
+instead of rediscovering it.
 
 ## Rules
 

@@ -1,8 +1,13 @@
 # Letter 00: Spike — ftp → LLM → markdown on one real equipment
 
+> **Retired:** Repeated real-equipment runs completed this spike's purpose. Do not
+> execute this letter as part of the current sequence; `index.md` now starts at
+> letter 01. Keep this file and `spike.py` only as diagnostic fallback until the
+> formal CLI passes the real-equipment pilot in letter 18.
+
 ## Goal
 
-Use `spike.py` on one approved equipment through the office proxy to produce
+Use `spike.py` on one approved equipment through the approved proxy to produce
 a first-pass map of its file structure, then record what happened. Only FTP
 host (IP), user (ID), and password are required to start. A local LLM is optional
 for discovery and required for the later interpretation checkpoint. The script exists; this letter is
@@ -11,7 +16,7 @@ passes: read this letter, `equipment.toml.example`, and all of `spike.py`,
 and skip `spec.md` and letters 01–20.
 
 Discovery means evidence markdown from one real equipment. Full letter completion
-also needs usable LLM observations. A fake tree running at home is neither.
+also needs usable LLM observations. A fake-tree run is neither.
 
 Prioritize directory paths, file metadata (names, extensions, sizes and
 modification times), and observed facts from limited samples. The LLM records
@@ -42,7 +47,7 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
   later non-secret settings, use a local programmatic edit that preserves
   credential values, validates TOML before replacement and prints status only.
   Never invent credentials, endpoints, model IDs, or equipment purpose.
-- **Paths may appear on stdout and in `out/`.** The office network has no
+- **Paths may appear on stdout and in `out/`.** The company network has no
   external egress, which replaces the stdout path rule. `password` and
   `api_key` still appear nowhere: `spike.py` scrubs them from every file it
   writes and from its own output, and exception text is reduced to a class
@@ -193,7 +198,7 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    usage before another invocation. Preserve partial output; the spike has no
    checkpoint resume and may lack `index.md` if interrupted before completion.
 
-   **Known office runner limit: 30 minutes.** With `llm.timeout_s = 300`,
+   **Known runner limit: 30 minutes.** With `llm.timeout_s = 300`,
    six requests waiting about five minutes each already consume that window,
    before FTP work. `spike.py` makes one request per non-empty directory
    and has no LLM retry loop. While `office/spike.py` does not exist, the root
@@ -234,7 +239,7 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
 `python spike.py equipment.toml` on one approved equipment, through the
 proxy, exits 0 with three true booleans, `files > 0`, `llm_success > 0` and
 `usage_unknown == false`. The engineer judges the analysis usable, and the
-`done` line is appended. Home fake tests never complete this letter.
+`done` line is appended. Fake-tree tests never complete this letter.
 
 ## What the script does
 

@@ -1,17 +1,18 @@
 # Equipment Data Map agent contract
 
-This file is read by both maintainer agents and company-local LLM agents on
-the office PC. Apply the instructions for the job the user requested:
+This file is read by both maintainer agents and company-local execution agents.
+Choose the role from the job the user requested, never from the machine,
+network, working directory, or physical location:
 
 - **Maintenance:** follow the sections below when maintaining the architecture
   doc, letters, spec snapshot, skills, and CLI. Do not execute the letters
   unless the user asks.
-- **Office execution:** when asked to execute the letters, follow
+- **Letter execution:** when asked to execute the letters, follow
   `equipment-data-parser/index.md` as the execution contract, including its
   setup checks and write permissions. The maintainer-only restrictions below
-  do not prohibit the office agent's permitted work.
+  do not prohibit the execution agent's permitted work.
 
-**During office execution, read and follow the instructions in
+**During letter execution, read and follow the instructions in
 `equipment-data-parser/`, and create all results outside that folder. Never
 create, modify, or delete files inside `equipment-data-parser/`.** Run commands
 from the repository root. Write code, tests, logs, and other results to the
@@ -50,24 +51,24 @@ translate one into the other.
 - `equipment-data-parser/` — the ordered build-and-operate sequence for the
   company LLM. `index.md` is its contract and entry point, `spec.md` is a
   snapshot of the architecture doc, and `problems.md` is the format of the
-  office agent's problem entries. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
-  The office PC's hub clone pulls `main` and never pushes; each agent
+  execution agent's problem entries. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
+  The company-local hub clone pulls `main` and never pushes; each agent
   model works in a plain copy of it with no git inside, one model at a time
   through the whole sequence, and the engineer copies your updates in
   between sessions (`engineer-guide.md` §1).
-- `office/` — the office agent's ledger (`progress.md`), problem entries and
-  `spike.py` workaround. It exists only in the office PC's local copies.
+- `office/` — the execution agent's ledger (`progress.md`), problem entries and
+  `spike.py` workaround. The name is a repository path, not a location check.
   During maintenance, do not create or modify `office/`, or create root-level
-  outputs assigned to the office agent by a build letter. During office
-  execution, the office agent may create and update files in `office/` and
+  outputs assigned to the execution agent by a build letter. During letter
+  execution, the execution agent may create and update files in `office/` and
   root-level build outputs as permitted by `equipment-data-parser/index.md`
-  and the current letter, after the required office setup checks pass.
+  and the current letter, after the required setup checks pass.
   Nothing comes back by git; the user relays sanitized
   summaries, and those are the input for fixing a letter or the spec. The
-  office agent does not edit the letters; the maintainer does.
+  execution agent does not edit the letters; the maintainer does.
 - `agent_build_steps/` — hands-on course for the maintainer on growing
   `spike.py` into a harness and then an agent. Korean, like `docs/`: it is
-  read by the user, not by the office agent. It prescribes no behavior; when
+  read by the user, not by the execution agent. It prescribes no behavior; when
   it disagrees with the spec, the spec wins and the course is wrong.
 - `ftp_handler/` — vendored from `skewnono_v3_nuxt`, read-only here. A change
   to it belongs upstream. One change was made here and has been ported to both
