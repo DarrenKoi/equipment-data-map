@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Equipment Data Map 저장소의 목적과 안전한 FAB 장비 데이터 탐색 방식을 설명합니다.">
+  <title>Equipment Data Map — 장비 데이터를 이해하는 안전한 지도</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f3f1ea;
+      --muted: #a9aaa5;
+      --dim: #757873;
+      --line: rgba(243, 241, 234, 0.14);
+      --line-strong: rgba(243, 241, 234, 0.28);
+      --surface: #171916;
+      --surface-raised: #20221e;
+      --canvas: #0d0f0d;
+      --lime: #c7ff69;
+      --mint: #70e2b2;
+      --orange: #ff9c52;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--canvas);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 78% 12%, rgba(199, 255, 105, 0.08), transparent 26rem),
+        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        var(--canvas);
+      background-size: auto, 36px 36px, 36px 36px, auto;
+      font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+      line-height: 1.65;
+      word-break: keep-all;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(calc(100% - 40px), var(--max));
+      margin-inline: auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(13, 15, 13, 0.82);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar .shell {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      width: 20px;
+      aspect-ratio: 1;
+      border: 2px solid var(--lime);
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 20px var(--lime);
+    }
+
+    nav {
+      display: flex;
+      gap: 22px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    nav a {
+      text-decoration: none;
+      transition: color 160ms ease;
+    }
+
+    nav a:hover,
+    nav a:focus-visible { color: var(--lime); }
+
+    .hero {
+      min-height: 720px;
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      align-items: center;
+      gap: clamp(48px, 8vw, 110px);
+      padding-block: 100px 92px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 22px;
+      color: var(--lime);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 30px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      margin-bottom: 28px;
+      font-size: clamp(3.2rem, 7.2vw, 6.7rem);
+      line-height: 0.98;
+      letter-spacing: -0.065em;
+      font-weight: 850;
+    }
+
+    h1 .accent {
+      display: block;
+      color: var(--lime);
+      font-weight: 450;
+    }
+
+    .hero-copy {
+      max-width: 650px;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.5vw, 1.22rem);
+    }
+
+    .hero-copy strong { color: var(--ink); }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 36px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 20px;
+      border: 1px solid var(--line-strong);
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 750;
+    }
+
+    .button.primary {
+      border-color: var(--lime);
+      color: #11150e;
+      background: var(--lime);
+    }
+
+    .map-visual {
+      min-height: 460px;
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(112, 226, 178, 0.13), transparent 64%);
+      box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.34);
+    }
+
+    .map-visual::before,
+    .map-visual::after {
+      content: "";
+      position: absolute;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+    }
+
+    .map-visual::before { inset: 16%; }
+    .map-visual::after { inset: 33%; }
+
+    .node {
+      position: absolute;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 74px;
+      aspect-ratio: 1;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .node.center {
+      inset: 50% auto auto 50%;
+      width: 126px;
+      transform: translate(-50%, -50%);
+      border-color: var(--lime);
+      color: var(--ink);
+      background: #161b12;
+      box-shadow: 0 0 38px rgba(199, 255, 105, 0.16);
+    }
+
+    .node.n1 { top: 6%; left: 42%; }
+    .node.n2 { top: 29%; right: 3%; }
+    .node.n3 { right: 17%; bottom: 6%; }
+    .node.n4 { bottom: 6%; left: 17%; }
+    .node.n5 { top: 29%; left: 3%; }
+
+    .map-caption {
+      position: absolute;
+      right: 5%;
+      bottom: 27%;
+      color: var(--dim);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.67rem;
+      writing-mode: vertical-rl;
+      letter-spacing: 0.16em;
+    }
+
+    .purpose-band {
+      border-block: 1px solid var(--line);
+      background: rgba(23, 25, 22, 0.76);
+    }
+
+    .purpose-grid {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: clamp(50px, 9vw, 130px);
+      padding-block: 96px;
+    }
+
+    .section-number {
+      color: var(--dim);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+    }
+
+    h2 {
+      margin-bottom: 24px;
+      font-size: clamp(2.2rem, 4.4vw, 4.2rem);
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+    }
+
+    .manifesto {
+      margin: 0;
+      font-size: clamp(1.5rem, 3vw, 2.6rem);
+      line-height: 1.35;
+      letter-spacing: -0.025em;
+    }
+
+    .manifesto em {
+      color: var(--orange);
+      font-style: normal;
+    }
+
+    .questions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 42px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .question {
+      min-height: 156px;
+      padding: 24px;
+      background: var(--surface);
+    }
+
+    .question b {
+      display: block;
+      margin-bottom: 14px;
+      color: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.74rem;
+    }
+
+    .question p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    section.block { padding-block: 118px; }
+
+    .section-head {
+      max-width: 740px;
+      margin-bottom: 58px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      counter-reset: pipeline;
+    }
+
+    .pipeline-step {
+      position: relative;
+      min-height: 270px;
+      padding: 22px 18px;
+      border-top: 1px solid var(--line-strong);
+      counter-increment: pipeline;
+    }
+
+    .pipeline-step::before {
+      content: "0" counter(pipeline);
+      display: block;
+      margin-bottom: 58px;
+      color: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+    }
+
+    .pipeline-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: -15px;
+      right: -9px;
+      z-index: 2;
+      padding: 0 5px;
+      color: var(--dim);
+      background: var(--canvas);
+    }
+
+    .pipeline-step h3 {
+      margin-bottom: 10px;
+      font-size: 1.02rem;
+      letter-spacing: -0.02em;
+    }
+
+    .pipeline-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .rule {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 24px;
+      margin-top: 54px;
+      padding: 28px 32px;
+      border: 1px solid rgba(255, 156, 82, 0.45);
+      background: rgba(255, 156, 82, 0.06);
+    }
+
+    .rule strong {
+      color: var(--orange);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .rule p { margin: 0; }
+
+    .outputs {
+      background: var(--ink);
+      color: #161815;
+    }
+
+    .outputs .eyebrow { color: #486a21; }
+    .outputs .section-head p { color: #565b53; }
+
+    .output-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .output-card {
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 26px;
+      border: 1px solid rgba(22, 24, 21, 0.18);
+      background: #ebe9e1;
+    }
+
+    .output-card.primary-output {
+      color: #151b0d;
+      background: var(--lime);
+    }
+
+    .output-icon {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .output-card h3 {
+      margin: 0 0 9px;
+      font-size: 1.32rem;
+    }
+
+    .output-card p {
+      margin: 0;
+      color: #565b53;
+      font-size: 0.88rem;
+    }
+
+    .primary-output p { color: #35431f; }
+
+    .guardrail-layout {
+      display: grid;
+      grid-template-columns: 0.82fr 1.18fr;
+      gap: clamp(54px, 9vw, 130px);
+      align-items: start;
+    }
+
+    .guardrail-list {
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .guardrail-item {
+      display: grid;
+      grid-template-columns: 50px 1fr;
+      gap: 18px;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .guardrail-item .check {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--mint);
+      border-radius: 50%;
+      color: var(--mint);
+      font-size: 0.8rem;
+    }
+
+    .guardrail-item h3 {
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+
+    .guardrail-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .rollout {
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(32, 34, 30, 0.72), rgba(13, 15, 13, 0));
+    }
+
+    .rollout-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .rollout-step {
+      min-height: 248px;
+      padding: 24px 20px;
+      background: var(--surface);
+    }
+
+    .rollout-step span {
+      display: inline-block;
+      margin-bottom: 46px;
+      padding: 5px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      color: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+    }
+
+    .rollout-step h3 {
+      margin-bottom: 12px;
+      font-size: 1rem;
+    }
+
+    .rollout-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .distinction {
+      max-width: 760px;
+      margin: 34px 0 0 auto;
+      padding-left: 20px;
+      border-left: 2px solid var(--orange);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .distinction strong { color: var(--ink); }
+
+    footer {
+      padding-block: 86px 42px;
+      border-top: 1px solid var(--line);
+    }
+
+    .closing {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 40px;
+      align-items: end;
+      margin-bottom: 74px;
+    }
+
+    .closing h2 {
+      max-width: 830px;
+      margin: 0;
+    }
+
+    .closing-mark {
+      width: 72px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--lime);
+      border-radius: 50%;
+      color: var(--lime);
+      font-size: 1.7rem;
+    }
+
+    .footer-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--dim);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .purpose-grid,
+      .guardrail-layout { grid-template-columns: 1fr; }
+      .hero { padding-block: 84px; }
+      .map-visual { min-height: 430px; max-width: 520px; width: 100%; margin-inline: auto; }
+      .pipeline { grid-template-columns: repeat(2, 1fr); }
+      .pipeline-step:not(:last-child)::after { display: none; }
+      .output-grid { grid-template-columns: repeat(2, 1fr); }
+      .rollout-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(calc(100% - 28px), var(--max)); }
+      nav { display: none; }
+      .hero { min-height: auto; }
+      h1 { font-size: clamp(3rem, 17vw, 4.8rem); }
+      .map-visual { min-height: 345px; }
+      .node { width: 58px; font-size: 0.58rem; }
+      .node.center { width: 98px; }
+      .purpose-grid,
+      section.block { padding-block: 82px; }
+      .questions,
+      .pipeline,
+      .output-grid,
+      .rollout-grid { grid-template-columns: 1fr; }
+      .pipeline-step { min-height: 190px; }
+      .pipeline-step::before { margin-bottom: 34px; }
+      .output-card { min-height: 230px; }
+      .rule { grid-template-columns: 1fr; }
+      .closing { grid-template-columns: 1fr; align-items: start; }
+      .footer-line { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="#top" aria-label="페이지 처음으로">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Equipment Data Map
+      </a>
+      <nav aria-label="주요 섹션">
+        <a href="#purpose">목적</a>
+        <a href="#pipeline">작동 방식</a>
+        <a href="#outputs">산출물</a>
+        <a href="#safety">안전 원칙</a>
+        <a href="#rollout">Rollout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero shell" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">Company-internal exploration kit</p>
+        <h1 id="hero-title">장비 데이터를<br><span class="accent">이해하는 지도.</span></h1>
+        <p class="hero-copy">
+          FAB 장비의 방대한 파일 저장소를 <strong>읽기 전용으로 안전하게 탐색</strong>하고,
+          반복되는 파일을 묶어 최소한의 대표 샘플만 분석합니다. 흩어진 파일을 복사해 쌓는 대신,
+          어디에 무엇이 있고 서로 어떻게 연결되는지 설명하는 근거 중심의 장비 데이터 지도를 만듭니다.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#pipeline">탐색 흐름 보기</a>
+          <a class="button" href="#safety">안전 원칙 확인</a>
+        </div>
+      </div>
+
+      <div class="map-visual" role="img" aria-label="중앙의 데이터 맵과 연결된 파일군, 경로, 필드, 시각, 근거를 나타내는 추상 지도">
+        <span class="node center">Data<br>Map</span>
+        <span class="node n1">Paths</span>
+        <span class="node n2">File<br>families</span>
+        <span class="node n3">Fields</span>
+        <span class="node n4">Time</span>
+        <span class="node n5">Evidence</span>
+        <span class="map-caption">OBSERVED · TRACEABLE · RESUMABLE</span>
+      </div>
+    </section>
+
+    <section class="purpose-band" id="purpose" aria-labelledby="purpose-title">
+      <div class="purpose-grid shell">
+        <div>
+          <p class="section-number">01 / PURPOSE</p>
+          <h2 id="purpose-title">백업이 아니라,<br>이해를 위한 지도</h2>
+        </div>
+        <div>
+          <p class="manifesto">
+            모든 파일을 가져오는 것이 목표가 아닙니다.
+            <em>목록과 규칙을 먼저 파악하고</em>, 파일군마다 필요한 대표 샘플만 확인해
+            장비 데이터의 구조와 의미를 설명합니다.
+          </p>
+          <div class="questions">
+            <article class="question">
+              <b>WHERE</b>
+              <p>어떤 경로에 어떤 성격의 파일이 있으며, 파일명과 디렉터리에는 어떤 규칙이 있는가?</p>
+            </article>
+            <article class="question">
+              <b>WHAT</b>
+              <p>파일 안에는 어떤 필드와 데이터가 있으며, 각 파일군은 로그·FDC·설정·측정 결과 중 무엇인가?</p>
+            </article>
+            <article class="question">
+              <b>WHEN</b>
+              <p>같은 형식의 파일은 얼마나 자주 생성되고, 시간에 따라 어떻게 달라지는가?</p>
+            </article>
+            <article class="question">
+              <b>WHY</b>
+              <p>운영과 장애 분석에서 어떤 근거 파일을 찾아야 하며, 파일군은 어떻게 연결되는가?</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block shell" id="pipeline" aria-labelledby="pipeline-title">
+      <div class="section-head">
+        <p class="eyebrow">Runtime pipeline</p>
+        <h2 id="pipeline-title">규칙은 코드로,<br>해석은 필요한 곳에만</h2>
+        <p>결정론적인 도구가 수집 범위와 사실을 먼저 고정하고, 회사 내부의 로컬 LLM은 대표 샘플의 의미를 제한적으로 해석합니다.</p>
+      </div>
+
+      <div class="pipeline" aria-label="여섯 단계 런타임 파이프라인">
+        <article class="pipeline-step">
+          <h3>Inventory</h3>
+          <p>내용을 받기 전에 경로, 크기, 수정 시각 등 메타데이터부터 수집합니다.</p>
+        </article>
+        <article class="pipeline-step">
+          <h3>Grouping</h3>
+          <p>경로, 파일명, 확장자, 크기와 제한된 형식 특징으로 반복되는 파일을 묶습니다.</p>
+        </article>
+        <article class="pipeline-step">
+          <h3>Sampling</h3>
+          <p>각 파일군에서 오래된 파일, 최신 파일, 중앙값 파일, 예외 파일 등 소수의 대표 샘플만 고릅니다.</p>
+        </article>
+        <article class="pipeline-step">
+          <h3>Extraction</h3>
+          <p>텍스트, 표, 설정, 로그와 바이너리의 관측 가능한 구조를 결정론적으로 추출합니다.</p>
+        </article>
+        <article class="pipeline-step">
+          <h3>Local LLM</h3>
+          <p>회사망 안에서 파일의 의미, 필드, 생성 주기와 운영 용도를 제한된 형식으로 추론합니다.</p>
+        </article>
+        <article class="pipeline-step">
+          <h3>Data Map</h3>
+          <p>관측 사실과 추론을 구분한 canonical JSON으로 근거와 미해결 항목까지 기록합니다.</p>
+        </article>
+      </div>
+
+      <div class="rule">
+        <strong>Map, not backup</strong>
+        <p>전체 파일을 복제하지 않습니다. 목록을 먼저 만들고, 승인된 범위와 예산 안에서 대표 샘플만 분석합니다.</p>
+      </div>
+    </section>
+
+    <section class="outputs block" id="outputs" aria-labelledby="outputs-title">
+      <div class="shell">
+        <div class="section-head">
+          <p class="eyebrow">One source, many views</p>
+          <h2 id="outputs-title">하나의 기준 지도에서<br>필요한 보기를 만듭니다</h2>
+          <p><code>data-map/</code>이 기준 데이터 세트입니다. Wiki, Graph와 RAG는 서로 다른 진실이 아니라, 검토된 지도에서 언제든 다시 만들 수 있는 파생 산출물입니다.</p>
+        </div>
+
+        <div class="output-grid">
+          <article class="output-card primary-output">
+            <span class="output-icon">JSON</span>
+            <div>
+              <h3>Canonical Data Map</h3>
+              <p>장비, 경로, 파일군, 관측 사실, 추론, 미해결 항목과 근거를 구조화합니다.</p>
+            </div>
+          </article>
+          <article class="output-card">
+            <span class="output-icon">MD</span>
+            <div>
+              <h3>Wiki</h3>
+              <p>엔지니어가 장비 데이터 구조와 운영 맥락을 읽고 검토할 수 있는 문서입니다.</p>
+            </div>
+          </article>
+          <article class="output-card">
+            <span class="output-icon">G</span>
+            <div>
+              <h3>Graph JSONL</h3>
+              <p>파일군 사이의 관측된 구조·내용 관계를 근거와 함께 연결합니다.</p>
+            </div>
+          </article>
+          <article class="output-card">
+            <span class="output-icon">R</span>
+            <div>
+              <h3>RAG JSONL</h3>
+              <p>원문 전체가 아니라 출처를 추적할 수 있는 제한된 claim 단위로 검색을 지원합니다.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="block shell" id="safety" aria-labelledby="safety-title">
+      <div class="guardrail-layout">
+        <div class="section-head">
+          <p class="eyebrow">Fail-closed by design</p>
+          <h2 id="safety-title">안전은 설명이 아니라 실행 조건입니다</h2>
+          <p>모델의 판단에 안전을 맡기지 않습니다. 스크립트와 CLI가 허용 범위, 상태 전이, 예산과 승인을 검사하고 조건이 맞지 않으면 닫힌 상태로 멈춥니다.</p>
+        </div>
+
+        <div class="guardrail-list">
+          <article class="guardrail-item">
+            <span class="check" aria-hidden="true">✓</span>
+            <div>
+              <h3>읽기 전용 접근</h3>
+              <p>장비에서 파일을 생성·수정·삭제하거나 이름을 바꾸는 동작은 허용하지 않습니다.</p>
+            </div>
+          </article>
+          <article class="guardrail-item">
+            <span class="check" aria-hidden="true">✓</span>
+            <div>
+              <h3>명시적인 범위와 예산</h3>
+              <p>허용 경로, 연결 수, 요청 속도, 다운로드 수와 용량, 실행 시간을 계획에 고정합니다.</p>
+            </div>
+          </article>
+          <article class="guardrail-item">
+            <span class="check" aria-hidden="true">✓</span>
+            <div>
+              <h3>근거와 불확실성 보존</h3>
+              <p>관측 사실과 LLM 추론을 구분하고, 암호화·손상·미지원 파일도 누락하지 않고 사유를 남깁니다.</p>
+            </div>
+          </article>
+          <article class="guardrail-item">
+            <span class="check" aria-hidden="true">✓</span>
+            <div>
+              <h3>중단 후 재개</h3>
+              <p>체크포인트와 감사 기록을 기준으로 이어서 실행하며, 대화의 기억을 상태로 사용하지 않습니다.</p>
+            </div>
+          </article>
+          <article class="guardrail-item">
+            <span class="check" aria-hidden="true">✓</span>
+            <div>
+              <h3>회사망 내부 처리</h3>
+              <p>원본 파일과 분석 결과는 회사망 밖으로 반출하지 않으며, 승인된 내부 LLM만 사용합니다.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="rollout block" id="rollout" aria-labelledby="rollout-title">
+      <div class="shell">
+        <div class="section-head">
+          <p class="eyebrow">Human-gated rollout</p>
+          <h2 id="rollout-title">가짜 장비에서 시작해<br>한 단계씩 검증합니다</h2>
+          <p>각 단계마다 엔지니어가 실행 전 계획과 실행 후 결과를 확인해야 다음 단계로 넘어갑니다.</p>
+        </div>
+
+        <div class="rollout-grid">
+          <article class="rollout-step">
+            <span>1단계</span>
+            <h3>가짜 장비 검증</h3>
+            <p>로컬 가짜 FTP에서 LLM 없이 수집·분류·샘플링과 지도 생성을 검증합니다.</p>
+          </article>
+          <article class="rollout-step">
+            <span>2단계</span>
+            <h3>로컬 LLM 연결</h3>
+            <p>측정 데이터와 로그 표본으로 필드별 구조화 해석과 검증 절차를 확인합니다.</p>
+          </article>
+          <article class="rollout-step">
+            <span>3단계</span>
+            <h3>장비 1대 시범 운영</h3>
+            <p>좁은 허용 루트와 작은 예산으로 승인된 장비를 읽기 전용으로 탐색합니다.</p>
+          </article>
+          <article class="rollout-step">
+            <span>4단계</span>
+            <h3>파생 산출물 생성</h3>
+            <p>검토된 지도에서 Wiki, Graph와 RAG를 생성하고 모든 답변에 근거를 연결합니다.</p>
+          </article>
+          <article class="rollout-step">
+            <span>5단계</span>
+            <h3>장비 종류 확장</h3>
+            <p>프로필과 기존 extractor 매핑을 검증해 다음 장비 유형으로 확장합니다.</p>
+          </article>
+        </div>
+
+        <p class="distinction">
+          <strong>두 종류의 단계를 구분합니다.</strong> 위 5단계는 운영 승인 단위인 rollout이고,
+          앞의 Inventory부터 Data Map까지 6단계는 한 번의 분석 실행 안에서 반복되는 런타임 파이프라인입니다.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <div class="closing">
+        <h2>적게 가져오고,<br>더 정확하게 이해합니다.</h2>
+        <span class="closing-mark" aria-hidden="true">↗</span>
+      </div>
+      <div class="footer-line">
+        <span>EQUIPMENT DATA MAP</span>
+        <span>READ-ONLY · EVIDENCE-FIRST · COMPANY-INTERNAL</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
