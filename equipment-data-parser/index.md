@@ -200,6 +200,9 @@ stay the only writer of `office/progress.md`.
 4. A job writes only the files its letter names, plus its own test module.
    `equipment_map/cli.py` and `pyproject.toml` belong to letter 01; letters 03
    and 08 also edit `cli.py`, so those two never share a batch.
+   Every job runs in this same folder. There is no git here, so there is no
+   worktree, branch or clone to isolate a job in; file ownership is the whole
+   of the isolation, which is why the rule above is the one that matters.
 5. When the batch is in, run every finished letter's **Done when** again,
    together, in the shared tree. Those runs earn the `done` lines: a letter
    that passed inside its own job proves nothing about the package. Fix a

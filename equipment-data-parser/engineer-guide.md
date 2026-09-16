@@ -44,6 +44,16 @@ mid-sequence: a half-built CLI or a half-interpreted map from two models cannot
 be reviewed as one result. Comparing models is a later exercise, on a finished
 process.
 
+Parallel letters run as pi subagents: install `pi-subagents` in the model
+folder's pi (`pi install npm:pi-subagents`, then `pi list` to confirm) and the
+agent gets a `subagent` tool whose builtin `worker` role is the one that edits
+files. index.md's **Parallel jobs** section says what may be batched; pi
+decides how to start it. Where that extension is not available, the same shape
+works with the agent's own shell: one backgrounded `pi -p '<letter job>'` per
+letter from the model folder, which needs nothing installed. Do not use the
+worktree isolation the extension documents — there is no git in the model
+folder to make a worktree from.
+
 Speed comes from that one model working several letters at once, not from a
 second model or a second folder. The agent starts subagents inside its own
 copy under index.md's **Parallel jobs** rules: one coordinator, one ledger
