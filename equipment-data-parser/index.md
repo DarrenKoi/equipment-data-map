@@ -134,6 +134,25 @@ not gate it.
    `waiting` line, run the check it names; continue only when it passes.
    A check may be `grep` for a `confirmed` line that only a human appends.
    If every letter is `done`, stop and report.
+
+   A `done` line carries the hash of the letter file it finished, so re-check
+   them before you choose. A letter whose file no longer matches its hash, or
+   whose `done` line has no `letter:` field, was revised after you finished
+   it and is not done:
+
+   ```sh
+   awk -F'letter: ' '/^- [0-9][0-9] done /{split($0,a," "); h[a[2]]=(NF>1?$2:"none")} END{for (n in h) print n, h[n]}' office/progress.md | sort | while read -r n h; do f=$(ls equipment-data-parser/$n-*.md 2>/dev/null); [ -n "$f" ] && [ "$(sha256sum "$f" | cut -c1-12)" = "$h" ] || echo "redo $n"; done
+   ```
+
+   Finish an open `wip` or `waiting` letter first; after that the earliest
+   `redo` letter is your current letter, ahead of the first letter with no
+   `done` line. Redoing means reconciling what is already on disk with the
+   letter's current text and running its **Done when** again — keep what
+   still passes, and never rebuild a module from scratch to satisfy an
+   addition. Nobody has to tell you a letter changed; this check is how you
+   find out. For letters 16–20 a stage already run against equipment is not
+   re-run: record the revision in `office/problems/NN-problems.md`, append
+   `waiting`, and let the engineer decide.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
    the source of truth; the letter only orders the work.
 3. Do the **Build** items in order. After each item run the checkpoint
@@ -166,7 +185,7 @@ in `office/problems/NN-problems.md`.
 - NN waiting <UTC date> | <what the engineer must do> | <check command that proves it>
 - NN confirmed <UTC date> | <key>: <value the human confirmed>   (human-written only)
 - NN blocked <UTC date> | <what is missing> | <sanitized error code, one line>
-- NN done <UTC date> | <test or status command> | <result, e.g. 12 passed>
+- NN done <UTC date> | <test or status command> | <result, e.g. 12 passed> | letter: <first 12 hex of sha256 of that letter file>
 ```
 
 Append only. Never edit or delete earlier lines.
@@ -195,8 +214,15 @@ printf -- '- NN wip %s | <build item> | next: <next action>\n' "$(date -u +%FT%T
 tail -n 1 office/progress.md             # must be the line you just appended
 ```
 
-`waiting`, `blocked`, and `done` lines follow the same shape. Files you did
-not make stay untouched.
+`waiting` and `blocked` lines follow the same shape. A `done` line adds the
+hash of the letter you finished:
+
+```sh
+printf -- '- NN done %s | <command> | <result> | letter: %s\n' "$(date -u +%F)" \
+  "$(sha256sum equipment-data-parser/NN-*.md | cut -c1-12)" >> office/progress.md
+```
+
+Files you did not make stay untouched.
 
 Tests need not pass at a checkpoint — a checkpoint is a save point, not a
 release. Say so in `next:` (`next: make test_cli_contract.py::test_exit_30

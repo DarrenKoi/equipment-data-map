@@ -77,9 +77,10 @@ D="../$(basename "$PWD")-$M"
 The same script restarts a model from scratch: first delete everything in
 its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
 
-`python tools/reset_model_folder.py` from the hub (folder and slug are set at the
-top of the file; two arguments override them) does
-both the first setup and a restart in one step.
+`python tools/reset_model_folder.py --reset` from the hub (folder and slug are
+set at the top of the file; two arguments after the flag override them) does
+both the first setup and a restart in one step. Without `--reset` the script
+refreshes instead, which is the between-sessions move below.
 
 Leave the historical `equipment.toml` untouched. Supply internal interpretation
 settings only when the current letter requests them, through the engineer-run
@@ -98,11 +99,20 @@ tracked file can simply be replaced by the hub's copy.
 ```sh
 D=../equipment-data-map-qwen3-8b                      # the active model folder
 git pull --ff-only                                    # in the hub, on main
-git ls-files | while read -r f; do mkdir -p "$D/$(dirname "$f")"; cp "$f" "$D/$f"; done
+python tools/reset_model_folder.py "$D"
 ```
 
-A file the maintainer deleted stays behind in the model folder; a fresh copy
-clears it when that matters. When the update changed `spike.py` and
+Refreshing is the script's default: it replaces the tracked files and deletes
+nothing else, so `office/`, the built CLI, its tests, `equipment-map-suite/`
+and `rollouts/` survive. It prints the tracked files that changed, removes a
+letter the hub no longer ships, and names the changed letters that
+`office/progress.md` already marks `done`.
+
+You do not have to pass that list on. Each `done` line carries the hash of the
+letter it finished, so the next session re-checks them, finds the revised ones
+itself and redoes them before moving on (index.md, Loop step 1). The printed
+list only tells you how much work that will be. A hand copy or file-manager
+copy is detected the same way. When the update changed `spike.py` and
 `office/spike.py` exists, compare them in the model folder
 (`diff spike.py office/spike.py`): delete the copy if the maintainer's
 version covers the workaround, otherwise port the new changes into it. Run
