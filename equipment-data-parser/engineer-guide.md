@@ -39,10 +39,17 @@ paths or credentials.
 
 **One model takes the whole sequence.** One approved model runs letters 01
 through 20 to the end. It is always the agent model and, once interpretation is
-enabled, is also the approved internal interpretation model before any other model is tried. Do not run the letters with several
-models at once, and do not switch models mid-sequence: a half-built CLI or a
-half-interpreted map from two models cannot be reviewed as one result.
-Comparing models is a later exercise, on a finished process.
+enabled, is also the approved internal interpretation model before any other model is tried. Do not switch models
+mid-sequence: a half-built CLI or a half-interpreted map from two models cannot
+be reviewed as one result. Comparing models is a later exercise, on a finished
+process.
+
+Speed comes from that one model working several letters at once, not from a
+second model or a second folder. The agent starts subagents inside its own
+copy under index.md's **Parallel jobs** rules: one coordinator, one ledger
+writer, and only letters whose `Needs` and files are disjoint. Two agent
+sessions in one folder, or the same letters in two folders, produce a build
+nobody can review — that is still out.
 
 **One hub, one folder per model.** The model that runs the letters gets its
 own plain copy of the hub, `<repo>-<model>/`, with no `.git` inside. When a
@@ -131,7 +138,7 @@ Keep a local readiness sheet with these entries:
 | Local storage | Restricted ACL, capacity and approved retention for rollouts, history, samples and diagnostics |
 | Profile/glossary | Local paths, version and checked contents; do not commit equipment-specific values |
 | Scope/budgets/window | Engineer enters them in init; no defaults inferred by the model |
-| Tool discovery/export formats | Verify on all four tool versions before letter 14/15 implementation |
+| Tool discovery/export formats | Verify on the installed pi version before letter 14/15 implementation; the other three tools only when they are brought into scope |
 
 Use `http://` for both the company FTP proxy and the internal LLM endpoint.
 This is the required transport inside the private company network, whose outside

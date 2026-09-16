@@ -42,7 +42,10 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
   it says "human gate" instead.
 - Discovery roots are suite-version contract values stored in
   `VERSION.json` under `discovery`, one per tool, relative to `$HOME` or
-  `%USERPROFILE%`. Before writing the installers, append `waiting` with
+  `%USERPROFILE%`. All four stay in the contract as install targets even
+  though letter 15 validates pi only; the other three are pre-wired for the
+  later extension, not a claim that they are supported.
+  Before writing the installers, append `waiting` with
   the candidate values (Codex `.codex/skills`, Claude Code
   `.claude/skills`, OpenCode `.config/opencode/skills`, pi
   `.pi/agent/skills`) and stop until `office/progress.md` holds a human line

@@ -2,9 +2,10 @@
 
 ## Goal
 
-Prove the skills behave under the minimum model across the four agent
-tools. You prepare the harness; a human runs the sessions and records the
-model configuration.
+Prove the skills behave under the minimum model on pi. You prepare the
+harness; a human runs the sessions and records the model configuration.
+Codex, Claude Code and OpenCode are out of scope for now: the harness keeps
+room for them, and each is validated the same way when it is brought in.
 
 ## Read
 
@@ -19,12 +20,12 @@ the same scenarios, recording the exact model and serving configuration.
 
 ## Build
 
-Before coding normalizers, obtain an engineer-provided synthetic native export
-and exact tool/export version for each of the four tools. Record `waiting`
-if any is missing; never infer an export schema from the tool name. Keep samples
-local and untracked. The human confirms availability with
+Before coding the normalizer, obtain an engineer-provided synthetic native
+export and exact tool/export version for pi. Record `waiting` if it is
+missing; never infer an export schema from the tool name. Keep samples local
+and untracked. The human confirms availability with
 `- 15 confirmed <UTC date> | export-fixtures: ready | <local inventory sha256>`.
-The fixture inventory records all four tool versions and sample hashes.
+The fixture inventory records pi's version and sample hashes.
 
 - `scenarios/README.md`: one scenario per §7 observable result, each with
   the exact prompt to give the agent tool, the rollout fixture to prepare,
@@ -32,11 +33,13 @@ The fixture inventory records all four tool versions and sample hashes.
 - Normalized transcript: `scenarios/transcripts/<tool>-<case-id>.jsonl` (local, untracked),
   one object per line, keys exactly `seq`, `ts` (UTC ISO-8601), `role`
   (`user`|`assistant`|`command`), `text`, `command` (shell line, `command`
-  role only), `exit_code`. `scripts/normalize_transcript.py --tool
-  <codex|claude-code|opencode|pi> <native-export>` converts each tool's own
-  session export (`scenarios/README.md` states, per tool, the export
-  command or session file location the human uses) into that format; the
-  script fails on an unknown tool instead of guessing.
+  role only), `exit_code`. `scripts/normalize_transcript.py --tool pi
+  <native-export>` converts pi's own session export (`scenarios/README.md`
+  states the export command or session file location the human uses) into
+  that format. `--tool` accepts `pi` and fails on every other name, including
+  `codex`, `claude-code` and `opencode`: an out-of-scope tool is the same
+  failure as an unknown one, and a guessed branch is worse than no branch.
+  Bringing a tool in means a verified export sample first, then its branch.
 - `scripts/check_audit.py`: reads an `audit.jsonl` and one normalized
   transcript, fails if any `command` line is outside the skill's allowed
   set, if `next` succeeded without a prior `approve-plan`, or if
@@ -55,19 +58,16 @@ python -m pytest -q tests/test_check_audit.py tests/test_normalize_transcript.py
 ```
 
 Then hand off to the human. This letter is `done` only after a human has
-appended these four `confirmed` lines to `office/progress.md`, each with real
-values in place of the angle-bracket fields and `all-scenarios-pass`
-literally:
+appended this `confirmed` line to `office/progress.md`, with real values in
+place of the angle-bracket fields and `all-scenarios-pass` literally:
 
 ```
-- 15 confirmed <UTC date> | codex | <local result sheet sha256> | all-scenarios-pass
-- 15 confirmed <UTC date> | claude-code | <local result sheet sha256> | all-scenarios-pass
-- 15 confirmed <UTC date> | opencode | <local result sheet sha256> | all-scenarios-pass
 - 15 confirmed <UTC date> | pi | <local result sheet sha256> | all-scenarios-pass
 ```
 
-Record `waiting` until one current-release confirmation exists for each distinct
-tool, tied to its actual result sheet. Four duplicate lines do not pass.
+Record `waiting` until that current-release confirmation exists, tied to its
+actual result sheet. When a further tool is brought into scope it adds its own
+line in the same shape; a line copied from pi's does not pass for it.
 The engineer verifies sheet hashes, suite/contract versions and the same exact
 minimum-model profile in those sheets; model identity/configuration stays there,
 not in tracked progress. Read implementation-reference.md §9 for the matrix.

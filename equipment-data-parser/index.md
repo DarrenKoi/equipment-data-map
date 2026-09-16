@@ -49,9 +49,11 @@ unresolved interpretations; inspect coverage before calling the map complete.
 ## Your folder and the `office/` folder
 
 Your working directory is a plain copy of the repository with no git in it;
-never run git here. One model runs the whole sequence, in its own copy
+never run git here. The whole sequence runs in this one copy
 ([engineer-guide.md](engineer-guide.md) §1); another model gets another copy
-only after this one is finished. Your working directory is your whole
+only after this one is finished. Inside it you may work on several letters at
+once through subagents you start yourself — see **Parallel jobs** — but there
+is only ever one copy and one ledger. Your working directory is your whole
 identity: never read or write in another copy, and never take a model name
 from the prompt. The maintainer's updates arrive only when the engineer
 copies them in between sessions.
@@ -130,7 +132,8 @@ not gate it.
    the engineer appends `- 16 confirmed <UTC date> | rollout: <opaque id>`.
    Evaluate operating-letter outcomes only after that marker and only for
    that rollout. An inherited older `done` line never completes the new one.
-   If it has `wip` lines, continue from the last one. If it has a
+   If it has `wip` lines, continue each unfinished letter from that letter's
+   own last `wip` line. If it has a
    `waiting` line, run the check it names; continue only when it passes.
    A check may be `grep` for a `confirmed` line that only a human appends.
    If every letter is `done`, stop and report.
@@ -153,6 +156,8 @@ not gate it.
    find out. For letters 16–20 a stage already run against equipment is not
    re-run: record the revision in `office/problems/NN-problems.md`, append
    `waiting`, and let the engineer decide.
+
+   When more than one letter is ready at once, see **Parallel jobs** below.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
    the source of truth; the letter only orders the work.
 3. Do the **Build** items in order. After each item run the checkpoint
@@ -177,6 +182,35 @@ attempts; the letter conflicts with `spec.md`; a step needs a credential,
 real equipment, or a human decision that is not yet given. Record the reason
 in `office/progress.md` with a sanitized error code, one line, and put safe detail
 in `office/problems/NN-problems.md`.
+
+## Parallel jobs
+
+Letters that need different files may run at the same time. You are the
+coordinator: you choose the ready letters, start one subagent per letter, and
+stay the only writer of `office/progress.md`.
+
+1. A letter is ready when every letter in its **Needs** column has a current
+   `done` line. Start at most three at once.
+2. One subagent per letter, never two inside one letter: a letter is the
+   smallest unit that has a **Done when**.
+3. Append one `wip` line per letter before the batch starts, so a session that
+   dies leaves the batch visible to the next one. Give each subagent its letter
+   number, the files that letter names, and nothing else to do. A subagent
+   writes no ledger line and starts no subagent of its own.
+4. A job writes only the files its letter names, plus its own test module.
+   `equipment_map/cli.py` and `pyproject.toml` belong to letter 01; letters 03
+   and 08 also edit `cli.py`, so those two never share a batch.
+5. When the batch is in, run every finished letter's **Done when** again,
+   together, in the shared tree. Those runs earn the `done` lines: a letter
+   that passed inside its own job proves nothing about the package. Fix a
+   failure here yourself, one letter at a time, before the next batch.
+6. If two jobs edited the same file, leave both `wip` and redo them one after
+   the other.
+
+Letters 16–20 never share a batch: each waits on the previous stage's human
+approval, and one rollout has one state. Running letters one at a time is
+always allowed and never wrong — fan out when the **Needs** column says you
+can, not because a letter looks long.
 
 ## office/progress.md format
 
@@ -426,27 +460,31 @@ fake tree, not about live equipment or model accuracy.
 
 ## Letters
 
-| NN | Title | Rollout stage |
-|---|---|---|
-| 01 | CLI skeleton and exit contract | all |
-| 02 | Rollout state, plan, approvals, lock | all |
-| 03 | Source interface, FTP adapter, fake FTP | 1 |
-| 05 | Inventory with checkpoints and budgets | 1 |
-| 06 | Grouping into file families | 1 |
-| 07 | Sampling with budgets and dedup | 1 |
-| 08 | Deterministic extraction | 1 |
-| 09 | Data map output and stage 1 `next` | 1 |
-| 10 | Stage 1 verification scenarios | 1 |
-| 11 | Local LLM analysis and stage 2 `next` | 2 |
-| 12 | Wiki, Graph and RAG generation, stage 4 `next` | 4 |
-| 13 | Equipment profiles, access window, stage 3 and 5 | 3, 5 |
-| 14 | Skill suite and installers | all |
-| 15 | Cross-tool scenario validation | all |
-| 16 | Operate: stage 1 on the fake tree | 1 |
-| 17 | Operate: stage 2 with the local LLM | 2 |
-| 18 | Operate: stage 3 pilot on one equipment | 3 |
-| 19 | Operate: stage 4 publish, the deliverable | 4 |
-| 20 | Operate: stage 5 register the next profile | 5 |
+`Needs` is what must carry a current `done` line before that letter starts.
+Letters with disjoint needs and disjoint files are the ones **Parallel jobs**
+lets you batch.
+
+| NN | Title | Rollout stage | Needs |
+|---|---|---|---|
+| 01 | CLI skeleton and exit contract | all | — |
+| 02 | Rollout state, plan, approvals, lock | all | 01 |
+| 03 | Source interface, FTP adapter, fake FTP | 1 | 01 |
+| 05 | Inventory with checkpoints and budgets | 1 | 02, 03 |
+| 06 | Grouping into file families | 1 | 05 |
+| 07 | Sampling with budgets and dedup | 1 | 03, 06 |
+| 08 | Deterministic extraction | 1 | 07 |
+| 09 | Data map output and stage 1 `next` | 1 | 05, 06, 07, 08 |
+| 10 | Stage 1 verification scenarios | 1 | 09 |
+| 11 | Local LLM analysis and stage 2 `next` | 2 | 02, 09 |
+| 12 | Wiki, Graph and RAG generation, stage 4 `next` | 4 | 09, 11 |
+| 13 | Equipment profiles, access window, stage 3 and 5 | 3, 5 | 09, 11 |
+| 14 | Skill suite and installers | all | 01 |
+| 15 | Cross-tool scenario validation | all | 02, 11, 14 |
+| 16 | Operate: stage 1 on the fake tree | 1 | 01–15 |
+| 17 | Operate: stage 2 with the local LLM | 2 | 16 |
+| 18 | Operate: stage 3 pilot on one equipment | 3 | 17 |
+| 19 | Operate: stage 4 publish, the deliverable | 4 | 18 |
+| 20 | Operate: stage 5 register the next profile | 5 | 19 |
 
 Letter 04 was SMB. There is no SMB at this site yet, so it was removed rather
 than built ahead of a need; number 04 stays vacant so every later letter keeps

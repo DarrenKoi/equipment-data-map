@@ -54,8 +54,10 @@ translate one into the other.
   execution agent's problem entries. Keep `spec.md` in sync; the `docs/` copy wins on any difference.
   The company-local hub clone pulls `main` and never pushes; each agent
   model works in a plain copy of it with no git inside, one model at a time
-  through the whole sequence, and the engineer copies your updates in
-  between sessions (`engineer-guide.md` §1).
+  through the whole sequence — working several letters at once only through
+  subagents inside that one copy, under `index.md`'s Parallel jobs rules —
+  and the engineer copies your updates in between sessions
+  (`engineer-guide.md` §1).
 - `office/` — the execution agent's ledger (`progress.md`), problem entries and
   `spike.py` workaround. The name is a repository path, not a location check.
   During maintenance, do not create or modify `office/`, or create root-level
@@ -104,5 +106,6 @@ behavior. Prefer fake FTP trees and copied samples before any approved
 equipment trial. Verify read-only access, budget stops, checkpoint resume,
 unreadable-file retention, evidence traceability, and rejection of invalid
 stage transitions. A skill release also needs the same task scenario
-exercised across the four supported agent tools and the current minimum-model
-profile the spec names.
+exercised on pi and the current minimum-model profile the spec names. Codex,
+Claude Code and OpenCode are a later extension: each repeats the same scenarios
+before it is called supported.

@@ -478,8 +478,10 @@ Do not claim the suite folder alone is a self-contained runtime distribution.
 bytes and CLI/contract availability without repairing anything. Refuse to
 silently overwrite a different existing skill; the engineer resolves conflicts.
 
-Discovery paths and native transcript export formats must be verified on the
-actual four installed tool versions before coding their installer/normalizer.
+Discovery paths and native transcript export formats must be verified on pi's
+actual installed version before coding its installer/normalizer. Codex, Claude
+Code and OpenCode are out of scope until pi passes; each one repeats this
+verification before it is coded.
 They are site/version facts, not assumptions to guess. Keep raw/normalized
 transcripts and model settings untracked and company-local. Normalizers reject
 unknown export versions, preserve every shell command/exit code, and fail if
@@ -495,6 +497,7 @@ expected commands and audit events, not a human's impression of the dialogue.
 Each local result sheet records suite/CLI/contract versions, tool version,
 requested/returned model IDs, serving configuration or unknown, scenario IDs,
 expected vs actual commands/exits, transcript and audit hashes, test results,
-reviewer and date. Require all four distinct tools, all scenarios, same tested
-release and minimum-model profile; an untested cell is pending, never pass.
+reviewer and date. Require pi, all scenarios, same tested release and
+minimum-model profile; an untested cell is pending, never pass. A later tool
+repeats the whole matrix before it is listed as supported.
 No Skill Market release or real-equipment readiness claim until that gate passes.
