@@ -48,7 +48,12 @@ Parallel letters run as pi subagents: install `pi-subagents` in the model
 folder's pi (`pi install npm:pi-subagents`, then `pi list` to confirm) and the
 agent gets a `subagent` tool whose builtin `worker` role is the one that edits
 files. index.md's **Parallel jobs** section says what may be batched; pi
-decides how to start it. Where that extension is not available, the same shape
+decides how to start it. Builtin roles inherit the parent session's model, so
+one model still takes the whole sequence — but confirm that on this PC: no
+`subagents.defaultModel` and no `subagents.agentOverrides.worker.model` in
+`~/.pi/agent/settings.json` or the project settings, or pin it with
+`"worker": {"model": "inherit"}`. A child on another model breaks the rule
+above silently, in files the parent then reports as done. Where that extension is not available, the same shape
 works with the agent's own shell: one backgrounded `pi -p '<letter job>'` per
 letter from the model folder, which needs nothing installed. Do not use the
 worktree isolation the extension documents — there is no git in the model
