@@ -16,9 +16,9 @@ Use implementation-reference.md §7 for common records and hash ordering.
 
 - `equipment_map/datamap.py`: `index.json` (dataset version, per-file
   hashes), `equipment.json`, `file-families.json`, `paths.json`,
-  `unreadable.json`. Sorted keys, `\n` line endings, no timestamps other
-  than those from the inventory. `wiki/`, `graph/` and `rag/` stay empty until
-  letter 12.
+  `unreadable.json`. Sorted keys, two-space indent (implementation-reference.md
+  §3), `\n` line endings, no timestamps other than those from the inventory.
+  `wiki/` and `graph/` stay empty until letter 12.
 - Clock injection: one `now()` in `equipment_map/clock.py` that tests can
   freeze.
 - `result-manifest.json`: sorted `/`-separated relative paths under
@@ -70,7 +70,9 @@ Use implementation-reference.md §7 for common records and hash ordering.
   semantic field roles and meaning remain `unknown` until a validated
   deterministic rule or letter 11 inference supplies them. Keep `family_id`,
   inventory `observation_id`, whole-sample SHA, extract SHA and later
-  `claim_id` distinct and validate every typed reference.
+  `claim_id` distinct and validate every typed reference. Combine each
+  sample's field value summaries into `data_profile.schema.fields` as
+  implementation-reference.md §7 states.
   Samples and metadata-evidence rows carry the supporting `observation_id`;
   reject a reference whose observation is absent or belongs to another scope.
 
@@ -82,8 +84,10 @@ python -m pytest -q tests/test_stage1_e2e.py
 
 Covers, on both transports against the fake FTP: `plan` → fake approval →
 `next` exits 0 and `data-map/` contains the five base JSON files, coverage, metadata evidence
-and sample evidence; two runs with the frozen clock give byte-identical
-`data-map/*.json` and the same manifest hash; stdout contains no fixture
+and sample evidence; every JSON file is indented and ends with one newline;
+two runs with the frozen clock give byte-identical `data-map/*.json` and the
+same manifest hash; a field present in two samples has one combined entry
+with the lowest min, highest max and summed counts; stdout contains no fixture
 path or filename; `next` again is a no-op exit 0.
 
 Also cover spec §7's relationship scenarios in `tests/test_stage1_e2e.py`

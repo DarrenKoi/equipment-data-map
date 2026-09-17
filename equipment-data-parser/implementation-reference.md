@@ -94,9 +94,18 @@ wall-clock UTC is only for recorded timestamps and the access window.
 
 ## 3. Approval and disk state — letter 02
 
-Implement spec §5.2 once in the shared control plane. Use canonical JSON UTF-8,
-`sort_keys=True`, `separators=(",", ":")`, `ensure_ascii=False`, `allow_nan=False`
-plus one newline. Hash canonical payload bytes, excluding its own hash field.
+Implement spec §5.2 once in the shared control plane. There are two kinds of
+hash. Payload hashes and IDs (`plan_hash`, `family_id`, `observation_id`,
+`claim_id`, graph IDs) are taken over compact canonical JSON built in memory:
+UTF-8, `sort_keys=True`, `separators=(",", ":")`, `ensure_ascii=False`,
+`allow_nan=False`, excluding the payload's own hash field; `plan_hash` is
+re-derived from the parsed `plan.json` payload, never from its file bytes. File
+hashes (sample, extract and metadata-evidence SHAs, every `index.json` and
+`result-manifest.json` entry) are SHA-256 of the raw bytes on disk, so any byte
+change, whitespace included, is detected. JSON files on disk use the canonical
+options with `indent=2` in place of the compact separators, plus one newline,
+so people can read them. JSONL files keep one compact canonical record per
+line. Same input, same bytes, in both layouts.
 Use atomic temporary-file replacement for JSON and flush durable state before
 publishing completion. All normal mutating commands acquire the same exclusive lock. `operator unlock`
 is the recovery exception: require the engineer to stop schedulers/workers,
@@ -262,15 +271,76 @@ knobs. Version 1: parser input 1 MiB; extracted JSON output 64 KiB; text preview
 16 KiB; table preview 20 rows / 128 columns; string value 1024 characters;
 structure depth 32 / 4096 visited nodes; archive 128 entries / 1 MiB expanded
 total / nesting 1; extractor elapsed time 5 seconds. A stricter remaining rollout
-deadline wins. Over-limit input stays as whole evidence but is not fully parsed;
+deadline wins. The preview width limits preview rows only: column-name and
+field lists run to the 64 KiB output cap, with `truncated` set if they reach it.
+Over-limit input stays as whole evidence. Line-based formats (text/log, CSV/TSV,
+key/value text) parse the prefix up to the input cap, drop the last record when
+the cap cuts through it, and return `partial` with `truncated: true`, so headers
+and field names survive. JSON, XML and other formats a prefix cannot parse
 return `too-large` with bounded metadata, never a supposedly complete result.
 
-Use BOM then strict UTF-8; unknown encoding remains unsupported unless a tested
-profile decoder is part of a reviewed release. Never silently decode with
-`errors=ignore`. CSV/TSV use `csv`; report header presence as observed or unknown,
-not an invented column name meaning. JSON uses `json`; INI uses `configparser`
-with interpolation disabled. XML rejects DTD/entity declarations before parsing;
-no external resolution or XInclude processing. Header parsing for supported PNG/
+Decode text in this order: a BOM (UTF-8, UTF-16 or UTF-32) selects its codec;
+without a BOM, a NUL byte in the first 8 KiB marks binary input; otherwise try
+strict UTF-8, then strict CP949 (a superset of EUC-KR). Record the decoder used
+as `encoding`. Strict CP949 also accepts some non-Korean 8-bit text; the
+recorded `encoding` is what lets review catch that. Anything else remains
+unsupported unless a tested profile decoder is part of a reviewed release.
+Never silently decode with `errors=ignore`. CSV/TSV use `csv`; report header
+presence as observed or unknown, not an invented column name meaning. JSON uses
+`json` with `parse_int` and `parse_float` hooks that keep each number's source
+text, so `max_decimals` follows the text rule below; every number written to
+output or hashed is a plain `int` or `float`. INI uses `configparser` with interpolation disabled; text that raises
+`MissingSectionHeaderError` goes to the key/value rules below. XML rejects any
+`<!ENTITY` declaration or internal DTD subset (`<!DOCTYPE … [`) before parsing
+and parses a DOCTYPE without an internal subset, such as `<!DOCTYPE root>`; an
+external ID (`SYSTEM` or `PUBLIC`) is allowed and never fetched. No external
+resolution or XInclude processing.
+
+Key/value text. A section line matches `^\s*\[([^\]]{1,128})\]\s*$` and makes
+later keys `section.key`. Content lines are the lines that are not blank, not
+section lines, and whose first non-space characters are not `#`, `;` or `//`.
+A decoded text file is key/value when at least 80% of its content lines match
+`^\s*([A-Za-z_][A-Za-z0-9_.\-/\[\]]{0,127})\s*[=:]\s*(.*?)\s*$` and at least
+half of the matched keys are distinct; a one- or two-line file qualifies by the
+same rule, so `GAIN = 12.4` and `OFFSET = 0.5` alone give two fields. Keys
+containing spaces are not recognized. Every other text/log file records inline
+pairs: each match of
+`(?<![^\s,;(\[])([A-Za-z_][A-Za-z0-9_.\-]{0,63})=("[^"]*"|[^\s,;"()\[\]]+)(?=[\s,;)\]]|$)`
+adds a field with its match count. A pair starts at a line start, whitespace,
+`,`, `;`, `(` or `[` and ends at whitespace, `,`, `;`, `)`, `]` or line end, so
+`set-point=12.4` gives `set-point`, while `set/point=12.4` and `key="abc"oops`
+give nothing. Both emit field descriptors with locators, never whole lines.
+
+Field values. Every field (CSV column, JSON/INI/XML leaf, key/value or inline
+pair) keeps up to three distinct example values in first-seen order and a
+summary over every value parsed within the input cap, not only preview rows.
+Classify each value as exactly one of the following, checking `null` and
+`invalid` before `int` and `float`:
+
+- `null`: empty or whitespace-only text, or JSON `null`;
+- `int`: text matching `^[+-]?\d+$`, or a JSON integer;
+- `float`: text matching `^[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?$` that is
+  not `int`, or a JSON non-integer number;
+- `bool`: JSON `true` or `false` only;
+- `invalid`: `NaN`, `nan`, `N/A`, `NA`, `-`, text made only of `*`, or a
+  number (text matching the `int` or `float` pattern, or a JSON number) whose
+  conversion to `float` fails or is not finite (`1e309`, a 309-digit integer),
+  which never counts as `int` or `float` and stays out of min/max; text that
+  matches neither pattern, such as `offline` or `1,234`, is `string`, not
+  `invalid`;
+- `string`: anything else, including thousands separators and decimal commas;
+  the locale is never guessed.
+
+A value longer than 1024 characters is cut to 1024, marked `truncated` and
+counted as `string`. Record `type_counts` for every field. When `int` plus
+`float` is at least 1, also record `values_counted` (that sum), `min` and `max`
+over those values as JSON numbers, and `max_decimals`: the digits after the
+decimal point in the mantissa as written, so `12.40` gives 2, `1.230e-2` gives
+3 and `7` gives 0. Other values in the field do not remove these statistics;
+`type_counts` shows the mix. For example `12.4`, `offline`, an empty cell and
+`N/A` give `type_counts` {float: 1, string: 1, null: 1, invalid: 1},
+`values_counted` 1 and min = max = 12.4. This applies whatever the field's
+category. No other statistics are computed. Header parsing for supported PNG/
 JPEG image dimensions needs no image decoder or OCR. Unsupported images remain
 unsupported. Do not add OCR or a vision model as an implicit fallback.
 
@@ -291,12 +361,11 @@ is unknown unless a recognized format proves it. A partial preview cannot prove
 that absent fields never exist elsewhere in the source.
 
 For supported structured input, `result` also holds bounded arrays for exact
-field paths/names and observed types, explicit raw units and schema versions,
-time fields with raw/UTC/timezone-or-clock-basis values, identifiers, status/
-alarm/quality/limit/pass-fail fields, file references and component/parameter
-structure. Include record/null/invalid counts and, for numeric FDC or
-measurement columns, per-sample min/max only. Every descriptor has an extract
-locator. Do not retain all events/rows or infer semantics from names.
+field paths/names with the field value summaries above, explicit raw units and
+schema versions, time fields with raw/UTC/timezone-or-clock-basis values,
+identifiers, status/alarm/quality/limit/pass-fail fields, file references and
+component/parameter structure, plus record counts. Every descriptor has an
+extract locator. Do not retain all events/rows or infer semantics from names.
 
 A same-family configuration diff requires two approved whole-sample hashes and
 compatible observed schema. It records bounded added/removed/changed key paths,
@@ -304,9 +373,13 @@ their two extract locators and truncation; ordinary extraction output limits
 apply. A role such as setpoint/readback is observed only when explicitly encoded
 by the source.
 
-Fixtures must cover UTF BOM/invalid encoding, delimiter/quoted newline, depth,
-large strings, XML entity payload, archive expansion/entry limits, corrupt and
-actually encrypted files, and sample content containing hostile instructions.
+Fixtures must cover UTF BOM/invalid encoding, CP949 text, delimiter/quoted
+newline, depth, large strings, XML entity payload and `<!DOCTYPE root>`, archive
+expansion/entry limits, corrupt and actually encrypted files, sectionless
+key/value text of one and two lines, log lines with inline pairs such as
+`set-point=12.4`, a value over 1024 characters, a CSV over the input cap, a CSV
+with more than 128 columns, numeric columns mixing empty, `N/A`, `*****` and
+exponent cells, and sample content containing hostile instructions.
 Use deterministic generated bytes or checked-in synthetic fixtures with hashes.
 
 ## 7. Evidence and map records — letters 09, 12
@@ -340,6 +413,13 @@ and inferred semantic values are separate validated record types, so an LLM
 payload cannot populate an observed slot. Preserve `family_id`,
 `observation_id`, sample bytes SHA, extract SHA and `claim_id` as distinct keys.
 
+`data_profile.schema.fields` combines, per exact field path, the §6 field value
+summaries of every sample that has the field: summed `type_counts` and
+`values_counted`, lowest `min`, highest `max`, highest `max_decimals`,
+`samples_with_field`, and the example values of the sample
+with the lowest SHA that has the field, together with that SHA and its extract
+locator.
+
 Coverage: per root `inventory_complete`, `frontier_count`, `stop_reasons`;
 current-scope `files_found`, `families_found`, `families_with_samples`,
 `families_without_samples_by_reason`, `resolved_fields`, `unresolved_fields`,
@@ -348,18 +428,70 @@ primary reason and optional additional reasons; totals must reconcile. No
 unseen-denominator percentages. Unknown source size contributes an unknown-size
 count, not zero bytes.
 
-Write evidence/extracts, base JSON and derived wiki/graph/rag, then index listing every
+Write evidence/extracts, base JSON and derived wiki/graph, then index listing every
 current map file except index itself, then the external manifest including index.
 Remove stale derived output entries only within the current stage-owned output
 area. Never delete prior approval history. Sorted file paths and canonical JSON
 make frozen-clock fixture runs reproducible; LLM output is not byte-deterministic.
 
-Wiki index shows roots and completeness, each family page shows rule/count,
-observed format, previews available, inferred meanings, unresolved reasons and
-source evidence references. Publish `graph/nodes.jsonl`, `graph/edges.jsonl` and
-`rag/chunks.jsonl` as spec §4.7.3 derived outputs. Metadata-only evidence
-supports file existence/size/time, never unobserved internal content.
-REPORT is generated from sanitized counts/status only, without embedding pages.
+Publish the Wiki and `graph/nodes.jsonl`, `graph/edges.jsonl` as spec §4.7.3
+derived outputs. Metadata-only evidence supports file existence/size/time,
+never unobserved internal content. REPORT is generated from sanitized
+counts/status only, without embedding pages.
+
+Wiki files. Write `wiki/index.md` and one
+`wiki/families/<slug>--<first 12 hex of family_id>.md` per family. Build `slug`
+from the family's normalized directory basename and name rule joined by a
+space: casefold, replace every run of characters outside `[a-z0-9]` with `-`,
+trim `-`, cut to 48 characters, trim `-` again, and use `family` when empty.
+Two families with the same file name stop publish with exit 20 before writing.
+Link with standard relative Markdown links (`families/<name>.md`,
+`../index.md`, `<name>.md`). Each page starts with flat YAML frontmatter
+holding exactly `family_id`, `pass_id` and `generated_by`, each a quoted
+string; frontmatter is display-only and the manifest owns integrity.
+
+The index shows scope, roots and completeness from `coverage.json`, one table
+row per family (linked title, inferred category, member count, sample count,
+unresolved count) and skipped/unreadable counts by reason. A family page has,
+in order: the title `# <directory> · <name rule>`; `## Observed` (directory, name rule,
+member count, size and mtime ranges, format, encoding); `## Fields`;
+`## Inferred` (validated LLM fields with confidence and evidence, and an
+"unconfirmed" block for low-confidence and unresolved fields); `## Evidence`
+(kind, 12-hex SHA prefix and full SHA, `observation_id`, locator);
+`## Relationships` (spec §4.7.1); `## Unresolved`. A metadata-only family page
+says "content not inspected", shows its skip reason and has no Fields table.
+
+`## Fields` renders `data_profile.schema.fields`, one row per field, with the
+columns `field | type | unit | range in samples | null/invalid | examples`.
+`type` lists the `type_counts` other than `null` and `invalid`, largest first
+(`float 118, string 1`); `null/invalid` shows those two counts. Range is
+`min … max (n values, k samples)` when `values_counted` is at least 1 and `—`
+otherwise. Examples are up to three distinct values, each cut to 40 characters
+with `…`, followed by the 12-hex prefix of the sample they came from. A field
+whose casefolded name contains `pass`, `pwd`, `secret`, `token`, `key` or
+`credential` shows `(masked)` in both the range and examples columns, and its
+values appear nowhere else in the Wiki, relationship matched values included.
+Name-based masking is a
+floor, not proof; the stage 4 review reads the examples. Each example is one
+field value; rows, log lines, whole files and free excerpts stay in
+`evidence/`.
+
+Every data-origin string (paths, rules, field names, example and matched
+values) renders inside an inline code span. First render newlines, tabs and
+other control characters as `\n`, `\t` and `\uXXXX`. Make the fence one backtick
+longer than the longest backtick run in the string, and pad each side with one
+space when the string starts or ends with a backtick, or starts and ends with a
+space without being all spaces. An empty string renders as `(empty)`. Inside tables `|` renders
+as `\|`. That keeps
+Markdown, HTML and Obsidian syntax such as `[[`, `#tag`, `%%`, `$`, `==` and
+`^id` literal. Pages carry no external links or images.
+
+Citations. Every Wiki Observed or Inferred entry, relationship row and graph
+claim cites typed evidence: `observation_id`, `evidence_kind` and evidence SHA,
+plus extract SHA and field/row/byte locator when it supports a content claim.
+The observation must occur in the cited sample or metadata-evidence record in
+the same scope. Reject foreign-scope references, unresolved hashes/locators,
+inferred values rendered as Observed and causal claims without evidence.
 
 Every JSONL line is UTF-8/LF canonical JSON with sorted keys. Common graph node
 keys are `schema_version`, `node_id`, `node_type`, `scope`, `properties`,
@@ -387,20 +519,6 @@ write. `edge_id` is
 `edge:<sha256([type,source_id,target_id,matched_value,rule_version])>` using the
 same encoding. Allow only the containment/support and spec §4.7.1 types; no
 causal aliases.
-
-RAG lines contain exactly `schema_version`, `chunk_id`, `claim_id`, `family_id`,
-`category`, `claim_type`, `text`, `evidence`, `confidence`, `temporal`, `sensitivity`,
-`provenance`, `unresolved`, `coverage`. `text` is at most 4096 UTF-8 bytes and is
-made from deterministic observed templates or one validated inferred field.
-Use at most five typed citations. Do not include raw file bytes, verbatim log
-lines, FDC/measurement rows or arbitrary excerpts. Hash the canonical chunk
-inputs excluding `chunk_id` to form that ID. Reject foreign-scope references,
-unresolved hashes/locators and inferred values marked as facts.
-Every typed citation includes `observation_id`, `evidence_kind`, and evidence
-SHA, plus extract SHA and field/row/byte locator when it supports a content
-claim. The observation must occur in the cited sample or metadata-evidence
-record in the same scope. The RAG `claim_id` must equal the referenced claim
-node's map ID; reject either record if the join does not resolve both ways.
 
 ## 8. Field prompts and validators — letter 11
 

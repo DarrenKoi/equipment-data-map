@@ -34,7 +34,7 @@ rather than silently inventing a resolution.
 
 Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
-`rollouts/<id>/data-map/` with `wiki/`, `graph/` and `rag/`. One rollout id runs from
+`rollouts/<id>/data-map/` with `wiki/` and `graph/`. One rollout id runs from
 stage 1 to stage 5; the engineer re-runs `init` on it at stage boundaries.
 For a new equipment type, start a new rollout and repeat 16–20 with the
 profile registered at stage 5 (see letter 13 for profiles).
@@ -479,7 +479,7 @@ lets you batch.
 | 09 | Data map output and stage 1 `next` | 1 | 05, 06, 07, 08 |
 | 10 | Stage 1 verification scenarios | 1 | 09 |
 | 11 | Local LLM analysis and stage 2 `next` | 2 | 02, 09 |
-| 12 | Wiki, Graph and RAG generation, stage 4 `next` | 4 | 09, 11 |
+| 12 | Wiki and Graph generation, stage 4 `next` | 4 | 09, 11 |
 | 13 | Equipment profiles, access window, stage 3 and 5 | 3, 5 | 09, 11 |
 | 14 | Skill suite and installers | all | 01 |
 | 15 | Cross-tool scenario validation | all | 02, 11, 14 |

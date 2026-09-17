@@ -1,8 +1,8 @@
 # Equipment Data Map
 
 Company-internal kit for mapping FAB equipment file stores from metadata and
-bounded representative samples. It produces evidence-backed Wiki, graph and RAG material
-and retains unknown or unreadable files explicitly.
+bounded representative samples. It produces an evidence-backed, Obsidian-readable Wiki
+and graph material, and retains unknown or unreadable files explicitly.
 
 **Current status:** documentation, a vendored FTP library, and `spike.py` for
 FTP → optional LLM → Markdown on one equipment. The extraction CLI and portable skills

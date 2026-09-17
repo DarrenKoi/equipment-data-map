@@ -11,15 +11,20 @@ safety limits, and classify what cannot be read.
 
 ## Build
 
-Use implementation-reference.md §6 for exact limits, output and reason codes.
+Use implementation-reference.md §6 for exact limits, output, reason codes,
+decoding order, key/value patterns and field value rules.
 
-- `equipment_map/extract/` with one module per kind: text/log (encoding
-  detection, bounded read), CSV/TSV (columns, inferred types, few rows),
-  JSON/XML/INI (key structure, sample values; XML with external entities
-  disabled), archive (listing only; inner samples within the output byte cap;
-  nesting depth 1), image (dimensions, format), unknown binary (magic bytes,
-  printable strings, entropy).
+- `equipment_map/extract/` with one module per kind: text/log (BOM, UTF-8
+  then CP949 decoding, bounded read, key/value lines and inline `name=value`
+  pairs), CSV/TSV (every column name, inferred types, few rows), JSON/XML/INI
+  (key structure, sample values; XML entity declarations refused), archive
+  (listing only; inner samples within the output byte cap; nesting depth 1),
+  image (dimensions, format), unknown binary (magic bytes, printable strings,
+  entropy).
 - Dispatcher by signature first, extension second.
+- Line-based input larger than the parser input cap is parsed up to the cap
+  and reported `partial`, so headers and field names survive; JSON and XML
+  over the cap stay `too-large`.
 - `unreadable` result with reason in `encrypted`, `corrupt`, `unsupported`,
   `too-large`. High entropy alone → `unsupported`, with an optional low-
   confidence encryption hypothesis. `encrypted` requires a recognized format's
@@ -35,8 +40,11 @@ Use implementation-reference.md §6 for exact limits, output and reason codes.
   equipment/module/chamber/channel/sensor/recipe/lot/wafer/run/site identifier
   fields; explicit status, alarm, quality, limit and pass/fail fields; record,
   null and invalid counts; references; and component/parameter structure.
-  Numeric FDC/measurement summaries are limited to per-sample min/max plus
-  counts. Never infer meanings or copy all log events/time-series rows.
+  Every field gets up to three example values and per-type counts over all
+  parsed values; a field with any numeric value also gets max decimals,
+  min/max and its numeric value count, whatever its category, and no other
+  statistics.
+  Never infer meanings or copy all log events/time-series rows.
 - A configuration diff is allowed only between approved samples in the same
   family with compatible observed schemas. Bound added/removed/changed keys by
   the normal result limits and cite both sample and extract hashes. Do not
@@ -70,7 +78,18 @@ Covers every fixture kind: text, CSV, JSON, XML with an external entity
 (must not resolve), PNG, random bytes → `unreadable: unsupported`, a known
 encrypted archive → `unreadable: encrypted`, truncated
 zip → `unreadable: corrupt`, nested zip reads one level only, an archive
-whose inner file exceeds the cap stops without publishing a complete inner sample. Same input twice gives
+whose inner file exceeds the cap stops without publishing a complete inner sample.
+CP949 text yields fields with `encoding: cp949`; a UTF-16 file with a BOM is
+decoded as text, not binary; a two-line `GAIN = 12.4` / `OFFSET = 0.5` file
+yields both fields; `set-point=12.4` in a log line yields `set-point` while
+`set/point=12.4` and `key="abc"oops` yield nothing; `1e309` counts as invalid
+and stays out of min/max while `offline` and `1,234` count as `string`; a CSV
+over the input cap is `partial` and keeps its header; a 300-column CSV keeps
+all 300 names; `<!DOCTYPE root>` XML parses while an entity declaration is
+refused; a column mixing empty, `N/A`, `*****`, `offline`, `12.40` and `1.5e3`
+cells reports type counts, max decimals 2, min/max and null/invalid counts
+over every parsed row; `1.230e-2` gives max decimals 3; extract JSON with
+numbers serializes without error. Same input twice gives
 byte-identical output; `workbench` refuses a copy dir under `rollouts/`,
 appends without rewriting earlier records, and `hermes-gui` produces
 `handoff.json` and no extraction output.
