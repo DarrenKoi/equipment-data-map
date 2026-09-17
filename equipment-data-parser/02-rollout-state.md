@@ -16,6 +16,8 @@ state truth), §6 (safeguards), §8 opening paragraph (approval per stage).
 Read implementation-reference.md §2–3 before defining schemas or state.
 
 - `equipment_map/rollout.py`: paths for `rollouts/<id>/` files in §5.1.
+  Every `--rollout` id must match `[a-z0-9][a-z0-9-]{0,31}` (spec §5.1);
+  refuse any other id with exit 20 before touching the filesystem.
 - `rollout.json` schema and validation, top-level keys exactly:
   `equipment_id`, `protocol` (`ftp`; the only value the CLI accepts today),
   `host`, `port`, `allowed_roots`, `realtime_candidates`, `allow_patterns`,
@@ -35,8 +37,11 @@ Read implementation-reference.md §2–3 before defining schemas or state.
 - `init --rollout <id>`: interactive prompts filling that schema. Refuse when
   stdin is not a TTY (exit 20). On an existing rollout it is a
   reconfiguration: refuse when `.lock` exists (exit 20); otherwise prompt
-  with current values as defaults, write the new file, and append an `init`
-  audit record with `old_hash` and `new_hash` of `rollout.json`. Current
+  only for the keys the current stage may change (spec §5 table,
+  implementation-reference.md §3), with current values as defaults, copy
+  every other value unchanged, write the new file, and append an `init`
+  audit record with `old_hash` and `new_hash` of `rollout.json`. While
+  stage 4 is current there is nothing to change: exit 20 without writing. Current
   stage = the stage after the highest stage with an `approve-result`. Each
   `init` opens a new epoch for the current stage: `status` ignores that
   stage's `plan`, `approve-plan`, and `next-*` records older than the
@@ -82,12 +87,20 @@ Read implementation-reference.md §2–3 before defining schemas or state.
 - Validate the LLM settings using spec §4.6; include every setting and the
   profile/glossary content hashes in the approved plan. Changed referenced
   files invalidate execution approval too. Do not silently change models.
-- Implement spec §5.1 collection scopes: collection stage + its init epoch +
-  source configuration hash. Checkpoints carry that scope. Stages 2/4 consume
-  the explicitly approved preceding collection and manifest. Starting stage 3
-  or reconfiguring it selects a fresh scope and resumably archives the old
-  data map under `work/history/<scope>/`; old audit approvals remain intact.
-  A process restart alone changes neither scope nor cumulative budgets.
+- `stage N plan` also refuses (exit 20) when a key the stage may not change
+  differs from its baseline, naming the keys but never their values. The
+  baseline, the `config_hashes` each `plan` record carries, and the stage 3
+  identity lock after its first `next-start` are pinned in
+  implementation-reference.md §3. A hand-edited `rollout.json` gets the same
+  check as one written by `init`.
+- Implement spec §5.1 collection scopes exactly as implementation-reference.md
+  §3 pins them: the scope ID formula, which `init` epoch counts, and the
+  source hash inputs. Checkpoints carry that scope. Stages 2, 4 and 5 bind the
+  `scope` and `manifest_hash` of the preceding stage's `approve-result` into
+  their plan. The first stage 1 or 3 `next` of a new scope moves the old
+  `data-map/` to `work/history/<old scope[:12]>/`, resumably; old audit
+  approvals remain intact. A process restart alone changes neither scope nor
+  cumulative budgets.
 
 ## Done when
 
@@ -114,3 +127,14 @@ Also cover file mutation/addition/deletion without manifest edits; approval
 before completion; stale/future-stage calls; init after terminal completion;
 lock collision preserving the owner's lock; malformed audit records; concurrent
 plan/init/approval; and repeated plan preserving a valid approval when unchanged.
+
+Also cover the per-stage `init` table: at stage 2 `init` prompts only for
+`llm` and `budgets.llm_max_requests`, and a hand-edited `host` makes
+`stage 2 plan` exit 20 naming `host` with no host value on stdout; at stage 3
+an identity change is accepted before the first `next-start` and refused by
+`plan` after it, while a roots or budgets change after it is accepted; `init`
+at stage 4 exits 20 and leaves `rollout.json` byte-identical; at stage 5 any
+change but `next_profile` makes `plan` exit 20. Scope: a stage 2 `init` keeps
+the stage 1 scope ID; a stage 3 re-`init` yields a new one; a crash after the
+`data-map/` move but before `work/scope.json` is written resumes without a
+second move; a rollout id with `/`, `..`, upper case or 33 characters exits 20.

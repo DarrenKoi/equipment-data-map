@@ -15,8 +15,11 @@ green. This is the gate that makes stage 1 releasable.
 the bullet:
 
 - no write operation exists
-- repeated names group into one family
-- format outliers are captured separately
+- repeated names group into one pattern family, other files into loose
+  families by directory and extension, with zero content requests
+- pattern families sample the latest three eligible plus two hash-ranked,
+  loose families at most three, and a rerun picks the same files
+- a pattern-family sample with a different extract format is an exception
 - total byte target exhaustion stops the next download
 - large and unknown-size eligible files download whole with actual usage recorded
 - the FTP transport follows the machine (Windows → proxy, else direct)

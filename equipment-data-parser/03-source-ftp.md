@@ -128,7 +128,7 @@ before writing any adapter code. Do not read the whole package.
   sitting at a Windows PC.
 
 - `equipment_map/download_guard.py`: the single entry point for every
-  content transfer, including later signature reads. Check approved roots,
+  content transfer; sampling (letter 07) is its only caller. Check approved roots,
   allow/deny patterns, metadata-derived active candidates, remaining total
   target bytes/files, requests, and time before calling Source. Per-file size
   is advisory, never a rejection condition. Persist the transfer attempt and
@@ -138,7 +138,7 @@ before writing any adapter code. Do not read the whole package.
   Completed downloads are reusable by source scope, path, size and mtime.
   An interrupted transfer with unknown actual usage becomes `usage-unknown`;
   the engineer reconciles it before another transfer. Never refund usage merely
-  because a process died. Letter 06 adds header-specific limits.
+  because a process died.
 - Byte accounting is best-effort on both direct and proxy transports, including
   equipment-to-proxy traffic. A growing file may exceed the estimate: keep a
   successful whole download, record the overrun and stop later transfers when

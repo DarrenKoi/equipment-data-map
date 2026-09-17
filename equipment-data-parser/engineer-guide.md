@@ -191,7 +191,8 @@ this PC, stop and have the maintainer revise the harness deployment explicitly.
 
 ## 3. Begin or resume a rollout
 
-Choose an opaque identifier with no equipment name, host or IP. In your own Git
+Choose an opaque identifier with no equipment name, host or IP: lowercase
+letters, digits and `-`, at most 32 characters (`[a-z0-9][a-z0-9-]{0,31}`). In your own Git
 Bash terminal after the CLI is validated:
 
 ```sh
@@ -263,10 +264,13 @@ equipment-map operator approve-result --rollout "$ROLLOUT"
 ```
 
 Stages 2, 3 and 5 need another human `init` for LLM settings, the real target,
-and next profile respectively. Before stage-3 result approval you may revise
-that same equipment's scope/budgets with init and a new plan approval; it creates
-a new collection scope. After approval, wider scope requires a new rollout.
-Never change equipment identity mid-pilot. Do not edit map files to “fix” the
+and next profile respectively. `init` asks only for what the current stage may
+change (spec §5 table): stage 2 the `llm` block and `llm_max_requests`, stage 5
+`next_profile`, and at stage 4 it refuses. Before stage-3 result approval you
+may revise that same equipment's scope/budgets with init and a new plan
+approval; it creates a new collection scope. After approval, wider scope
+requires a new rollout. Equipment identity (id, protocol, host, port) is fixed
+from the first stage-3 run; a different equipment is a new rollout. Do not edit map files to “fix” the
 review; report wrong results for a code/profile correction and an approved rerun.
 
 ## 5. Stops and unsupported formats

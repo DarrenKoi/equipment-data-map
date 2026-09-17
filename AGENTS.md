@@ -78,7 +78,9 @@ translate one into the other.
   `size_dirs` carries a UTC `modified` per file, MDTM beside SIZE, on both
   transports. A later review pass (ValueError caught beside `all_errors`,
   `close()` instead of QUIT, host sanitized in `local_target`, MLSD `type`
-  case, constant-time token compare) was ported the same way. Covered by `tests/test_sizing_mtime.py` and
+  case, constant-time token compare) was ported the same way, as was the
+  fixed UTC+09:00 default in `core/client.py`, which replaced a `ZoneInfo`
+  lookup that made the package unimportable on Windows without `tzdata`. Covered by `tests/test_sizing_mtime.py` and
   `tests/test_worker_isolation.py` here and by each repo's own suite there.
   The three copies of the changed files are byte-identical,
   so a re-vendor is safe; the standing differences in `ftp_handler/` are this

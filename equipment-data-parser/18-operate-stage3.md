@@ -24,7 +24,7 @@ supplies it in your environment before this letter (for example
    access approval done, a read-only account exists, and its credential is
    in the OS keystore under an alias. You never check or change any of these.
 2. Engineer runs `equipment-map init --rollout "$ROLLOUT"` again on the
-   same rollout and enters: host, port, share, allowed roots, real-time
+   same rollout and enters: host, port, allowed roots, real-time
    candidate paths, allow/deny patterns, budgets including
    `llm_max_requests`, `max_passes` (1 unless the engineer wants the
    spec §4.4.1 pass loop; budgets are cumulative across passes), credential
@@ -45,7 +45,9 @@ supplies it in your environment before this letter (for example
    unresolved interpretations by reason). Exit 0 is not proof of complete
    equipment coverage. Before they approve: if they want wider roots or
    bigger budgets, that is another `init` on the same rollout and a new
-   plan hash; repeat from step 3. Once satisfied they run
+   plan hash; repeat from step 3. Host, port, protocol and equipment id
+   are fixed once step 4 has run: `plan` refuses a change (exit 20), and a
+   different equipment needs a new rollout. Once satisfied they run
    `operator approve-result`; after that, widening needs a new rollout.
    Append `waiting`.
 

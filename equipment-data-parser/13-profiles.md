@@ -22,7 +22,7 @@ Use implementation-reference.md §2 and §5 for the profile and window contract.
   equipment request and aborts in-flight work at its end. A returned timeout
   is not proof a worker or remote proxy stopped; test server-side termination.
 - `stage 3 next`: the stage 1 pipeline against the real `Source` from
-  `rollout.json` (`host`, `port`, `share`), then `interpret_families` from
+  `rollout.json` (`host`, `port`), then `interpret_families` from
   letter 11 over current-scope families without a matching durable field
   result (scope/input/model/prompt/glossary hashes must match), then
   `write_manifest`. Both halves run inside the letter 09 pass loop when

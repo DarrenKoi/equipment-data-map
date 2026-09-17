@@ -122,6 +122,24 @@ def test_refused_type_i_does_not_sink_the_host():
     assert all("error_perm" in f.error for f in failures)
 
 
+def test_imports_without_a_time_zone_database():
+    # Windows has no system tz database and the engineer PCs carry no tzdata
+    # wheel, so a ZoneInfo lookup at import time made the whole package
+    # unimportable there. Empty TZPATH + no tzdata reproduces that on any OS.
+    import os
+    import subprocess
+
+    code = (
+        "import sys; sys.modules['tzdata'] = None; "
+        "import ftp_handler.core, ftp_handler.direct_downloader, ftp_handler.proxy"
+    )
+    env = {**os.environ, "PYTHONTZPATH": ""}
+    root = Path(__file__).resolve().parent.parent
+    run = subprocess.run([sys.executable, "-c", code], cwd=root, env=env,
+                         capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr[-400:]
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

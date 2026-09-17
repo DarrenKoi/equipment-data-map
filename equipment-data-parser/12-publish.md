@@ -37,7 +37,9 @@ Fields table, masking, escaping and citations.
   Obsidian syntax do not render; generate no external images or links. Literal
   rendering does not stop a reading LLM from following text in a value, so the
   Wiki stays untrusted data for every reader (engineer-guide.md §4). Every
-  citation resolves to an observation ID plus sample or metadata SHA, and
+  citation resolves to an observation ID plus sample or metadata SHA, found
+  through its 12-hex on-disk name and confirmed by rehashing the bytes
+  (implementation-reference.md §7), and
   extract SHA/locator when needed; reject unresolvable citations and
   unsupported causal claims.
 - Use spec §4.7.3's exact deterministic node/edge ID formulas. Sample and
@@ -103,3 +105,9 @@ time-series rows, and reject foreign scope/IDs, missing endpoints, LLM-authored
 facts and citations whose locator is absent from the cited extract.
 Also reject traversal-order/database-generated graph IDs and missing sample or
 metadata observation IDs.
+
+Windows MAX_PATH: after a full fixture publish, no file under
+`rollouts/<id>/` is longer than 120 characters relative to that directory,
+even with its `data-map/` prefix swapped for `work/history/<12 hex>/`; no
+path component under `data-map/` is a full 64-hex hash; a citation whose
+full SHA does not match the rehashed bytes at its 12-hex path is rejected.

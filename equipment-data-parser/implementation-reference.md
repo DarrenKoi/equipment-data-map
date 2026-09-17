@@ -47,7 +47,7 @@ Budget keys and units (all required; no implicit operational defaults):
 
 | Key | Type | Meaning and exhaustion |
 |---|---|---|
-| `max_download_files` | integer >= 0 | Whole-file transfer attempts, headers included; stop new content transfers |
+| `max_download_files` | integer >= 0 | Whole-file transfer attempts; stop new content transfers |
 | `max_file_bytes` | integer >= 0 | Advisory size for overrun reporting only; never rejects a file |
 | `max_total_bytes` | integer >= 0 | Best-effort target; actual completed bytes reaching it stop new transfers |
 | `max_elapsed_seconds` | finite > 0 | Cumulative active stage execution including waits; stop remote work |
@@ -55,8 +55,6 @@ Budget keys and units (all required; no implicit operational defaults):
 | `requests_per_second` | finite > 0 | Pace every remote operation, including metadata and reconnects |
 | `max_entries` | integer >= 0 | Listing entries observed, including both passes and failed-directory retries |
 | `max_depth` | integer >= 0 | Allowed root is depth 0; retain unvisited frontier at limit |
-| `header_files_per_family` | integer >= 0 | Maximum signature downloads per metadata pre-family |
-| `header_max_requests` | integer >= 0 | Total signature content attempts; skip further signatures at limit |
 | `llm_max_requests` | integer >= 0 | Every HTTP analysis attempt including retries and lost replies |
 
 `max_passes` (top-level, integer >= 1) is not a budget: it caps how many
@@ -82,9 +80,8 @@ A failed/interrupted transfer whose actual usage is unknown becomes
 `usage-unknown`; stop further transfers until engineer reconciliation, rather
 than inventing zero usage or a conservative hard bound. Resume preserves this
 state. No in-flight size cap or upstream size-cap release is required.
-Check time and access-window gates separately. Header bytes are never free;
-reused bytes are never charged twice. Exhausted header allowance does not
-prevent sampling under remaining shared limits.
+Check time and access-window gates separately. Grouping downloads nothing;
+every content transfer is a sample.
 
 Directory retries upsert inventory rows but do not refund requests/entries.
 Persist partial-directory entries and its unfinished frontier; a retry may
@@ -148,6 +145,42 @@ half-written current outputs with the previous stage's manifest and restart.
 Index/manifest finalization is restartable; completion is appended only after
 all output replacements. A crash before completion leaves resumable work, not
 an approvable result. Stage 4/5 REPORT includes current counts before next-stop.
+
+Per-stage `init` and collection scope (spec §5 table, §5.1):
+
+- `--rollout` ids match `[a-z0-9][a-z0-9-]{0,31}`; any other id exits 20
+  before the filesystem is touched.
+- `init`, `plan`, `next-start`, `next-stop` and `approve-result` records carry
+  `stage`; `next-start`, `next-stop` and `approve-result` also carry `scope`
+  and `plan_hash`, and `approve-result` carries `manifest_hash`.
+- Every `plan` record carries `config_hashes`: the compact canonical hash of
+  each top-level `rollout.json` value, with `budgets.llm_max_requests` taken
+  out of `budgets` and hashed under that dotted name. An absent key has no
+  entry, so adding or removing a key counts as a change.
+- Editable keys by current stage: 1 all but `next_profile`; 2 `llm` and
+  `budgets.llm_max_requests`; 3 all but `next_profile`, and the identity keys
+  `equipment_id`, `protocol`, `host`, `port` only while no stage-3
+  `next-start` exists; 4 none; 5 `next_profile`. `init` prompts for exactly
+  those and copies every other value unchanged. `init` while stage 4 is
+  current exits 20 without writing.
+- `plan` refuses with exit 20, printing key names but never values, when a
+  non-editable key differs from its baseline. Stages 2, 4 and 5 compare with
+  the latest approved `plan` record of stage N−1. Stage 3 compares only the
+  identity keys, and only after its first `next-start`, with the `plan` record
+  whose hash that `next-start` names. Stage 1 has no baseline.
+- Scope ID is `sha256([collection_stage, epoch, source_hash])`. `epoch` is
+  that of the latest `init` record whose `stage` is the collection stage (the
+  rollout-creating `init` is stage 1). `source_hash` is `sha256([equipment_id,
+  protocol, host, port, allowed_roots, realtime_candidates, allow_patterns,
+  deny_patterns, profile, sha256(profile file bytes)])`. Stages 1 and 3 compute
+  their own. Stages 2, 4 and 5 put `input: {scope, manifest_hash}` from the
+  stage N−1 `approve-result` record into their plan payload.
+- Scope activation runs at the start of a stage 1 or 3 `next`. If
+  `work/scope.json` names another scope and `data-map/` exists, `os.replace`
+  `data-map/` to `work/history/<old scope[:12]>/` (exit 20 if that already
+  exists), then write `work/scope.json` with the current scope. A crash
+  between the two steps resumes cleanly: with no `data-map/` there is nothing
+  to move. `work/scope.json` is a pipeline checkpoint, not stage state.
 
 Fixture approvals are produced only by fake-TTY test calls in temporary roots.
 No code path fabricates human approval for a real rollout. Add tests for every
@@ -238,20 +271,33 @@ the source path. No automatic removal of every number: those may identify a
 channel rather than a lot. Profile regexes are engineer-authored and validated
 on bounded synthetic names; data cannot supply regexes. Retain the matched rule.
 
-Version 1 size buckets: zero, 1–1024, 1025–16384, 16385–262144,
-262145–4194304, >4194304 bytes, and unknown. Sort entries by normalized path.
-Hash the canonical family tuple for filesystem keys; never use raw remote names
-as evidence directories. Split only observed signatures; uninspected members
-remain unknown, not asserted to share the inspected format.
+Grouping reads metadata only; it downloads nothing. Sort entries by normalized
+path. Group each directory's files by `(parent dir, normalized basename,
+extension)`; a group with two or more members is a `pattern` family with that
+normalized basename as its name rule. Every file left alone in its group joins
+the `loose` family `(parent dir, "*", extension)`, name rule `*<extension>`
+(`*` with no extension); a loose family may have one member. The extension is
+the text after the last dot of the basename, case preserved, empty when there
+is none. `family_id` is the canonical hash of `[scope, kind, parent dir, name
+rule, extension]`. There are no size buckets and no signature split. On-disk
+names use hash prefixes per spec §4.7; never raw remote names.
 
-Selection order: oldest eligible, newest eligible, closest to median size,
-smallest then largest size outlier, skipping duplicate paths. Time ties and
-size ties use normalized path. Unknown timestamps are excluded from time-based
-choices. Persist reasons for protected members before selecting alternatives;
-all equally latest members are active candidates. No timestamp-based stability
-clearance is invented in version 1: newest, realtime and changing candidates
-remain metadata-only. Three to five is a fixture expectation when distinct
-eligible files exist, not a minimum requiring unsafe extra downloads.
+Eligible members are neither denied nor active candidates. All equally latest
+members of a family are active candidates, whatever its kind; persist reasons
+for protected members before selecting. No timestamp-based stability clearance
+is invented in version 1: newest, realtime and changing candidates remain
+metadata-only. Selection:
+
+- `pattern`: the three eligible members with the latest `mtime_utc` (ties by
+  normalized path; unknown mtimes excluded), then two more from the remaining
+  eligible members, unknown mtimes included, in hash-rank order.
+- `loose`: up to three eligible members in hash-rank order.
+
+Hash rank sorts by `sha256([scope, family_id, normalized_path])` over compact
+canonical JSON, ascending. It stands in for random choice: stable across
+restarts and Python versions, where `random.sample` is not. Five and three are
+ceilings, not minimums: fewer eligible members give fewer samples, and a
+duplicate SHA is not replaced by another download.
 
 Do not extrapolate a generation schedule from observation time. With at least
 three known modification times, record observed sorted gaps and an explicitly
@@ -352,7 +398,7 @@ traversing, linked and nested-beyond-limit entries. No extraction to disk. A
 bounded archive listing with omitted entries is explicitly partial. Do not
 unpickle, import sample modules, execute binaries or enable macros.
 
-`<sha>.extract.json` holds `schema_version`, `input_sha256`, `method`,
+`<sha[:12]>.extract.json` holds `schema_version`, `input_sha256`, `method`,
 `method_version`, `status` (ok/partial/unreadable), `result`, `limits`,
 `truncated`, `failure_reason` (null/encrypted/corrupt/unsupported/too-large),
 `next_safe_action`. `unsupported-format` is the display label for `unsupported`,
@@ -386,12 +432,24 @@ Use deterministic generated bytes or checked-in synthetic fixtures with hashes.
 
 Freeze schema version 1 in code; construct dictionaries in code, never ask the
 LLM to assemble documents. A family record includes `family_id`, `scope`, `rule`,
-`member_count`, `size_stats`, `mtime_stats`, `signature`, `exceptions`, `samples`,
+`kind` (`pattern` or `loose`), `member_count`, `size_stats`, `mtime_stats`, `exceptions`, `samples`,
 `metadata_evidence`, `data_profile`, `interpretations`, `unresolved`. Samples preserve source path,
 size, raw/UTC time, selection reason, `observation_id`, bytes SHA and extract SHA.
 Metadata-evidence records preserve the observation IDs that support their rows.
 All references
 must resolve under the current map; reject missing hashes and unsafe paths.
+`exceptions` lists, for a `pattern` family only, each sample whose extract
+`method` differs from the family's most common one (ties: lowest method name),
+with both methods; a `loose` family claims no shared format and has none.
+
+On-disk names (spec §4.7): `evidence/<family_id[:12]>/<sha[:12]>`,
+`evidence/<family_id[:12]>/<sha[:12]>.extract.json`,
+`metadata-evidence/<family_id[:12]>.json`, `work/history/<scope[:12]>/`.
+Records keep the full hashes. Resolve a cited hash to its path, then rehash the
+bytes and compare the full value. Before writing, if the path exists with other
+bytes, stop with exit 20; never overwrite. No path under `rollouts/<id>/` may
+exceed 120 characters relative to it: the longest today is an archived Wiki
+page, `work/history/<12>/wiki/families/<48>--<12>.md`, at 105.
 
 A field record has `value` (null for unresolved), `confidence`, `evidence`
 (typed SHA references), `observed_vs_inferred`, `unresolved` (null or reason),

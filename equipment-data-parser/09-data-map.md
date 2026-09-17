@@ -45,7 +45,7 @@ Use implementation-reference.md §7 for common records and hash ordering.
 - Stage 1 `plan` refuses a `rollout.json` whose equipment host is not
   `localhost`/`127.0.0.1` (spec §8: fake trees only at stage 1).
 
-- Write `metadata-evidence/<family-key-sha256>.json` and `coverage.json`
+- Write `metadata-evidence/<family_id[:12]>.json` and `coverage.json`
   per spec §4.7. Metadata references carry `evidence_kind: metadata` and the
   actual metadata file SHA-256; never invent a sample SHA. Include them in
   index/manifest. Scope the entire map to the active collection; no stale
@@ -72,7 +72,8 @@ Use implementation-reference.md §7 for common records and hash ordering.
   inventory `observation_id`, whole-sample SHA, extract SHA and later
   `claim_id` distinct and validate every typed reference. Combine each
   sample's field value summaries into `data_profile.schema.fields` as
-  implementation-reference.md §7 states.
+  implementation-reference.md §7 states. Fill each `pattern` family's
+  `exceptions` from its samples' extract methods, per the same section.
   Samples and metadata-evidence rows carry the supporting `observation_id`;
   reject a reference whose observation is absent or belongs to another scope.
 
@@ -87,7 +88,9 @@ Covers, on both transports against the fake FTP: `plan` → fake approval →
 and sample evidence; every JSON file is indented and ends with one newline;
 two runs with the frozen clock give byte-identical `data-map/*.json` and the
 same manifest hash; a field present in two samples has one combined entry
-with the lowest min, highest max and summed counts; stdout contains no fixture
+with the lowest min, highest max and summed counts; a `pattern` family whose
+samples extract as csv, csv and json lists the json sample under `exceptions`,
+and a `loose` family lists none; stdout contains no fixture
 path or filename; `next` again is a no-op exit 0.
 
 Also cover spec §7's relationship scenarios in `tests/test_stage1_e2e.py`

@@ -21,7 +21,7 @@ decoding order, key/value patterns and field value rules.
   (listing only; inner samples within the output byte cap; nesting depth 1),
   image (dimensions, format), unknown binary (magic bytes, printable strings,
   entropy).
-- Dispatcher by signature first, extension second.
+- Dispatcher by magic bytes first, extension second.
 - Line-based input larger than the parser input cap is parsed up to the cap
   and reported `partial`, so headers and field names survive; JSON and XML
   over the cap stay `too-large`.
@@ -32,7 +32,8 @@ decoding order, key/value patterns and field value rules.
 - Nothing is ever executed; archives are listed with `zipfile`, never
   extracted to disk.
 - Extraction results are written next to the evidence file as
-  `<sha>.extract.json` with `method`, `result`, `failure_reason`, and
+  `<sha[:12]>.extract.json` (implementation-reference.md §7 on-disk names)
+  with `method`, `result`, `failure_reason`, and
   `next_safe_action`.
 - For supported formats, emit the bounded observed descriptors in spec
   §4.5/§4.7.2: exact field path/name, observed type, explicit unit and
