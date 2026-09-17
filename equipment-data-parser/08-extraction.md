@@ -31,10 +31,10 @@ decoding order, key/value patterns and field value rules.
   encryption flag; random bytes are not proof.
 - Nothing is ever executed; archives are listed with `zipfile`, never
   extracted to disk.
-- Extraction results are written next to the evidence file as
-  `<sha[:12]>.extract.json` (implementation-reference.md §7 on-disk names)
-  with `method`, `result`, `failure_reason`, and
-  `next_safe_action`.
+- Extraction results are extract records keyed by the sample's remote path
+  (implementation-reference.md §6, §7), with `method`, `result`,
+  `failure_reason`, and `next_safe_action`; letter 09 writes them to
+  `data-map/extracts.jsonl`.
 - For supported formats, emit the bounded observed descriptors in spec
   §4.5/§4.7.2: exact field path/name, observed type, explicit unit and
   schema/version strings; distinct source time fields and observed span;

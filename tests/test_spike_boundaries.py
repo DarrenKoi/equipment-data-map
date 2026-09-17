@@ -84,7 +84,7 @@ class SpikeTests(unittest.TestCase):
         self.assertEqual(stats["bytes"], 0)
         self.assertIn(("list", "/log"), transport.calls)
         self.assertFalse(any(op == "download" for op, _ in transport.calls))
-        documents = "\n".join(p.read_text() for p in Path(stats["output_dir"]).glob("dir-*.md"))
+        documents = "\n".join(p.read_text() for p in Path(stats["output_dir"]).rglob("index.md"))
         self.assertIn("not configured", documents)
 
     def test_missing_credentials_stop_before_network_without_echoing_values(self):
@@ -339,16 +339,48 @@ class SpikeTests(unittest.TestCase):
         code, _ = self.run_spike(FakeTransport({"/log": []}))
         self.assertNotEqual(code, 0)
 
-    def test_directory_names_do_not_overwrite_each_other_or_index(self):
+    def test_output_mirrors_remote_folders_with_one_index_per_directory(self):
         transport = FakeTransport({"/a/b": ["/a/b/x.txt"], "/a__b": ["/a__b/y.txt"],
-                                   "/index": ["/index/z.txt"]})
-        code, stats = self.run_spike(transport, roots=["/a/b", "/a__b", "/index"])
+                                   "/index.md": ["/index.md/z.txt"], "/q:r": ["/q:r/w.txt"]})
+        code, stats = self.run_spike(transport, roots=["/a/b", "/a__b", "/index.md", "/q:r"])
         self.assertEqual(code, 0)
-        documents = list(Path(stats["output_dir"]).glob("*.md"))
-        self.assertEqual(len(documents), 4)
-        contents = [p.read_text() for p in documents if p.name != "index.md"]
-        for path in ("/a/b", "/a__b", "/index"):
-            self.assertTrue(any(md.startswith(f"# {path}\n") for md in contents))
+        run = Path(stats["output_dir"])
+        pages = {p.parent.relative_to(run).as_posix(): p.read_text() for p in run.rglob("index.md")}
+        self.assertEqual(set(pages), {".", "a", "a/b", "a__b", "%69ndex.md", "q%3Ar"})
+        for folder, path in (("a/b", "/a/b"), ("a__b", "/a__b"),
+                             ("%69ndex.md", "/index.md"), ("q%3Ar", "/q:r")):
+            self.assertTrue(pages[folder].startswith(f"# {path}\n"), folder)
+        self.assertIn("(%2569ndex.md/index.md)", pages["."])
+        self.assertIn("(q%253Ar/index.md)", pages["."])
+        self.assertIn("[b](b/index.md)", pages["a"])
+        self.assertIn("[..](../index.md)", pages["a/b"])
+        self.assertIn("not inventoried", pages["a"])
+
+    def test_case_twin_directory_is_not_visited_and_parent_says_why(self):
+        transport = FakeTransport({"/eq": ["/eq/Logs", "/eq/logs"],
+                                   "/eq/Logs": ["/eq/Logs/a.txt"], "/eq/logs": ["/eq/logs/b.txt"]})
+        code, stats = self.run_spike(transport, roots=["/eq"])
+        self.assertEqual(code, 0)
+        self.assertNotIn(("list", "/eq/logs"), transport.calls)
+        parent = (Path(stats["output_dir"]) / "eq" / "index.md").read_text()
+        self.assertIn("| [Logs](Logs/index.md) | - |", parent)
+        self.assertIn("| logs | case-collision |", parent)
+
+    def test_too_long_directory_is_not_visited(self):
+        deep = "/" + "d" * 130
+        transport = FakeTransport({deep: [deep + "/a.txt"]})
+        _, stats = self.run_spike(transport, roots=[deep])
+        self.assertEqual(transport.calls, [])
+        self.assertIn("path-too-long", (Path(stats["output_dir"]) / "index.md").read_text())
+
+    def test_local_names_are_windows_safe_and_reversible(self):
+        cases = {"a:b": "a%3Ab", "50%": "50%25", "x*?": "x%2A%3F", "tab\tname": "tab%09name",
+                 "end.": "end%2E", "end. ": "end%2E%20", "...": "%2E%2E%2E",
+                 "NUL.txt": "%4EUL.txt", "com\u00b9": "%63om\u00b9", "Index.MD": "%49ndex.MD",
+                 "\ub85c\uadf8": "\ub85c\uadf8",
+                 "nullable.log": "nullable.log", "CONFIG": "CONFIG"}
+        for remote, local in cases.items():
+            self.assertEqual(spike.local_name(remote), local, remote)
 
     def test_rerun_preserves_previous_documents_and_checks_only_this_run(self):
         _, first = self.run_spike(FakeTransport({"/log": ["/log/old.txt"]}))

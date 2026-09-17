@@ -131,11 +131,16 @@ dir = "{out.as_posix()}"
     stats = json.loads(stdout.getvalue())
     run_dir = Path(stats["output_dir"])
     assert (run_dir / "index.md").is_file()
-    md = {p.read_text().splitlines()[0]: p.read_text() for p in run_dir.glob("dir-*.md")}
+    md = {p.read_text().splitlines()[0]: p.read_text() for p in run_dir.rglob("index.md")
+          if "## Evidence" in p.read_text()}
     assert set(md) == {"# /log", "# /log/sub", "# /log/sub/deep", "# /data"}, set(md)
+    folders = {p.parent.relative_to(run_dir).as_posix() for p in run_dir.rglob("index.md")}
+    assert folders == {".", "log", "log/sub", "log/sub/deep", "data"}, folders
+    assert "[sub](sub/index.md)" in md["# /log"] and "[deep](deep/index.md)" in md["# /log/sub"]
     assert "tool.bak" not in md["# /log"] and "leak.txt" not in "".join(md.values())
     assert "| b.log | .log | 6 |" in md["# /log"] and "text head" in md["# /log"]
-    assert "| a.log | .log | 12 |" in md["# /log"] and "| - |" in md["# /log"]  # not sampled
+    assert any(row.startswith("| a.log | .log | 12 |") and row.endswith("| - |")  # not sampled
+               for row in md["# /log"].splitlines())
     assert "meta only" in md["# /log/sub/deep"]  # binary png
     assert "over budget" in md["# /log/sub/deep"]
     assert "glm-fake" in md["# /log"]

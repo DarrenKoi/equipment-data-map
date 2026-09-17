@@ -39,7 +39,7 @@ FAB 장비의 FTP 파일 구조를 읽기 전용으로 탐색하고, 반복되�
 [2. Grouping] -- 경로/파일명 규칙/확장자로 파일군 생성
     |
     v
-[3. Sampling] -- 파일군별 소수 대표 파일만 회사 PC에 저장
+[3. Sampling] -- 파일군별 소수 대표 파일만 장비와 같은 폴더 구조로 회사 PC에 저장
     |
     v
 [4. Extraction] -- 텍스트, 표, 설정, 로그, 바이너리 메타데이터 추출
@@ -72,6 +72,8 @@ rollout CLI를 만들기 전 `equipment-data-parser/00-spike.md`의 초기 탐�
 기본값은 port 21, name `tool`, roots `["/"]`(계정에 보이는 FTP 루트), deny `[]`, 디렉터리 20개, 내용 다운로드 0바이트, sample preview 8192바이트, output `out`이다. 항목별 목록 크기를 제한하는 값은 아니며 실제 미탐색 범위를 출력에 남긴다. LLM endpoint/model이 없으면 호출하지 않고 관측 메타데이터만 발행한다. 알려진 승인 사내 endpoint와 model이 있으면 에이전트가 두 값을 함께 채울 수 있지만 임의로 추측하지 않는다. discovery 성공과 LLM 해석 완료는 별도 체크포인트이며 재실행·기존 범위 확대·수집 budget 증가는 엔지니어 지시를 따른다. 이 초기 설정 예외가 아래 정식 rollout의 계획 승인·keystore·필수 budget 계약을 완화하지 않는다.
 
 초기 spike의 `deny`는 basename, 각 허용 root 기준 상대 경로 또는 `/`로 시작하는 절대 경로 glob을 받는다. basename 패턴은 모든 root에 적용하고 절대 경로 패턴은 여러 root 중 한 대상에만 적용한다. 패턴에 일치한 디렉터리는 그 하위 전체를 제외하며 상위 목록이 하위 경로를 예외적으로 직접 반환해도 같은 규칙을 적용한다. 예를 들어 `MACFILE_*`는 `MACFILE`은 유지하고 모든 root의 backup 이름을 제외하며, `/target-a/MACFILE_*`는 지정한 target에만 적용한다. 실제 장비 경로와 현장별 패턴은 ignored 로컬 설정에만 둔다.
+
+spike는 실행마다 `out/<name>/<UTC 시각>/`에 새로 쓰고 이전 실행의 결과를 재사용하지 않는다. 그 아래 폴더 구조는 장비 폴더 구조를 따르며 방문한 디렉터리마다 `index.md`가 직접 하위 폴더와 파일을 설명한다. 폴더 이름은 4.7절의 로컬 이름 규칙을 쓴다. spike는 표본 앞부분을 메모리에서만 읽고 표본 파일을 저장하지 않는다.
 
 ## 4. 모듈 구조
 
@@ -157,9 +159,9 @@ LLM 호출 전에, 내용을 받지 않고 inventory 메타데이터만으로 �
 - 패턴 파일군: 수정 시각이 가장 늦은 적격 파일 3개와, 남은 적격 파일 중 무작위 2개. 최근 형식과 더 넓은 시기를 함께 본다.
 - 느슨한 묶음: 적격 파일 중 무작위 최대 3개.
 
-적격 파일은 deny 대상과 `active_candidate`(최신·실시간·변경 중 후보)를 뺀 구성원이다. 최신 순서는 UTC로 정규화한 수정 시각을 쓰고 동률은 정규화 경로 순이다. 수정 시각을 모르는 파일은 최신 선택에서 빠지고 무작위 대상에는 남는다. 무작위는 collection scope·family ID·정규화 경로의 hash 순서로 고르는 결정론적 선택이라 재개와 고정 입력에서 같은 파일을 고른다. 5개와 3개는 상한이며 적격 파일이 적으면 그만큼만 받는다.
+적격 파일은 deny 대상, `active_candidate`(최신·실시간·변경 중 후보)와 4.7절 로컬 이름 규칙에서 빠진 파일을 뺀 구성원이다. 최신 순서는 UTC로 정규화한 수정 시각을 쓰고 동률은 정규화 경로 순이다. 수정 시각을 모르는 파일은 최신 선택에서 빠지고 무작위 대상에는 남는다. 무작위는 collection scope·family ID·정규화 경로의 hash 순서로 고르는 결정론적 선택이라 재개와 고정 입력에서 같은 파일을 고른다. 5개와 3개는 상한이며 적격 파일이 적으면 그만큼만 받는다.
 
-동일한 파일은 다운로드한 바이트의 SHA-256으로 중복 제거하며, 중복을 대신할 표본을 더 받지 않는다. 받은 표본은 언제나 파일 전체이며, budget을 넘어 받지 않은 파일은 표본이 아니라 메타데이터 전용 항목으로 사유와 함께 기록한다.
+표본은 장비와 같은 경로로 `evidence/` 아래에 저장하며(4.7절) 내용 hash로 중복 제거하지 않는다. 다른 경로에 있는 같은 바이트는 각자의 표본이다. 같은 collection scope에서 이미 받은 표본은 다시 전송하지 않는다. 현재 scope의 sample record가 가리키고 다시 hash한 값이 기록과 같은 파일만 표본으로 쓰며, 기록과 맞지 않는 파일이 evidence 경로에 있으면 덮어쓰지 않고 exit 20으로 중단한다. 받은 표본은 언제나 파일 전체이며, budget을 넘어 받지 않은 파일은 표본이 아니라 메타데이터 전용 항목으로 사유와 함께 기록한다.
 
 엔지니어는 rollout 설정에 허용 루트, 실시간 데이터 후보 경로와 샘플 다운로드 allow/deny 패턴을 입력한다. deny 대상은 내용을 다운로드하지 않고 메타데이터만 기록한다. 단일 inventory에서 최신 파일이 확인되면 `active_candidate`로만 표시한다. 주기 갱신은 기존 파일들의 시각 간격 또는 두 번 이상 inventory의 변화를 근거로 확인하며, 근거가 부족하면 주기를 `unknown`으로 둔다.
 
@@ -205,7 +207,7 @@ direct와 proxy의 바이트 budget은 best-effort다. 전송 중 성장한 파�
 다음 요청을 기다리며, 대기 시간이 남은 시간을 넘으면 중단한다. 메타데이터
 호출과 재연결도 같은 속도 제한을 적용한다. 접근 시간대는 시작할 때뿐 아니라
 매 장비 요청과 전송 중에도 확인하며, 종료 시각 이후 작업이 계속되지 않게 한다.
-다운로드 파일 수는 전송 시도 기준이고 내용 hash 중복 제거는 사용량을 환급하지 않는다.
+다운로드 파일 수는 전송 시도 기준이다.
 
 ### 4.5 Extraction
 
@@ -257,9 +259,9 @@ CLI는 회사 내부의 승인된 OpenAI 호환 endpoint를 직접 호출한다.
 - 근거 인용을 위한 해당 입력 묶음의 sample SHA-256 식별자
 - pass 2 이상에서만, 직전 완료 pass의 검증된 `inferred` 값 중 같은 파일군과 검증된 관계로 직접 연결된 파일군의 `category`·`description` (`prior_inferred` 블록)
 
-`prior_inferred` 블록은 항목마다 family ID, pass 번호, 값, provenance를 담고 `rollout.json`의 `prior_max_bytes`(양의 정수, 계획 hash에 결합)를 넘지 않는다. 넘치면 같은 파일군을 먼저 남기고 연결 파일군을 family ID 순으로 잘라낸다. 프롬프트는 이 블록이 이전 추정이며 틀릴 수 있고, 현재 관측 근거로 유지·수정·`unknown`을 판단하라고 명시한다. evidence 검증기는 `prior_inferred` 항목의 인용을 거부하며 인용 가능한 근거는 종전대로 해당 파일군 evidence 디렉터리의 SHA-256뿐이다. 결과는 pass에 관계없이 `inferred`다. 필드 키의 family 입력 hash에는 직접 연결된 파일군의 Observed 요약 hash를 포함하고, 전달한 `prior_inferred` 블록 hash는 provenance에만 기록한다. 따라서 현재 파일군과 연결 파일군의 관측 입력이 바뀌지 않았으면 prior가 바뀌어도 재호출하지 않는다.
+`prior_inferred` 블록은 항목마다 family ID, pass 번호, 값, provenance를 담고 `rollout.json`의 `prior_max_bytes`(양의 정수, 계획 hash에 결합)를 넘지 않는다. 넘치면 같은 파일군을 먼저 남기고 연결 파일군을 family ID 순으로 잘라낸다. 프롬프트는 이 블록이 이전 추정이며 틀릴 수 있고, 현재 관측 근거로 유지·수정·`unknown`을 판단하라고 명시한다. evidence 검증기는 `prior_inferred` 항목의 인용을 거부하며 인용 가능한 근거는 종전대로 해당 파일군 sample record의 SHA-256뿐이다. 결과는 pass에 관계없이 `inferred`다. 필드 키의 family 입력 hash에는 직접 연결된 파일군의 Observed 요약 hash를 포함하고, 전달한 `prior_inferred` 블록 hash는 provenance에만 기록한다. 따라서 현재 파일군과 연결 파일군의 관측 입력이 바뀌지 않았으면 prior가 바뀌어도 재호출하지 않는다.
 
-LLM에는 파일군 설명, 데이터 category, field 의미·역할, 생성 주체, lifecycle, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 신뢰도(`confidence`: `high`|`medium`|`low`)와 근거 샘플(`evidence`: 해당 파일군 evidence 디렉터리에 실제로 존재하는 SHA-256 목록)도 각각 별도 요청과 검증기를 거치는 필드다. 필드당 의미 검증 응답 슬롯은 최대 2개다. 일시적인 전송 실패는 의미 검증 실패로 세지 않으며 아래의 별도 상한을 따른다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다. schema validator는 LLM 결과를 `observed` 위치에 쓸 수 없게 하고 모든 LLM category·lifecycle·field role과 의미를 `inferred`로 고정한다.
+LLM에는 파일군 설명, 데이터 category, field 의미·역할, 생성 주체, lifecycle, 예상 생성 주기, 운영 활용법, 민감도, 신뢰도와 근거 샘플을 한꺼번에 JSON으로 만들게 하지 않는다. CLI가 필드별로 짧은 응답을 요청하고 JSON을 조립·검증한다. 신뢰도(`confidence`: `high`|`medium`|`low`)와 근거 샘플(`evidence`: 해당 파일군 sample record의 SHA-256 목록)도 각각 별도 요청과 검증기를 거치는 필드다. 필드당 의미 검증 응답 슬롯은 최대 2개다. 일시적인 전송 실패는 의미 검증 실패로 세지 않으며 아래의 별도 상한을 따른다. 두 시도가 모두 실패하면 `confidence: low`와 `unresolved` 사유를 기록하고 다음 항목으로 진행한다. 추론과 관찰 사실을 구분하고 LLM 유래 필드마다 `model_id`, `model_config`, `prompt_version`과 `glossary_version`을 남긴다. schema validator는 LLM 결과를 `observed` 위치에 쓸 수 없게 하고 모든 LLM category·lifecycle·field role과 의미를 `inferred`로 고정한다.
 
 LLM 실행 설정은 `llm.model`(요청할 모델 또는 사내 alias), `temperature`, `max_tokens`, `connect_timeout_seconds`, `request_timeout_seconds`, `max_elapsed_seconds`, `transport_max_attempts`, `retry_backoff_seconds`를 포함하며 계획 hash에 결합한다. 참조한 profile·glossary 파일의 내용 hash도 계획에 포함하고 실행 전에 다시 확인한다. 시간 한도는 유한한 양수, `max_tokens`는 양의 정수, temperature와 backoff는 유한한 0 이상 값, `transport_max_attempts`는 1~3의 정수다. 운영자가 전용 Qwen 또는 승인된 HCP endpoint와 모델을 선택하며 실행 중 자동 모델 전환은 하지 않는다. 요청 alias와 서버가 반환한 모델 ID·revision·serving 설정을 구분해 기록하고, 서버가 공개하지 않은 실제 backend 정보는 `unknown`으로 남긴다.
 
@@ -282,22 +284,27 @@ data-map/
   file-families.json      # 파일군, 규칙, 통계, 해석
   paths.json              # 디렉터리 구조 요약
   unreadable.json         # 암호화/미지원/오류 파일군
-  coverage.json           # 목록/표본/의미 해석 완료 범위
-  metadata-evidence/      # 표본 없는 파일군의 관측 메타데이터 근거
-  evidence/               # 허용된 대표 샘플과 추출 결과
-  wiki/                   # 사람과 LLM이 읽는 Obsidian 호환 Markdown
+  coverage.json           # 목록/로컬 이름/표본/의미 해석 완료 범위
+  extracts.jsonl          # 표본마다 추출 결과 record 한 줄
+  metadata-evidence.jsonl # 파일군마다 관측 메타데이터 근거 record 한 줄
+  evidence/<장비 경로>    # 받은 대표 샘플 원본
+  wiki/<장비 경로>        # 폴더마다 index.md, 사람과 LLM이 읽는 Obsidian 호환 Markdown
   graph/                  # graph DB import용 nodes/edges JSONL
 ```
 
-JSON 파일은 사람이 읽을 수 있게 들여쓰기해 쓰고, JSONL 파일은 한 줄에 record 하나다. 계획 hash와 family·observation·claim·graph ID 같은 payload hash는 메모리에서 만든 compact canonical JSON으로 계산하므로 들여쓰기의 영향을 받지 않는다. 표본·extract·manifest 항목 같은 파일 hash는 디스크의 원시 바이트로 계산해 공백 하나의 변경도 드러낸다. 같은 입력은 언제나 같은 바이트를 쓴다.
+JSON 파일은 사람이 읽을 수 있게 들여쓰기해 쓰고, JSONL 파일은 한 줄에 record 하나다. 계획 hash와 family·observation·claim·graph ID 같은 payload hash는 메모리에서 만든 compact canonical JSON으로 계산하므로 들여쓰기의 영향을 받지 않는다. extract와 metadata evidence의 SHA-256도 `extracts.jsonl`·`metadata-evidence.jsonl`에서 해당 record 한 줄의 payload hash다. 그래서 뒤 pass가 record를 더해 파일을 다시 써도 앞선 인용은 그대로 유효하다. 표본과 manifest 항목 같은 파일 hash는 디스크의 원시 바이트로 계산해 공백 하나의 변경도 드러낸다. 같은 입력은 언제나 같은 바이트를 쓴다.
 
-hash로 이름 짓는 디스크 경로는 hash의 앞 12자만 쓴다. 표본은 `evidence/<family_id 앞 12자>/<sample SHA 앞 12자>`, 추출 결과는 그 옆의 `<sample SHA 앞 12자>.extract.json`, metadata evidence는 `metadata-evidence/<family_id 앞 12자>.json`, 이전 collection은 `work/history/<scope 앞 12자>/`다. 전체 hash는 record에만 두고, 인용 검증은 파일 바이트를 다시 hash해 전체 값과 대조한다. 같은 12자 이름에 다른 전체 hash가 오면 덮어쓰지 않고 exit 20으로 중단한다. Windows MAX_PATH(260자) 안에 들도록 CLI가 `rollouts/<rollout-id>/` 아래에 쓰는 모든 경로는 그 디렉터리 기준 120자 이하다.
+`evidence/`와 `wiki/`는 장비의 폴더 구조를 그대로 따른다. `<장비 경로>`는 source의 정규화한 절대 경로에서 앞의 `/`를 빼고 구성 요소마다 아래 로컬 이름 규칙을 적용한 것이며 허용 루트 기준 상대 경로가 아니다. 그래서 허용 루트가 여럿이거나 겹쳐도 원격 파일 하나는 로컬 경로 하나를 가진다. 사람이 여는 파일·폴더 이름에는 ID나 hash를 쓰지 않는다. hash는 record, manifest, graph ID와 `work/history/<scope 앞 12자>/`에만 둔다. 인용 검증은 표본이면 파일 바이트를, extract·metadata evidence면 해당 record를 다시 hash해 전체 값과 대조한다.
+
+로컬 이름은 Windows에서 쓸 수 있고 원격 이름마다 하나로 정해진다. Windows가 금지한 문자, `%`, 제어 문자와 이름 끝의 `.`·공백은 `%XX`로 쓰고, 예약 이름 `index.md`와 Windows 장치 이름(`NUL.txt` 등)은 첫 글자도 `%XX`로 쓴다. `%`도 항상 바꾸므로 서로 다른 원격 이름이 같은 로컬 이름이 되지 않는다. Windows 파일 시스템은 대소문자를 구별하지 않으므로, 이미 배정한 로컬 경로와 casefold해 같아지는 경로는 하위 전체와 함께 `case-collision`으로 로컬 지도에서 빼고, 배정한 이름은 같은 scope 안에서 바꾸지 않는다.
+
+Windows MAX_PATH(260자) 안에 들도록 CLI가 `rollouts/<rollout-id>/` 아래에 쓰는 모든 경로는 그 디렉터리 기준 120자 이하이고, `data-map/`을 `work/history/<scope 앞 12자>/`로 바꾼 경로도 이 상한을 지킨다. 이를 넘는 파일과 폴더(하위 전체 포함)는 `path-too-long`으로 로컬 지도에서 뺀다. 뺀 항목은 표본으로 고르지 않지만 inventory와 grouping에는 원격 경로로 남고, 가장 가까운 표현 가능한 상위 폴더의 `index.md`와 `coverage.json`에 사유와 함께 기록한다.
 
 원본 자격 증명, 전체 원본 파일, LLM 비밀 설정은 저장소에 넣지 않는다. 검증된 의미 필드 값은 지도와 재개용으로 보존한다. raw LLM prompt/response는 기본적으로 보존하지 않고 model·prompt·입력·출력 hash만 기록한다. 별도 보존이 승인된 경우에만 접근 제어된 로컬 위치를 사용하고 `data-map/`에는 위치 식별자와 hash만 남긴다.
 
-내용을 받지 못한 파일군도 출력한다. `data-map/metadata-evidence/<family_id 앞 12자>.json`에 source scope, 경로, 크기, 시각, 관측 출처, 생략 사유를 기록하고 이 파일의 SHA-256을 `evidence_kind: metadata`로 인용한다. 대표 샘플이 없으면 LLM 내용 해석을 호출하지 않고 `unresolved: no-sample`로 둔다. Wiki에는 관측한 메타데이터만 사실로 등록하며 내부 필드·용도에 대한 근거로 사용하지 않는다. 샘플이 있는 해석은 기존 sample SHA를 인용한다.
+내용을 받지 못한 파일군도 출력한다. `metadata-evidence.jsonl`에 파일군마다 source scope, 경로, 크기, 시각, 관측 출처, 생략 사유를 담은 record를 기록하고 그 record의 SHA-256을 `evidence_kind: metadata`로 인용한다. 대표 샘플이 없으면 LLM 내용 해석을 호출하지 않고 `unresolved: no-sample`로 둔다. Wiki에는 관측한 메타데이터만 사실로 등록하며 내부 필드·용도에 대한 근거로 사용하지 않는다. 샘플이 있는 해석은 기존 sample SHA를 인용한다.
 
-완료와 해석 품질은 별도로 보고한다. `coverage.json`에는 허용 루트별 inventory 완료 여부와 미탐색 frontier 수, 발견한 파일·파일군 수, 표본이 있는 파일군 수와 없는 사유별 수, resolved/unresolved 의미 필드 수와 사유별 수를 남긴다. 알려지지 않은 전체 파일 수를 추측해 coverage 백분율을 만들지 않는다. budget으로 inventory가 끝나지 않았으면 `inventory_complete: false`다. 정상 종료는 승인된 실행의 종료이지 장비 전체 이해나 모든 해석 성공의 증명이 아니다. 이 coverage를 결과 검토표에 포함한다.
+완료와 해석 품질은 별도로 보고한다. `coverage.json`에는 허용 루트별 inventory 완료 여부와 미탐색 frontier 수, 로컬 지도 완료 여부와 사유별 제외 수, 발견한 파일·파일군 수, 표본이 있는 파일군 수와 없는 사유별 수, resolved/unresolved 의미 필드 수와 사유별 수를 남긴다. 알려지지 않은 전체 파일 수를 추측해 coverage 백분율을 만들지 않는다. budget으로 inventory가 끝나지 않았으면 `inventory_complete: false`다. 정상 종료는 승인된 실행의 종료이지 장비 전체 이해나 모든 해석 성공의 증명이 아니다. 이 coverage를 결과 검토표에 포함한다.
 
 ### 4.7.1 파일군 사이의 관계
 
@@ -359,13 +366,13 @@ graph DB 제품을 기준 데이터로 삼지 않는다. 4단계 publish는 승�
 
 모든 node와 edge는 stable ID, collection scope, type, `observed_vs_inferred`, typed evidence, producer/rule/extractor/model version, confidence, temporal/validity 범위, sensitivity, `unresolved`를 해당할 때 포함한다. graph node ID는 4.7.2절의 기존 ID를 재사용하거나 고정 입력의 canonical JSON hash로 만든다: `file_family:<family_id>`, `claim:<claim_id>`, `equipment:<sha256([scope,equipment_id])>`, `path:<sha256([scope,normalized_directory_path])>`, `field:<sha256([scope,family_id,exact_field_path])>`. hash 입력 배열은 이 순서의 UTF-8 compact JSON이고 SHA-256은 소문자 hex다. edge ID는 `edge:<sha256([type,source_id,target_id,matched_value,rule_version])>`이며 같은 canonical encoding을 쓴다. LLM claim과 `supports_claim`은 `inferred`이고 관측 node 또는 evidence를 인용해야 한다. shared identifier, 가까운 시각 또는 파일 참조만으로 `produced`, `caused`, `used_recipe` 같은 인과 edge를 만들지 않는다. JSON-LD, RDF, GraphML과 특정 graph DB loader는 실제 consumer가 정해진 뒤 이 두 파일에서 만드는 별도 adapter다.
 
-Wiki는 사람과 LLM이 함께 읽는 Obsidian 호환 Markdown이다. 4단계 publish는 승인된 현재 `data-map/`에서 `wiki/index.md`와 파일군마다 `wiki/families/<slug>--<family_id 앞 12자>.md`를 결정론적으로 생성한다. slug는 파일군의 디렉터리 이름과 파일명 규칙에서 소문자 ASCII 영숫자와 `-`만 남긴 이름이다. 그래서 Obsidian의 파일 목록·탭·graph view에서 읽을 수 있고, Windows에서 쓸 수 없는 문자나 대소문자만 다른 이름의 충돌이 생기지 않는다. 링크는 표준 상대 Markdown 링크다. frontmatter는 따옴표로 감싼 평탄한 YAML 세 키(`family_id`, `pass_id`, `generated_by`)이며 표시용이고, 무결성은 manifest의 파일 hash가 맡는다. 파일군 페이지는 Observed, Fields, Inferred, Evidence, Relationships, Unresolved 절로 나누고 LLM 유래 값은 Inferred 절에만 둔다.
+Wiki는 사람과 LLM이 함께 읽는 Obsidian 호환 Markdown이며 장비의 폴더 구조를 그대로 따른다. 4단계 publish는 승인된 현재 `data-map/`에서 inventory한 폴더와 그 상위 폴더마다 `wiki/<장비 경로>/index.md`를 결정론적으로 생성한다. `wiki/index.md`는 원격 `/`의 페이지이며 맨 앞에 scope, 허용 루트와 coverage 요약을 둔다. 각 `index.md`는 그 폴더의 직접 하위 폴더와 그 폴더에 있는 파일군만 설명하고, 더 깊은 항목은 하위 폴더의 `index.md`에 맡긴다. 사람과 LLM은 `wiki/index.md`부터 폴더 링크를 따라 내려가며 찾는다. 허용 루트 밖의 상위 폴더 페이지는 하위 폴더 링크만 두고 inventory하지 않았다고 표시한다. 파일군은 폴더를 넘지 않으므로 파일군 페이지를 따로 만들지 않는다. 폴더 `index.md` 안에 파일군마다 Observed, Fields, Inferred, Evidence, Relationships, Unresolved 절을 두고 LLM 유래 값은 Inferred 절에만 둔다. 링크는 다른 `index.md`로 가는 표준 상대 Markdown 링크뿐이며, 링크 대상은 로컬 이름을 한 번 더 URL percent-encoding한 경로다. 표본 원본은 링크하지 않고 evidence 경로를 글자로 적는다. frontmatter는 따옴표로 감싼 평탄한 YAML 세 키(`path_id`, `pass_id`, `generated_by`)이며 표시용이고, 무결성은 manifest의 파일 hash가 맡는다. `path_id`는 그 폴더의 graph `path` node ID다.
 
-Fields 절은 필드마다 관측 자료형, 단위, 표본 범위의 min/max, null/invalid 수와 예시 값을 보여 준다. 예시 값은 extract 결과에서만 가져오며 필드당 서로 다른 값 최대 3개를 값마다 40자로 잘라 가져온 sample SHA와 함께 표시한다. 필드 이름에 `pass`, `pwd`, `secret`, `token`, `key`, `credential`이 들어 있으면(대소문자 무시) 예시 값과 범위를 모두 `(masked)`로 바꾸고, 그 값은 관계의 일치 값을 포함해 Wiki 어디에도 쓰지 않는다. 이름 기반 가리기는 최소 장치일 뿐이므로 4단계 검토에서 예시 값을 확인한다. 예시는 필드 값 하나씩이며 원문 log line, FDC/측정 row, 파일 전체와 임의의 발췌는 Wiki에 넣지 않는다.
+Fields 절은 필드마다 관측 자료형, 단위, 표본 범위의 min/max, null/invalid 수와 예시 값을 보여 준다. 예시 값은 extract 결과에서만 가져오며 필드당 서로 다른 값 최대 3개를 값마다 40자로 잘라 가져온 표본의 파일 이름과 함께 표시한다. 필드 이름에 `pass`, `pwd`, `secret`, `token`, `key`, `credential`이 들어 있으면(대소문자 무시) 예시 값과 범위를 모두 `(masked)`로 바꾸고, 그 값은 관계의 일치 값을 포함해 Wiki 어디에도 쓰지 않는다. 이름 기반 가리기는 최소 장치일 뿐이므로 4단계 검토에서 예시 값을 확인한다. 예시는 필드 값 하나씩이며 원문 log line, FDC/측정 row, 파일 전체와 임의의 발췌는 Wiki에 넣지 않는다.
 
 Wiki는 이후 LLM이 파일 도구나 Obsidian CLI로 읽는 입력이다. 데이터 유래 문자열(경로, 파일군 규칙, 필드 이름, 예시 값, 일치 값)은 항상 inline code span 안에 쓰고 표 안의 `|`는 이스케이프해, `[[`, `#`, `%%`, `$`, `==`, HTML 태그가 링크·태그·주석·수식으로 렌더링되지 않고 글자 그대로 보이게 한다. 이 처리는 렌더링만 막을 뿐 LLM이 값 속 문장을 따르는 것까지 막지는 못한다. 그래서 Wiki를 읽는 LLM 세션은 Wiki 전체를 신뢰할 수 없는 데이터로 다루며, Wiki 안의 문장은 명령 실행, 장비 접근이나 파일 변경의 근거가 되지 않는다. 외부 이미지와 링크는 넣지 않는다. 모든 Observed·Inferred 항목과 관계는 현재 map의 `observation_id`, sample 또는 metadata evidence SHA, 필요하면 extract SHA와 field/row/byte locator를 인용한다. citation이 없거나 현재 scope에서 해석되지 않는 항목, LLM 의미를 Observed로 표시한 항목, 근거에 없는 인과 주장은 발행을 거부한다.
 
-Obsidian은 vault로 연 폴더에 `.obsidian/` 설정 폴더를 만들고 편집을 즉시 저장한다. `data-map/` 안에서 파일이 추가·변경되면 결과 승인이 거부되므로(5.2절) 엔지니어와 LLM은 `wiki/`를 `rollouts/` 밖으로 복사한 사본을 vault로 연다. 사본은 승인 대상이 아니며 `stage 4 next`를 다시 실행하면 새로 복사한다. Wiki와 graph는 언제든 canonical map에서 재생성할 수 있는 파생물이며, 질의용 검색 adapter는 실제 요구가 생기면 canonical map에서 따로 만든다.
+Obsidian은 vault로 연 폴더에 `.obsidian/` 설정 폴더를 만들고 편집을 즉시 저장한다. `data-map/` 안에서 파일이 추가·변경되면 결과 승인이 거부되므로(5.2절) 엔지니어와 LLM은 `wiki/`를 `rollouts/` 밖으로 복사한 사본을 vault로 연다. vault에는 생성한 Markdown만 있고 장비 원본이 없으므로, 장비 파일 속 Markdown이나 HTML이 노트로 렌더링되지 않는다. 원본은 `index.md`에 적힌 evidence 경로에서 따로 연다. 사본은 승인 대상이 아니며 `stage 4 next`를 다시 실행하면 새로 복사한다. Wiki와 graph는 언제든 canonical map에서 재생성할 수 있는 파생물이며, 질의용 검색 adapter는 실제 요구가 생기면 canonical map에서 따로 만든다.
 
 ## 5. 실행 방식
 
@@ -538,7 +545,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 실행 결과 승인 없이 다음 rollout 단계에 진입할 수 없는지
 - CLI가 없거나 계약 버전이 맞지 않을 때 스킬이 실행을 계속하지 않는지
 
-추가 필수 시나리오: sample 경로에서 보호 파일 내용 요청 0건, 단계별 `init` 표 밖의 키 변경과 3단계 실행 뒤 장비 정체성 변경의 거부, 12자 hash 이름 충돌 시 중단과 120자 경로 상한, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분을 검증한다.
+추가 필수 시나리오: sample 경로에서 보호 파일 내용 요청 0건, 단계별 `init` 표 밖의 키 변경과 3단계 실행 뒤 장비 정체성 변경의 거부, 원격 이름의 금지 문자·`%`·예약 이름·장치 이름 변환, 대소문자 충돌과 120자 경로 상한에 걸린 항목의 로컬 조회·다운로드 전 제외, 기록과 맞지 않는 evidence 파일을 덮어쓰지 않는 중단, 같은 scope 재개에서 이미 받은 표본의 재전송 없음, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분을 검증한다.
 
 pass 반복은 다음을 검증한다. pass 경계에서 강제 종료한 뒤 재개해도 중복 전송·중복 LLM 요청이 없고 pass 번호와 budget이 초기화되지 않는지, 적격 대상 소진이 `no-eligible-work`로 끝나고 `max_passes`·budget 도달이 각각의 사유로 끝나는지, 세 종료 모두 `completed: true`·exit 0이고 `NEXT: STOP`이 아닌지, `confidence` 값을 바꿔도 선택 순서가 변하지 않는지, 연결 파일군의 Observed가 바뀌면 재호출하고 prior만 바뀌면 재호출하지 않는지, `prior_inferred` 항목을 evidence로 인용한 응답이 거부되는지, 그리고 의도적으로 틀린 prior와 반대되는 Observed를 넣었을 때 결과가 `inferred`로 남고 관측 fact가 바뀌지 않는지다. 라벨이 pass 사이에 안정됐다는 사실을 정확도 증명으로 보고하지 않는다.
 
@@ -546,11 +553,11 @@ pass 반복은 다음을 검증한다. pass 경계에서 강제 종료한 뒤 �
 남의 lock 해제 방지, 실행 중 시간대 종료, parser/압축 해제 상한, 파일 속 지시문,
 높은 confidence의 추론이 Wiki의 Observed로 승격되지 않는 경우도 검증한다.
 
-Wiki와 Graph 발행은 고정 입력에서 `wiki/`, `nodes.jsonl`, `edges.jsonl`이 바이트 단위로 동일한지, 모든 링크·endpoint와 typed citation이 현재 scope의 근거로 해석되는지, raw log/FDC/측정 row와 근거 없는 인과관계가 없는지, LLM 유래 값이 Observed나 observed graph field로 들어가지 않는지 검증한다. `[[`, `#`, `%%`, `$`, `|`, backtick이 든 경로·필드 이름·값이 글자 그대로 표시되는지, 이름에 비밀정보를 나타내는 문자열이 든 필드의 예시 값과 범위가 가려지는지, 페이지 파일 이름 충돌이 발행을 멈추는지도 확인한다.
+Wiki와 Graph 발행은 고정 입력에서 `wiki/`, `nodes.jsonl`, `edges.jsonl`이 바이트 단위로 동일한지, 모든 링크·endpoint와 typed citation이 현재 scope의 근거로 해석되는지, raw log/FDC/측정 row와 근거 없는 인과관계가 없는지, LLM 유래 값이 Observed나 observed graph field로 들어가지 않는지 검증한다. `[[`, `#`, `%%`, `$`, `|`, backtick이 든 경로·필드 이름·값이 글자 그대로 표시되는지, 이름에 비밀정보를 나타내는 문자열이 든 필드의 예시 값과 범위가 가려지는지, `wiki/`의 폴더 구조가 로컬 이름 규칙을 적용한 장비 폴더 구조와 같고 각 `index.md`가 직접 하위 항목만 설명하는지도 확인한다.
 
 LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한다. 근거 없는 추론은 Wiki의 Observed로 등록하지 않는다.
 
-파일군 관계는 합성 설정·로그·측정 파일로 검증한다. 다른 폴더의 동일 recipe ID 연결, 같은 폴더지만 다른 포맷인 파일군 유지, 일반 키워드와 필드가 다른 동일 숫자의 오연결 방지, 반복 사용된 run ID를 실제 동일 run으로 단정하지 않음, 범위 밖·다중 후보 참조의 unresolved 유지, metadata-only 파일군의 미관측 내용 매칭 금지와 명시적 참조 도착점 허용, SHA 중복 파일의 경로 보존, 잘못된 근거 hash·위치 거부를 포함한다. 관계·feature·근거 상한과 deadline, 재개 후 중복 없음, 고정 입력의 결정론적 출력, 샘플 관계의 전체 파일군 확대 금지, 관계 생성 중 추가 source 요청 0건도 확인한다.
+파일군 관계는 합성 설정·로그·측정 파일로 검증한다. 다른 폴더의 동일 recipe ID 연결, 같은 폴더지만 다른 포맷인 파일군 유지, 일반 키워드와 필드가 다른 동일 숫자의 오연결 방지, 반복 사용된 run ID를 실제 동일 run으로 단정하지 않음, 범위 밖·다중 후보 참조의 unresolved 유지, metadata-only 파일군의 미관측 내용 매칭 금지와 명시적 참조 도착점 허용, 잘못된 근거 hash·위치 거부를 포함한다. 관계·feature·근거 상한과 deadline, 재개 후 중복 없음, 고정 입력의 결정론적 출력, 샘플 관계의 전체 파일군 확대 금지, 관계 생성 중 추가 source 요청 0건도 확인한다.
 
 스킬은 먼저 pi에서 같은 시나리오로 검증한다. Codex, Claude Code, OpenCode는 아직 범위 밖이고, 같은 시나리오와 같은 결과 시트로 뒤에 확장한다. 그 전에는 지원 도구로 표기하지 않는다. 초기 최소 모델 검증 프로필은 엔지니어의 전용 Qwen3.8-27B 배포로 삼고 정확한 served model ID와 설정을 기록한다. 크기 표기는 검증된 모델 식별자나 정확도 증명이 아니다. 문구 일치가 아니라 다음 관찰 가능한 결과를 확인한다.
 
@@ -649,7 +656,7 @@ equipment-map-suite/
 - 파일군마다 category, schema descriptor와 시간 profile이 있고 반복 관측과 영구적인 static 판정을 혼동하지 않는다.
 - 파일군 사이의 구조·내용 관계에 유형, 관측 범위와 검증 가능한 근거가 있으며 잘림·미해결 참조가 드러난다.
 - 실행 budget과 읽기 전용 제약을 자동 검사한다.
-- 검토된 지도에서 Obsidian에서 읽히고 항목마다 근거를 추적할 수 있는 Markdown Wiki와 vendor-neutral graph JSONL을 생성한다.
+- 검토된 지도에서 장비 폴더 구조를 따르고 Obsidian에서 읽히며 항목마다 근거를 추적할 수 있는 Markdown Wiki와 vendor-neutral graph JSONL을 생성한다.
 - 필드마다 이름, 관측 자료형, 숫자 범위와 예시 값이 Wiki에 드러나고, 이름에 비밀정보를 나타내는 문자열이 든 필드의 값은 가려진다.
 - 6개 스킬이 pi에서 같은 CLI 계약으로 동작한다. 나머지 세 도구는 같은 기준을 통과한 뒤에 지원 목록에 들어간다.
 - 전용 Qwen3.8-27B 배포의 정확한 모델·serving 설정으로 실행한 기준 시나리오에서 승인 우회, 자유형 JSON 작성과 대화 상태 의존 없이 rollout을 재개한다.

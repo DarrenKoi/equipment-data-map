@@ -93,13 +93,14 @@ wall-clock UTC is only for recorded timestamps and the access window.
 
 Implement spec §5.2 once in the shared control plane. There are two kinds of
 hash. Payload hashes and IDs (`plan_hash`, `family_id`, `observation_id`,
-`claim_id`, graph IDs) are taken over compact canonical JSON built in memory:
+`claim_id`, graph IDs, and the §7 extract and metadata-evidence record
+SHAs) are taken over compact canonical JSON built in memory:
 UTF-8, `sort_keys=True`, `separators=(",", ":")`, `ensure_ascii=False`,
 `allow_nan=False`, excluding the payload's own hash field; `plan_hash` is
 re-derived from the parsed `plan.json` payload, never from its file bytes. File
-hashes (sample, extract and metadata-evidence SHAs, every `index.json` and
-`result-manifest.json` entry) are SHA-256 of the raw bytes on disk, so any byte
-change, whitespace included, is detected. JSON files on disk use the canonical
+hashes (sample SHAs, every `index.json` and `result-manifest.json` entry) are
+SHA-256 of the raw bytes on disk, so any byte change, whitespace included, is
+detected. JSON files on disk use the canonical
 options with `indent=2` in place of the compact separators, plus one newline,
 so people can read them. JSONL files keep one compact canonical record per
 line. Same input, same bytes, in both layouts.
@@ -279,10 +280,11 @@ the `loose` family `(parent dir, "*", extension)`, name rule `*<extension>`
 (`*` with no extension); a loose family may have one member. The extension is
 the text after the last dot of the basename, case preserved, empty when there
 is none. `family_id` is the canonical hash of `[scope, kind, parent dir, name
-rule, extension]`. There are no size buckets and no signature split. On-disk
-names use hash prefixes per spec §4.7; never raw remote names.
+rule, extension]`. There are no size buckets and no signature split. Local
+file and folder names follow the §7 name mapping.
 
-Eligible members are neither denied nor active candidates. All equally latest
+Eligible members are not denied, not active candidates and not omitted by the
+§7 name mapping. All equally latest
 members of a family are active candidates, whatever its kind; persist reasons
 for protected members before selecting. No timestamp-based stability clearance
 is invented in version 1: newest, realtime and changing candidates remain
@@ -296,13 +298,12 @@ metadata-only. Selection:
 Hash rank sorts by `sha256([scope, family_id, normalized_path])` over compact
 canonical JSON, ascending. It stands in for random choice: stable across
 restarts and Python versions, where `random.sample` is not. Five and three are
-ceilings, not minimums: fewer eligible members give fewer samples, and a
-duplicate SHA is not replaced by another download.
+ceilings, not minimums: fewer eligible members give fewer samples. Two members
+with identical bytes are two samples; there is no content dedup.
 
 Do not extrapolate a generation schedule from observation time. With at least
 three known modification times, record observed sorted gaps and an explicitly
 inferred interval; otherwise `unknown`. Modification time is not creation time.
-SHA dedup stores bytes once but preserves every source-path-to-SHA relationship.
 Do not claim unseen format exceptions were ruled out by a representative sample.
 Inventory observations use a canonical hash of scope, pass, normalized path,
 raw size/mtime and status as `observation_id`. Compare completed passes by path
@@ -398,7 +399,7 @@ traversing, linked and nested-beyond-limit entries. No extraction to disk. A
 bounded archive listing with omitted entries is explicitly partial. Do not
 unpickle, import sample modules, execute binaries or enable macros.
 
-`<sha[:12]>.extract.json` holds `schema_version`, `input_sha256`, `method`,
+An extract record (§7) holds `source_path`, `schema_version`, `input_sha256`, `method`,
 `method_version`, `status` (ok/partial/unreadable), `result`, `limits`,
 `truncated`, `failure_reason` (null/encrypted/corrupt/unsupported/too-large),
 `next_safe_action`. `unsupported-format` is the display label for `unsupported`,
@@ -434,7 +435,7 @@ Freeze schema version 1 in code; construct dictionaries in code, never ask the
 LLM to assemble documents. A family record includes `family_id`, `scope`, `rule`,
 `kind` (`pattern` or `loose`), `member_count`, `size_stats`, `mtime_stats`, `exceptions`, `samples`,
 `metadata_evidence`, `data_profile`, `interpretations`, `unresolved`. Samples preserve source path,
-size, raw/UTC time, selection reason, `observation_id`, bytes SHA and extract SHA.
+local path, size, raw/UTC time, selection reason, `observation_id`, bytes SHA and extract SHA.
 Metadata-evidence records preserve the observation IDs that support their rows.
 All references
 must resolve under the current map; reject missing hashes and unsafe paths.
@@ -442,14 +443,50 @@ must resolve under the current map; reject missing hashes and unsafe paths.
 `method` differs from the family's most common one (ties: lowest method name),
 with both methods; a `loose` family claims no shared format and has none.
 
-On-disk names (spec §4.7): `evidence/<family_id[:12]>/<sha[:12]>`,
-`evidence/<family_id[:12]>/<sha[:12]>.extract.json`,
-`metadata-evidence/<family_id[:12]>.json`, `work/history/<scope[:12]>/`.
-Records keep the full hashes. Resolve a cited hash to its path, then rehash the
-bytes and compare the full value. Before writing, if the path exists with other
-bytes, stop with exit 20; never overwrite. No path under `rollouts/<id>/` may
-exceed 120 characters relative to it: the longest today is an archived Wiki
-page, `work/history/<12>/wiki/families/<48>--<12>.md`, at 105.
+Local layout (spec §4.7). A sample is `evidence/<mirror>`, a folder's Wiki
+page is `wiki/<mirror dir>/index.md`, and a previous collection is
+`work/history/<scope[:12]>/`. Extract records are the lines of
+`extracts.jsonl`, keyed by `source_path`; metadata-evidence records are the
+lines of `metadata-evidence.jsonl`, keyed by `family_id`. Each line is one
+compact canonical record, lines sorted by key, so a record's SHA is the SHA-256
+of its line without the newline, which is also its payload hash (§3).
+`<mirror>` is the normalized remote absolute path without its leading `/`, each
+component mapped:
+
+1. Percent-encode as uppercase `%XX`, one per UTF-8 byte: `%`, `<>:"\|?*`,
+   U+0000–U+001F, and every character of a trailing run of `.` and space.
+2. If the result casefolded is `index.md`, or its part before
+   the first `.` casefolded is `con`, `prn`, `aux`, `nul`, `com0`–`com9`,
+   `com¹`–`com³`, `lpt0`–`lpt9` or `lpt¹`–`lpt³`, percent-encode its first
+   character too: `index.md` → `%69ndex.md`, `NUL.txt` → `%4EUL.txt`.
+3. An assigned local path never changes within a scope. A path whose
+   casefolded form equals an already assigned one, from any listing or root,
+   is omitted with reason `case-collision`, subtree included. Names first seen
+   in the same listing are assigned in original-name code point order.
+
+Map each inventoried listing once, before sampling from it, with a unique index
+on the casefolded local path so step 3 is a lookup. A file is kept when its
+mirror path is at most 85 characters and a folder when its mirror path is at
+most 80: that keeps `work/history/<12 hex>/evidence/<mirror>` and
+`work/history/<12 hex>/wiki/<mirror dir>/index.md` within 120 characters of
+`rollouts/<id>/`. Anything longer is omitted as `path-too-long`, a folder with
+its subtree. Persist folder assignments and every omission in the scope
+checkpoint; a kept file's local name is steps 1–2 applied to its name. Letter
+09 copies each folder's local path and every omission into `paths.json` and
+each sample's local path into its sample record, so stage 4 reads the mapping
+from the approved map only. Omitted entries stay in inventory, grouping and
+`file-families.json` by remote path, and the nearest representable ancestor's
+`index.md` lists them with the reason.
+
+Downloads (letter 07) are received under `work/tmp/` with a short fixed-length
+name, recorded durably as a completed sample (remote path, local path, size,
+mtime, bytes SHA), then `os.replace`d into the evidence path once it is
+confirmed absent. The sample record is the unit of completion: a recorded
+sample whose evidence file rehashes to the record is done and is not
+transferred again; one whose temporary file still rehashes to it is finished by
+the move; anything else is a failed transfer whose usage was already counted.
+A file at an evidence path that no current-scope record names, or whose bytes
+differ from its record, stops with exit 20 and is never overwritten.
 
 A field record has `value` (null for unresolved), `confidence`, `evidence`
 (typed SHA references), `observed_vs_inferred`, `unresolved` (null or reason),
@@ -479,7 +516,8 @@ with the lowest SHA that has the field, together with that SHA and its extract
 locator.
 
 Coverage: per root `inventory_complete`, `frontier_count`, `stop_reasons`;
-current-scope `files_found`, `families_found`, `families_with_samples`,
+current-scope `mapping_complete` and `mapping_omitted_by_reason`;
+`files_found`, `families_found`, `families_with_samples`,
 `families_without_samples_by_reason`, `resolved_fields`, `unresolved_fields`,
 `unresolved_fields_by_reason`. A field is counted once. Record a deterministic
 primary reason and optional additional reasons; totals must reconcile. No
@@ -497,35 +535,44 @@ derived outputs. Metadata-only evidence supports file existence/size/time,
 never unobserved internal content. REPORT is generated from sanitized
 counts/status only, without embedding pages.
 
-Wiki files. Write `wiki/index.md` and one
-`wiki/families/<slug>--<first 12 hex of family_id>.md` per family. Build `slug`
-from the family's normalized directory basename and name rule joined by a
-space: casefold, replace every run of characters outside `[a-z0-9]` with `-`,
-trim `-`, cut to 48 characters, trim `-` again, and use `family` when empty.
-Two families with the same file name stop publish with exit 20 before writing.
-Link with standard relative Markdown links (`families/<name>.md`,
-`../index.md`, `<name>.md`). Each page starts with flat YAML frontmatter
-holding exactly `family_id`, `pass_id` and `generated_by`, each a quoted
-string; frontmatter is display-only and the manifest owns integrity.
+Wiki files. Write `wiki/<mirror dir>/index.md` for every mapped folder that
+was inventoried and for each of its ancestors up to `/`; `wiki/index.md` is the
+page of `/`. There are no family pages: a family never spans folders, so it is
+a section of its folder's page. Each page starts with flat YAML frontmatter
+holding exactly `path_id` (the graph `path` node ID of that folder), `pass_id`
+and `generated_by`, each a quoted string; frontmatter is display-only and the
+manifest owns integrity. Links are standard relative Markdown links between
+pages only, `<child>/index.md`, `../index.md` and, for a relationship, the
+relative path to the target family's folder page. Each local name in a link is
+percent-encoded again as a URL path segment (`urllib.parse.quote(name,
+safe="")`), so a folder stored as `a%3Ab` links as `a%253Ab/index.md`.
 
-The index shows scope, roots and completeness from `coverage.json`, one table
-row per family (linked title, inferred category, member count, sample count,
-unresolved count) and skipped/unreadable counts by reason. A family page has,
-in order: the title `# <directory> · <name rule>`; `## Observed` (directory, name rule,
-member count, size and mtime ranges, format, encoding); `## Fields`;
-`## Inferred` (validated LLM fields with confidence and evidence, and an
-"unconfirmed" block for low-confidence and unresolved fields); `## Evidence`
-(kind, 12-hex SHA prefix and full SHA, `observation_id`, locator);
-`## Relationships` (spec §4.7.1); `## Unresolved`. A metadata-only family page
-says "content not inspected", shows its skip reason and has no Fields table.
+A folder page describes its immediate children only. `wiki/index.md` first
+shows scope, roots, inventory and mapping completeness from `coverage.json`,
+and skipped/unreadable counts by reason. Every page then has, in order: the
+title `# <remote folder path>`; a `../index.md` link (not on `/`);
+`## Folders`, one row per immediate subfolder (linked name, the numbers of
+files and families directly in it, or `not inventoried`, `frontier`, or the
+omission reason without a link); `## Files`, one row per family in this folder
+(name rule, kind, inferred category, member count, sample count, unresolved
+count) and one row per omitted file with its reason. Then one
+`## <name rule>` section per family, in name-rule code point order with ties by
+`family_id`, containing `### Observed` (name rule, member count, size and mtime
+ranges, format, encoding); `### Fields`; `### Inferred` (validated LLM fields
+with confidence and evidence, and an "unconfirmed" block for low-confidence and
+unresolved fields); `### Evidence` (kind, evidence path under `data-map/` as
+text, full SHA, `observation_id`, locator); `### Relationships` (spec §4.7.1);
+`### Unresolved`. A metadata-only family section says "content not inspected",
+shows its skip reason and has no Fields table. A page for a folder outside the
+allowed roots has only `## Folders` and says it was not inventoried.
 
-`## Fields` renders `data_profile.schema.fields`, one row per field, with the
+`### Fields` renders `data_profile.schema.fields`, one row per field, with the
 columns `field | type | unit | range in samples | null/invalid | examples`.
 `type` lists the `type_counts` other than `null` and `invalid`, largest first
 (`float 118, string 1`); `null/invalid` shows those two counts. Range is
 `min … max (n values, k samples)` when `values_counted` is at least 1 and `—`
 otherwise. Examples are up to three distinct values, each cut to 40 characters
-with `…`, followed by the 12-hex prefix of the sample they came from. A field
+with `…`, followed by the file name of the sample they came from. A field
 whose casefolded name contains `pass`, `pwd`, `secret`, `token`, `key` or
 `credential` shows `(masked)` in both the range and examples columns, and its
 values appear nowhere else in the Wiki, relationship matched values included.
@@ -548,7 +595,11 @@ Citations. Every Wiki Observed or Inferred entry, relationship row and graph
 claim cites typed evidence: `observation_id`, `evidence_kind` and evidence SHA,
 plus extract SHA and field/row/byte locator when it supports a content claim.
 The observation must occur in the cited sample or metadata-evidence record in
-the same scope. Reject foreign-scope references, unresolved hashes/locators,
+the same scope. Records keep full hashes. Resolve a sample citation by
+rehashing the file at its sample record's local path, and an extract or
+metadata citation by rehashing its record line; compare the full value. Hash
+each distinct file and record once per run and resolve citations from that
+table. Reject foreign-scope references, unresolved hashes/locators,
 inferred values rendered as Observed and causal claims without evidence.
 
 Every JSONL line is UTF-8/LF canonical JSON with sorted keys. Common graph node

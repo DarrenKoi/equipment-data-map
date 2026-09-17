@@ -45,13 +45,16 @@ Use implementation-reference.md §7 for common records and hash ordering.
 - Stage 1 `plan` refuses a `rollout.json` whose equipment host is not
   `localhost`/`127.0.0.1` (spec §8: fake trees only at stage 1).
 
-- Write `metadata-evidence/<family_id[:12]>.json` and `coverage.json`
-  per spec §4.7. Metadata references carry `evidence_kind: metadata` and the
-  actual metadata file SHA-256; never invent a sample SHA. Include them in
-  index/manifest. Scope the entire map to the active collection; no stale
-  fake equipment evidence or interpretations may remain in the real map.
-  Coverage records inventory completeness/frontier and sampling coverage;
-  later stages add interpretation counts without claiming unseen totals.
+- Write `extracts.jsonl`, `metadata-evidence.jsonl` and `coverage.json` per
+  spec §4.7, and the local paths and omissions into `paths.json` and sample
+  records per implementation-reference.md §7. Metadata references carry
+  `evidence_kind: metadata` and that record's SHA; never invent a sample SHA.
+  Include them in index/manifest. Scope the entire map to the active
+  collection; no stale fake equipment evidence or interpretations may remain
+  in the real map.
+  Coverage records inventory completeness/frontier, local mapping
+  completeness with omissions by reason, and sampling coverage; later stages
+  add interpretation counts without claiming unseen totals.
 
 - After extraction, build the bounded file-family relationships in spec
   §4.7.1 inside `equipment_map/datamap.py`; use the existing inventory and
@@ -85,7 +88,8 @@ python -m pytest -q tests/test_stage1_e2e.py
 
 Covers, on both transports against the fake FTP: `plan` → fake approval →
 `next` exits 0 and `data-map/` contains the five base JSON files, coverage, metadata evidence
-and sample evidence; every JSON file is indented and ends with one newline;
+and sample evidence, each sample at the fixture's remote path under
+`evidence/`; every JSON file is indented and ends with one newline;
 two runs with the frozen clock give byte-identical `data-map/*.json` and the
 same manifest hash; a field present in two samples has one combined entry
 with the lowest min, highest max and summed counts; a `pattern` family whose

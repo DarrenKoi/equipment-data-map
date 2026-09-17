@@ -237,6 +237,10 @@ example `audit.jsonl`, run
 `python -m json.tool --json-lines --no-ensure-ascii < audit.jsonl`. Read the
 Wiki in Obsidian from a copy: copy `data-map/wiki/` to a folder outside
 `rollouts/` and open that copy as the vault, again after every `stage 4 next`.
+The Wiki's folders are the equipment's folders; start at the root `index.md`
+and follow folder links down. Samples are not in the vault: a family section
+names each sample's path under `data-map/evidence/`, which mirrors the same
+folders, and you open it there.
 The Obsidian app writes a `.obsidian/` folder into the vault and saves edits at
 once, an Obsidian CLI can change notes too, and any added or changed file under
 `data-map/` makes `operator approve-result` refuse. An LLM reading the Wiki through file tools or the Obsidian CLI works on

@@ -153,9 +153,10 @@ Do not start letters 01–20 or rerun a completed pass without an explicit reque
    failed LLM calls and skipped samples even when the exit code is 0.
 
 4. **Read the output.** Open `<output_dir>/index.md` using the path in the
-   final JSON, then follow its links to two directory files (or all if fewer).
-   Each invocation writes a fresh `out/<name>/<run-id>/`; directory filenames
-   use path hashes, and previous output is preserved. This is not checkpoint
+   final JSON, then follow its folder links down to two directory pages (or
+   all if fewer). Each invocation writes a fresh `out/<name>/<UTC time>/`
+   whose folders follow the equipment's folders, one `index.md` per directory
+   linked from its parent; previous output is preserved. This is not checkpoint
    resume: a new invocation starts a new budget and walks the roots again.
    Without an LLM, review file/folder evidence and skipped coverage, record
    `00 discovery`, and stop; do not treat missing optional LLM settings as a
@@ -254,9 +255,13 @@ Reference for judging its output; the code is the source of truth.
   SIZE/MDTM as well as RETR on excluded entries without changing the vendored
   library. The extra listing connection is intentional. A listing
   entry whose `SIZE` fails is treated as a subdirectory; a server with no
-  `SIZE` at all makes every file look like one, and then file-named markdown
+  `SIZE` at all makes every file look like one, and then a folder per file
   appears. Report that, do not fix it here. `max_dirs` stops the walk and
-  the index says how many directories were left.
+  the root `index.md` says how many directories were left.
+- Output folder names follow the name mapping in implementation-reference.md
+  §7. A directory it omits as `case-collision`, or whose `index.md` path would
+  pass 120 characters, is not visited; the parent page or the root `## Run`
+  list says why.
 - Sampling: newest file per extension per directory, by MDTM mtime. The
   whole file crosses the wire (the library has no range read). Download one
   file at a time and count its actual received length. Listed size is advisory:

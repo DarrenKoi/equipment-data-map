@@ -37,8 +37,8 @@ The last two commands run a local fake FTP server and fake LLM, using the real
 proxy or direct transport. `pyftpdlib` is a test-server dependency only; office
 equipment supplies its own FTP server. Local loopback listeners must be allowed.
 
-Each spike invocation writes `out/<name>/<run-id>/index.md` and linked directory
-documents. The final JSON identifies `output_dir`, actual successful download
+Each spike invocation writes `out/<name>/<UTC time>/`, one `index.md` per
+directory in the equipment's own folder layout, linked from its parent. The final JSON identifies `output_dir`, actual successful download
 bytes, overrun and unknown usage, and LLM attempts/successes/failures. A successful
 exit is a smoke check; an engineer still reviews coverage and interpretation.
 See the [incremental improvement plan](docs/plans/2026-09-13-incremental-improvements.md)

@@ -474,7 +474,7 @@ lets you batch.
 | 03 | Source interface, FTP adapter, fake FTP | 1 | 01 |
 | 05 | Inventory with checkpoints and budgets | 1 | 02, 03 |
 | 06 | Grouping into file families | 1 | 05 |
-| 07 | Sampling with budgets and dedup | 1 | 03, 06 |
+| 07 | Sampling into the local mirror | 1 | 03, 06 |
 | 08 | Deterministic extraction | 1 | 07 |
 | 09 | Data map output and stage 1 `next` | 1 | 05, 06, 07, 08 |
 | 10 | Stage 1 verification scenarios | 1 | 09 |

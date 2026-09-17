@@ -1,13 +1,14 @@
 """ftp -> LLM -> markdown spike for one equipment. ``python spike.py equipment.toml``.
 
 Walks the configured roots read-only, samples the newest file per extension in
-each directory, asks the office LLM once per directory, and writes one markdown
-per directory plus ``index.md``. Ends with a three-condition self-check.
+each directory, asks the office LLM once per directory, and writes one
+``index.md`` per directory in a folder tree that mirrors the equipment's.
+Ends with a three-condition self-check.
 Letter: equipment-data-parser/00-spike.md.
 """
 
 import fnmatch
-import hashlib
+import itertools
 import json
 import math
 import os
@@ -19,7 +20,7 @@ import tomllib
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
-from uuid import uuid4
+from urllib.parse import quote
 
 import requests
 
@@ -38,6 +39,13 @@ NOISE = re.compile(
     r"\.(?:%s)$|(?<![a-z])(?:%s)(?![a-z])"
     % ("|".join(map(re.escape, NOISE_EXTENSIONS)), "|".join(map(re.escape, NOISE_WORDS))),
     re.IGNORECASE)
+
+# Local folder names follow implementation-reference.md §7: Windows-forbidden
+# characters and % itself are percent-encoded, so two remote names never share one.
+FORBIDDEN = set('%<>:"\\|?*') | {chr(c) for c in range(32)}
+RESERVED = {"index.md"}
+DEVICES = {"con", "prn", "aux", "nul"} | {p + n for p in ("com", "lpt") for n in "0123456789\u00b9\u00b2\u00b3"}
+MAX_LOCAL_PATH = 120  # an index.md path below the run folder; Windows MAX_PATH headroom
 
 PROMPT = (
     "You record facts about one directory of a FAB equipment file store. "
@@ -177,19 +185,65 @@ def main(config_path):
     )
     spec = lambda **kw: HostSpec(eq["host"], **kw)  # one host, the fleet of one
 
-    out = Path(cfg.get("output", {}).get("dir", "out")) / eq["name"] / uuid4().hex
-    out.mkdir(parents=True, exist_ok=False)
+    base = Path(cfg.get("output", {}).get("dir", "out")) / eq["name"]
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    for n in itertools.count(1):  # never merge runs: a same-second rerun gets its own folder
+        out = base / (stamp if n == 1 else f"{stamp}-{n}")
+        try:
+            out.mkdir(parents=True)
+            break
+        except FileExistsError:
+            continue
     stats = {"mode": "llm" if llm_enabled else "metadata-only" if budget["max_download_bytes"] == 0 else "samples-only",
              "dirs": 0, "files": 0, "bytes": 0, "estimated_bytes": 0,
              "overrun_bytes": 0, "download_failed": 0, "usage_unknown": False,
              "llm_calls": 0, "llm_success": 0, "llm_failed": 0, "md": 0}
-    index = ["# " + eq["name"], "", "| directory | files | note |", "|---|---|---|"]
+    notes = []  # run remarks, appended to the root page
+    folders, claimed, subdirs, written = {}, {}, {}, set()
+
+    def place(d):
+        """Give remote dir d its local folder; return why it cannot have one, else ''."""
+        if d in folders:
+            return ""
+        parts = [p for p in d.split("/") if p]
+        local = "/".join(map(local_name, parts))
+        if len(posixpath.join(local, "index.md")) > MAX_LOCAL_PATH:
+            return "path-too-long"
+        for i in range(1, len(parts) + 1):  # Windows folds case: Logs/ and logs/ are one folder
+            key = "/".join(map(local_name, parts[:i])).casefold()
+            if claimed.setdefault(key, parts[:i]) != parts[:i]:
+                return "case-collision"
+        folders[d] = local
+        return ""
+
+    def page_top(d, status):
+        return [f"# {d}", "", *([] if d == "/" else ["[..](../index.md)", ""]), *([status, ""] if status else [])]
+
+    def folder_rows(d):
+        rows = []
+        if subdirs.get(d):
+            rows += ["## Folders", "", "| folder | note |", "|---|---|"]
+            for child, omitted in sorted(subdirs[d].items()):
+                name = posixpath.basename(child)
+                link = f"[{name}]({quote(local_name(name), safe='')}/index.md)"
+                rows.append(f"| {name if omitted else link} | {omitted or '-'} |")
+            rows.append("")
+        return rows
+
+    def write_page(d, lines):
+        (out / folders[d]).mkdir(parents=True, exist_ok=True)
+        (out / folders[d] / "index.md").write_text(scrub("\n".join(lines).rstrip() + "\n"), encoding="utf-8")
+
     queue, seen = deque(roots), set(roots)
 
     while queue and stats["dirs"] < budget["max_dirs"]:
         d = queue.popleft()
         if not allowed(d):  # policy applies to configured roots too
-            index.append(f"| {d} | - | excluded by path policy |")
+            notes.append(f"{d}: excluded by path policy")
+            continue
+        omitted = place(d)
+        if omitted:
+            notes.append(f"{d}: {omitted}, not visited")
             continue
         stats["dirs"] += 1
         listing = dl.list_dirs([spec(listings=[ListDir(d)])])
@@ -201,13 +255,16 @@ def main(config_path):
         for f in [*listing.failures, *report.failures]:
             if f.remote_path in (None, d):
                 note = "listing failed: " + f.error.split(":")[0]
-            elif f.remote_path in paths and f.remote_path not in seen and allowed(f.remote_path):
+            elif f.remote_path in paths and allowed(f.remote_path):
                 # ponytail: SIZE fails on a directory, so a failed SIZE is the
                 # subdirectory signal. A server without SIZE at all makes every
                 # file look like a directory; then every "child" lists only
-                # itself and yields an empty md. Live with it for the spike.
-                seen.add(f.remote_path)
-                queue.append(f.remote_path)
+                # itself and yields an empty page. Live with it for the spike.
+                child = f.remote_path
+                subdirs.setdefault(d, {})[child] = omitted = place(child)
+                if not omitted and child not in seen:
+                    seen.add(child)
+                    queue.append(child)
         files = [f for f in report.files if f.remote_path in paths and allowed(f.remote_path)]
         stats["files"] += len(files)
 
@@ -259,26 +316,49 @@ def main(config_path):
             stats["llm_success"] += valid
             stats["llm_failed"] += not valid
 
-        md = "\n".join([f"# {d}", "", "## Evidence", ""] + rows + ["", description, ""])
-        name = "dir-" + hashlib.sha256(d.encode("utf-8")).hexdigest()
-        (out / f"{name}.md").write_text(scrub(md), encoding="utf-8")
+        write_page(d, [*page_top(d, note), *folder_rows(d), "## Evidence", "", *rows, "", description])
+        written.add(d)
         stats["md"] += 1
-        index.append(f"| [{d}]({name}.md) | {len(files)} | {note} |")
 
     if queue:
-        index.append(f"| ... | - | max_dirs reached, {len(queue)} directories not visited |")
-    (out / "index.md").write_text(scrub("\n".join(index) + "\n"), encoding="utf-8")
+        notes.append(f"max_dirs reached, {len(queue)} directories not visited")
+    left = set(queue)
+    # Every folder link leads to a page: stub unvisited children and the ancestors above the roots.
+    for d in list(folders):
+        while d != "/":
+            parent = posixpath.dirname(d)
+            subdirs.setdefault(parent, {}).setdefault(d, "")
+            place(parent)
+            d = parent
+    place("/")
+    for d in folders:
+        if d not in written:
+            status = "not visited: max_dirs reached" if d in left else "not inventoried: above the configured roots"
+            write_page(d, [*page_top(d, status), *folder_rows(d)])
+    if notes:
+        with (out / "index.md").open("a", encoding="utf-8") as stream:
+            stream.write(scrub("\n".join(["", "## Run", "", *(f"- {n}" for n in notes)]) + "\n"))
 
     checks = {
         "index_exists": (out / "index.md").exists(),
         "md_per_dir": stats["md"] == stats["dirs"],
         "evidence_tables": sum("## Evidence" in p.read_text(encoding="utf-8")
-                               for p in out.glob("*.md") if p.name != "index.md") == stats["dirs"],
+                               for p in out.rglob("index.md")) == stats["dirs"],
     }
     print(scrub(json.dumps({**stats, **checks, "output_dir": str(out)})))
     passed = (all(checks.values()) and stats["files"] > 0 and (not llm_enabled or stats["llm_success"] > 0)
               and not stats["usage_unknown"])
     return 0 if passed else 1
+
+
+def local_name(name):
+    """One remote path component as a Windows-safe local name (implementation-reference.md §7)."""
+    encode = lambda text: "".join(f"%{b:02X}" for b in text.encode("utf-8"))
+    body = name.rstrip(". ")
+    local = "".join(encode(c) if c in FORBIDDEN else c for c in body) + encode(name[len(body):])
+    if local.casefold() in RESERVED or local.split(".")[0].casefold() in DEVICES:
+        local = encode(local[0]) + local[1:]
+    return local
 
 
 def decode(head):

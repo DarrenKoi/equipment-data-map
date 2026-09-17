@@ -35,8 +35,9 @@ Read implementation-reference.md §8 for prompts, field validators and limits.
 - `equipment_map/llm/fields.py`: one short prompt per field — description,
   data category, field meanings and semantic roles, producer, lifecycle,
   expected period, operational use, sensitivity,
-  confidence (`high`|`medium`|`low`), evidence (newline-separated actual sample
-  SHA-256 under the current family's `evidence/`, assembled into a list by code) — each with a validator.
+  confidence (`high`|`medium`|`low`), evidence (newline-separated sample
+  SHA-256 values from the current family's sample records, assembled into a
+  list by code) — each with a validator.
   Input is family rule/stats, bounded extract, extractor structure, glossary,
   and the deterministic sample SHA identifiers needed to cite that bundle.
   From pass 2 (spec §4.6) add a `prior_inferred` data block: the previous

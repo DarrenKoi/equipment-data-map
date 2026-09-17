@@ -25,11 +25,12 @@ supplies it in your environment before this letter (for example
    writes `wiki/`, `graph/nodes.jsonl`, `graph/edges.jsonl`, and
    `rollouts/$ROLLOUT/REPORT.md`.
 3. Ask the engineer to copy `rollouts/$ROLLOUT/data-map/wiki/` to a folder
-   outside `rollouts/`, open that copy in Obsidian (engineer-guide.md §4), and
-   confirm each family page answers the §1 questions or marks them
-   unconfirmed with a reason; metadata-only pages must say content was not
-   inspected. Review inventory/sampling/interpretation coverage in the Wiki
-   index and `coverage.json`. Confirm the Fields examples show no secrets,
+   outside `rollouts/`, open that copy in Obsidian (engineer-guide.md §4),
+   and confirm each family section answers the §1 questions or marks them
+   unconfirmed with a reason; metadata-only sections must say content was not
+   inspected. Review
+   inventory, local-mapping, sampling and interpretation coverage in the root
+   `index.md` and `coverage.json`. Confirm the Fields examples show no secrets,
    Wiki entries and graph records have resolvable typed citations, and
    nothing contains raw log lines or FDC/measurement rows, then run
    `operator approve-result`. Append `waiting`.

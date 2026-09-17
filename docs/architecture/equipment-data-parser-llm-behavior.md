@@ -127,12 +127,13 @@ CLI는 LLM에게 JSON을 만들게 하지 않는다. 필드 하나씩 짧게 묻
 ### 4.1 완료된 spike의 Markdown
 
 ```text
-out/<equipment name>/<run-id>/
-  index.md                 # 디렉터리 표: 경로, 파일 수, 비고
-  <path-hash>.md           # 디렉터리마다 하나: 증거표 + "## LLM" 절
+out/<equipment name>/<UTC 시각>/
+  index.md                 # 원격 / 페이지: 하위 폴더 링크, 실행 비고
+  <장비 경로>/index.md     # 디렉터리마다 하나: 하위 폴더 표 + 증거표 + "## LLM" 절
 ```
 
-`index.md`는 코드가 만든 표, 디렉터리 파일의 `## LLM` 아래 `### Observed`만
+폴더 구조는 장비 폴더 구조를 따르고 이름은 스펙 4.7절의 로컬 이름 규칙을 쓴다.
+표는 코드가 만들고, 디렉터리 페이지의 `## LLM` 아래 `### Observed`만
 모델이 쓴 문장이다. 비밀번호와 API 키는 파일에 쓰기 전에 `***`로 지운다.
 `out/`은 사무실 PC에만 남는다.
 
@@ -142,7 +143,10 @@ out/<equipment name>/<run-id>/
 rollouts/<id>/
   data-map/
     *.json                 # canonical 장비·경로·파일군·coverage 지도 (들여쓰기)
-    wiki/                  # 색인 + 파일군마다 Obsidian 호환 페이지
+    extracts.jsonl         # 표본마다 추출 결과 record 한 줄
+    metadata-evidence.jsonl # 파일군마다 관측 메타데이터 근거 record 한 줄
+    evidence/<장비 경로>   # 받은 표본 원본
+    wiki/<장비 경로>       # 폴더마다 Obsidian 호환 index.md
     graph/nodes.jsonl      # graph DB import용 파생 node
     graph/edges.jsonl      # graph DB import용 파생 edge
   REPORT.md                # rollout id, 단계별 개수, 버전만. 경로·모델 없음
@@ -151,9 +155,11 @@ rollouts/<id>/
 `wiki/`와 `graph/`는 `data-map/`의 canonical JSON에서 결정론적으로 다시
 만드는 파생물이다. graph는 특정 DB 없이 `nodes.jsonl`과 `edges.jsonl`을
 제공한다. Wiki는 사람과 LLM이 함께 읽는다. 엔지니어는 Obsidian으로, LLM은 파일
-도구나 Obsidian CLI로 `rollouts/` 밖에 복사한 사본을 읽는다. Wiki 항목과
-관계는 `evidence/` 또는 `metadata-evidence/`에 실제로 있는 typed evidence SHA,
-observation ID와 locator를 인용한다. 샘플이 없는 파일군은 관측 메타데이터만
+도구나 Obsidian CLI로 `rollouts/` 밖에 복사한 사본을 읽는다. `wiki/index.md`에서
+폴더 링크를 따라 내려가며, 각 `index.md`는 직접 하위 폴더와 그 폴더의 파일군만
+설명한다. Wiki 항목과 관계는 `evidence/`의 표본 파일이나
+`extracts.jsonl`·`metadata-evidence.jsonl` record로 확인되는 typed evidence
+SHA, observation ID와 locator를 인용한다. 샘플이 없는 파일군은 관측 메타데이터만
 사실로 싣고 "content not inspected"를 표시한다. 낮은 신뢰도와 `unresolved`
 필드는 "unconfirmed"로 남는다. Fields 표는 필드마다 자료형, 단위, 표본 범위와
 예시 값 최대 3개(40자)를 보여 주고, 이름에 비밀정보를 나타내는 문자열이 든 필드는
