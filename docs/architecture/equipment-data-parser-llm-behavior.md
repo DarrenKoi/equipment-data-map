@@ -12,7 +12,7 @@
 
 | 역할 | 무엇인가 | 무엇을 읽나 | 무엇을 쓰나 |
 |---|---|---|---|
-| **에이전트 LLM** | 사무실 PC에서 Claude Code, Codex, OpenCode, pi 등으로 돌아가는 코딩 에이전트. 회사 승인 모델을 뒤에 둔다. | `equipment-data-parser/`의 Markdown 지시, `office/progress.md` | 코드·테스트(저장소 루트), `office/` 원장과 문제 보고 |
+| **에이전트 LLM** | 사무실 PC에서 Claude Code, Codex, OpenCode, pi 등으로 돌아가는 코딩 에이전트. 회사 승인 모델을 뒤에 둔다. | `equipment-data-parser/`의 Markdown 지시, `office/progress.md`, 엔지니어가 쓰는 `engineer.toml` | 코드·테스트(저장소 루트), `office/` 원장과 문제 보고 |
 | **내부 해석 LLM** | 회사망 안의 OpenAI 호환 HTTP endpoint. `spike.py`와 `equipment-map` CLI가 코드로 호출한다. | 코드가 조립한 짧은 프롬프트: 파일군 규칙·통계, 제한된 샘플 발췌, 용어집, sample SHA, pass 2부터 직전 pass의 `prior_inferred`(같은·연결 파일군의 category·description, 인용 불가) | 필드 하나짜리 짧은 답. 파일에 직접 쓰지 않는다. |
 
 에이전트 LLM은 장비 원본이나 추출 내용을 보지 않는다. 내부 해석 LLM은
@@ -29,14 +29,14 @@
 equipment-data-parser/
   index.md                   # 계약이자 루프: 읽는 순서, 쓰기 권한, 체크포인트, 정지 조건
   00-spike.md                # 완료된 초기 spike의 진단 참고 자료
-  01-…-20-*.md               # 현행 CLI 빌드(01–15)와 운영(16–20) 편지, 번호 순
+  01-…-21-*.md               # 현행 CLI 빌드(01–15), 운영(16–20), extractor 릴리스(21) 편지, 번호 순
   spec.md                    # 스펙 스냅샷. docs/ 원본과 다르면 원본이 이긴다
   implementation-reference.md# 편지가 가리키는 절만 읽는 구현 세부
   engineer-guide.md          # 사람(엔지니어)용. 에이전트는 읽지 않는다
   problems.md                # 문제 보고 형식
 ```
 
-읽기 순서는 고정이다. `index.md` → `office/progress.md`에서 현재 편지 찾기
+읽기 순서는 고정이다. `index.md` → `office/progress.md`와 `engineer.toml`에서 현재 편지 찾기
 → 그 편지 → 편지가 이름 붙인 `spec.md` 절만. 스펙 전체나 원장 이력 전체를
 출력하지 않는다. 컨텍스트 창을 소모품으로 보고, 상태는 디스크와
 `office/progress.md`에만 둔다.

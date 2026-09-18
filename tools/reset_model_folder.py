@@ -85,7 +85,8 @@ def refresh(model: Path):
     touched = {m[1] for m in (re.fullmatch(rf"{LETTERS}/(\d\d)-.*\.md", r)
                               for r in changed) if m}
     ledger = model / "office" / "progress.md"
-    done = set(re.findall(r"^- (\d\d) done ", ledger.read_text(encoding="utf-8"), re.M)
+    # Build letters only: a revised 16-21 applies from the next rollout or release.
+    done = set(re.findall(r"^- (0[1-9]|1[0-5]) done ", ledger.read_text(encoding="utf-8"), re.M)
                ) if ledger.is_file() else set()
     redo = sorted(touched & done)
     if redo:

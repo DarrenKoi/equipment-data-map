@@ -20,17 +20,15 @@ wait for approvals.
 - The engineer runs `init` and every `operator` command in their own
   terminal. Tell them what to run and what hash they will be asked to
   confirm; never run it yourself.
-- Resume in a later session with `equipment-map status --rollout "$ROLLOUT"`.
+- The rollout is the one `engineer.toml` names in `[rollout] id` (index.md
+  Loop step 1). Below it is written `<id>`: put the id itself in every
+  command that takes `--rollout` — `plan`, `next` and `status`; `preflight`
+  takes none — and as the `rollout: <id>` field of every ledger line.
+- Resume in a later session with `equipment-map status --rollout <id>`.
   The audit ledger, not this file, says where the rollout is.
 - You read stdout, `status` output, and `REPORT.md` only. `data-map/`,
   `evidence/`, and `work/` are for the engineer; sample content stays out
   of your context.
-- Every command that accepts a rollout argument, namely `plan`, `next`,
-  and `status`, carries `--rollout "$ROLLOUT"`; `preflight` does not.
-  `ROLLOUT` is the id the engineer chose at `init`. The engineer supplies
-  it in your environment before the letter starts (they run, for example,
-  `export ROLLOUT=<that id>` in the shell that launches you); you never
-  run `export` yourself.
 
 A successful `next` waits for result review; do not call it in a loop.
 Resume from `status`: unplanned → plan; awaiting plan approval → wait;
@@ -41,28 +39,34 @@ history, so approval of stage 1 may show current stage 2.
 
 ## Steps
 
-1. Prerequisite the engineer performs in their own terminal: start the
+1. Run `equipment-map status --rollout <id>`. When it shows stage 1
+   `adopted <baseline>`, this rollout took stages 1 and 2 from a baseline
+   rollout (spec §5): append this letter's `done` line with
+   `adopted <baseline>` as its result and go on to letter 17. When it does
+   not know the rollout, the engineer has not run `init` yet: ask for it
+   (engineer-guide.md §3 — with a baseline, or steps 2 and 3 below) and
+   append `waiting` with this same `status` command as the check.
+2. Prerequisite the engineer performs in their own terminal: start the
    fixtures with `python -m tests.fixtures.serve` (letter 03) and read the
    printed ports. For FTP on Windows use the local fake proxy, never the office
    production proxy; see engineer-guide.md §2. You start no server. Both adapters
    have already passed build tests; this rollout selects one protocol.
-2. Ask the engineer to run `equipment-map init --rollout <id>` of their
-   choosing, pointing at `localhost` and those ports, with small budgets,
-   and to set `ROLLOUT` to that id in your environment.
-3. `equipment-map preflight --stage 1 --contract 1`, then
-   `equipment-map stage 1 plan --rollout "$ROLLOUT"`. Report the plan
+3. The engineer runs `equipment-map init --rollout <id>` with no baseline,
+   pointing at `localhost` and those ports, with small budgets.
+4. `equipment-map preflight --stage 1 --contract 1`, then
+   `equipment-map stage 1 plan --rollout <id>`. Report the plan
    hash. Append `waiting` until the engineer has run `operator approve-plan`.
-4. Run `equipment-map stage 1 next --rollout "$ROLLOUT"` once.
+5. Run `equipment-map stage 1 next --rollout <id>` once.
    Report counts.
-5. Ask the engineer to review `file-families.json` and `unreadable.json`
+6. Ask the engineer to review `file-families.json` and `unreadable.json`
    and run `operator approve-result`. Append `waiting`.
 
 ## Done when
 
 ```
-equipment-map status --rollout "$ROLLOUT"
+equipment-map status --rollout <id>
 ```
 
-Shows stage 1 in history with plan approved, run completed and result approved
-(current stage is now 2).
-Record the rollout id and counts in the `done` line.
+Shows stage 1 in history with plan approved, run completed and result approved,
+or `adopted` (current stage is now 2, or 3 when adopted).
+Record the counts in the `done` line.

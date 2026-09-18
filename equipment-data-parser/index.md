@@ -36,8 +36,10 @@ Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
 `rollouts/<id>/data-map/` with `wiki/` and `graph/`. One rollout id runs from
 stage 1 to stage 5; the engineer re-runs `init` on it at stage boundaries.
-For a new equipment type, start a new rollout and repeat 16–20 with the
-profile registered at stage 5 (see letter 13 for profiles).
+Every further equipment is a new rollout through 16–20 with the profile
+registered at stage 5 (see letter 13 for profiles); one that adopts stages 1
+and 2 from a baseline rollout (spec §5) passes 16 and 17 at once. Letter 21
+builds an extractor release between rollouts.
 
 The operating target is unattended execution **between** human gates: the
 engineer approves roots and budgets, the CLI completes that bounded stage,
@@ -72,13 +74,21 @@ repository — this folder, `spike.py`, `ftp_handler/`, the maintainer tests —
 the maintainer's: read it, and report what is wrong here in a problem entry.
 The maintainer never writes in `office/`, so updates leave it untouched.
 
+`engineer.toml` at the repository root is the engineer's answer sheet, the
+only way the engineer tells you anything: the rollout and release to work
+on, and the confirmations letters 14 and 15 wait for. Read it; never write
+it. It holds no equipment facts. A missing file or table is an unanswered
+question, so a letter that needs one appends `waiting` with the check
+`[ engineer.toml -nt office/progress.md ]` — true once the engineer has
+edited the file since that line — and re-reads it when the check passes.
+
 ## Build versus operate
 
-- Letters 01–15: implement and test the CLI and skills. Preserve unrelated
-  changes; stage only the current build item's files.
+- Letters 01–15 and 21: implement and test the CLI and skills. Preserve
+  unrelated changes; stage only the current build item's files.
 - Letters 16–20: run only the permitted CLI commands. The engineer supplies
   scope, budgets, credentials and approvals. Never run `init`, `operator`
-  commands or the workbench on their behalf, or write `confirmed` records.
+  commands or the workbench on their behalf, or write in `engineer.toml`.
 - Follow documented waiting and blocker conditions. Record the next safe
   action before ending a session; never bypass a failing gate to make
   progress.
@@ -126,36 +136,41 @@ verified checkpoints, not through an assumed single uninterrupted run.
 The active progression starts at letter 01. Historical letter 00 records do
 not gate it.
 
-1. Read `office/progress.md`. For the first build, the first letter without a `done`
-   line is your current letter — "letter" meaning a row in the table at the
-   bottom of this file, so a number with no row (04) is skipped, never waited on. For a later rollout, preserve all build history;
-   the engineer appends `- 16 confirmed <UTC date> | rollout: <opaque id>`.
-   Evaluate operating-letter outcomes only after that marker and only for
-   that rollout. An inherited older `done` line never completes the new one.
-   If it has `wip` lines, continue each unfinished letter from that letter's
-   own last `wip` line. If it has a
-   `waiting` line, run the check it names; continue only when it passes.
-   A check may be `grep` for a `confirmed` line that only a human appends.
-   If every letter is `done`, stop and report.
+1. Read `office/progress.md` and `engineer.toml`. "Letter" means a row in
+   the table at the bottom of this file, so a number with no row (04) is
+   skipped, never waited on; a letter's state is its latest line. Letters
+   16–20 belong to one rollout, the one `engineer.toml` names in
+   `[rollout] id`, and letter 21 to one release, `[release] id`. Their lines
+   carry `rollout: <id>` or `release: <id>` right after the date, and only
+   lines with the current id count: a line from an earlier rollout or
+   release never completes this one. Your current letter is the first of:
 
-   A `done` line carries the hash of the letter file it finished, so re-check
-   them before you choose. A letter whose file no longer matches its hash, or
-   whose `done` line has no `letter:` field, was revised after you finished
-   it and is not done:
+   - a letter whose latest line is `wip`, continued from that line, or
+     `waiting`, whose check you run — continue only when it passes;
+   - the earliest build letter, 01–15, that is `redo` in the check below or
+     has no `done` line;
+   - the first of 16–20 with no `done` line for the named rollout;
+   - letter 21, when the named release has no `done` line.
+
+   When there is none, append
+   `- 16 waiting <UTC date> | rollout: - | name the next rollout or release in engineer.toml | [ engineer.toml -nt office/progress.md ]`
+   unless that is already the last line, and stop.
+
+   A build letter's `done` line carries the hash of the letter file it
+   finished, so re-check them before you choose. A letter whose file no
+   longer matches its hash, or whose `done` line has no `letter:` field, was
+   revised after you finished it and is not done:
 
    ```sh
-   awk -F'letter: ' '/^- [0-9][0-9] done /{split($0,a," "); h[a[2]]=(NF>1?$2:"none")} END{for (n in h) print n, h[n]}' office/progress.md | sort | while read -r n h; do f=$(ls equipment-data-parser/$n-*.md 2>/dev/null); [ -n "$f" ] && [ "$(sha256sum "$f" | cut -c1-12)" = "$h" ] || echo "redo $n"; done
+   awk -F'letter: ' '/^- (0[1-9]|1[0-5]) done /{split($0,a," "); h[a[2]]=(NF>1?$2:"none")} END{for (n in h) print n, h[n]}' office/progress.md | sort | while read -r n h; do f=$(ls equipment-data-parser/$n-*.md 2>/dev/null); [ -n "$f" ] && [ "$(sha256sum "$f" | cut -c1-12)" = "$h" ] || echo "redo $n"; done
    ```
 
-   Finish an open `wip` or `waiting` letter first; after that the earliest
-   `redo` letter is your current letter, ahead of the first letter with no
-   `done` line. Redoing means reconciling what is already on disk with the
-   letter's current text and running its **Done when** again — keep what
-   still passes, and never rebuild a module from scratch to satisfy an
-   addition. Nobody has to tell you a letter changed; this check is how you
-   find out. For letters 16–20 a stage already run against equipment is not
-   re-run: record the revision in `office/problems/NN-problems.md`, append
-   `waiting`, and let the engineer decide.
+   Redoing means reconciling what is already on disk with the letter's
+   current text and running its **Done when** again — keep what still
+   passes, and never rebuild a module from scratch to satisfy an addition.
+   Nobody has to tell you a letter changed; this check is how you find out.
+   A revised letter 16–21 never reopens a finished rollout or release: its
+   new text applies from the next one.
 
    When more than one letter is ready at once, see **Parallel jobs** below.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
@@ -210,8 +225,9 @@ stay the only writer of `office/progress.md`.
 6. If two jobs edited the same file, leave both `wip` and redo them one after
    the other.
 
-Letters 16–20 never share a batch: each waits on the previous stage's human
-approval, and one rollout has one state. Running letters one at a time is
+Letters 16–21 never share a batch: each waits on the previous stage's human
+approval, one rollout has one state, and a release changes the code a
+rollout runs. Running letters one at a time is
 always allowed and never wrong — fan out when the **Needs** column says you
 can, not because a letter looks long.
 
@@ -220,14 +236,18 @@ can, not because a letter looks long.
 ```
 - NN wip <UTC datetime> | <build item, or <item>.<n> part of one> | next: <the very next action>
 - NN waiting <UTC date> | <what the engineer must do> | <check command that proves it>
-- NN confirmed <UTC date> | <key>: <value the human confirmed>   (human-written only)
 - NN blocked <UTC date> | <what is missing> | <sanitized error code, one line>
 - NN done <UTC date> | <test or status command> | <result, e.g. 12 passed> | letter: <first 12 hex of sha256 of that letter file>
 ```
 
-Append only. Never edit or delete earlier lines.
+Lines of letters 16–20 put `rollout: <id> | ` right after the date, and
+letter 21 puts `release: <id> | ` there:
+`- 18 waiting 2026-09-20 | rollout: r7 | approve the stage 3 plan | equipment-map status --rollout r7`.
 
-Operating letters may read their instructions and progress ledger and append
+Append only. Never edit or delete earlier lines. You are the only writer;
+the engineer answers in `engineer.toml`, never here.
+
+Operating letters may read their instructions, `engineer.toml` and the progress ledger and append
 sanitized progress/problem entries, and nothing else. The equipment command allowlist still
 applies: no shell inspection of rollout files except `REPORT.md`, no code
 edits, and no test execution. A released skill
@@ -317,15 +337,16 @@ In a one-shot run:
 - Assume nothing survives the run: no environment variables you exported, no
   background process, no shell state. Anything the next run needs is on disk.
 
-The repeated-run loop and scheduler below apply to the active letters 01–20.
+The repeated-run loop and scheduler below apply to the active letters 01–21.
 Historical letter 00 records do not block them.
 
-For the first build/rollout only, drive it from the repository root, one run per checkpoint,
-stopping on its own when the work is finished or a human is needed:
+Drive every build, rollout and release from the repository root, one run per
+checkpoint, stopping on its own when a rollout or release is finished or a
+human is needed:
 
 ```sh
 P='office/progress.md'
-until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked) '; do
+until tail -n 1 "$P" | grep -qE '^- 2[01] done | (waiting|blocked) '; do
   before=$(wc -l < "$P")
   claude -p "Read equipment-data-parser/index.md and continue the letters from office/progress.md. Reach the next checkpoint, record it, and stop." || break
   [ "$(wc -l < "$P")" != "$before" ] || break
@@ -333,9 +354,6 @@ until grep -q '^- 20 done' "$P" || tail -n 1 "$P" | grep -qE ' (waiting|blocked)
 done
 tail -n 3 "$P"
 ```
-
-For another rollout, invoke the one-shot prompt manually after its new marker;
-do not reuse this first-rollout loop's historical `20 done` check.
 
 Substitute the tool: `codex exec "<same prompt>"`, `opencode run "<same
 prompt>"`. The loop is the same because the state is on disk, not in the tool.
@@ -354,8 +372,8 @@ quietly does nothing. If any of them bites here, that is a problem entry —
 **Every command in these letters is bash.** `printf`, `date -u +%FT%TZ`,
 `grep -c`, `$(...)`, heredocs. Git for Windows ships all of them: run in Git
 Bash, not `cmd.exe` and not PowerShell. Never hand-translate a `office/progress.md`
-line into another shell's quoting — letter 15 and several **Done when**
-commands `grep` for `^- NN <state>` with exact spacing, and a line that is
+line into another shell's quoting — Loop step 1, the loop above and several
+**Done when** commands `grep` for `^- NN <state>` with exact spacing, and a line that is
 merely close breaks them. If bash is genuinely unavailable on a PC, stop and
 write the problem entry rather than inventing a second ledger format.
 
@@ -379,8 +397,8 @@ one you tested in.
 **Guard the trigger, not the prompt.** A schedule has no `until` loop, so
 once the ledger's last line is `waiting` or `blocked` every later trigger
 spends a whole model run to re-read `office/progress.md` and stop. Check first with
-the same two greps the loop above uses — `^- 20 done`, and a trailing
-`waiting`/`blocked` — and skip the run when either hits. A grep is free; a
+the grep the loop above runs on the last ledger line — a finished rollout or
+release, or `waiting`/`blocked` — and skip the run when it hits. A grep is free; a
 model run is not.
 
 **Watch for empty runs.** Two consecutive triggers with no
@@ -488,6 +506,7 @@ lets you batch.
 | 18 | Operate: stage 3 pilot on one equipment | 3 | 17 |
 | 19 | Operate: stage 4 publish, the deliverable | 4 | 18 |
 | 20 | Operate: stage 5 register the next profile | 5 | 19 |
+| 21 | Extractor release | — | 01–15 |
 
 Letter 04 was SMB. There is no SMB at this site yet, so it was removed rather
 than built ahead of a need; number 04 stays vacant so every later letter keeps

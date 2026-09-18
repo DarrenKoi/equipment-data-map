@@ -23,9 +23,9 @@ the same scenarios, recording the exact model and serving configuration.
 Before coding the normalizer, obtain an engineer-provided synthetic native
 export and exact tool/export version for pi. Record `waiting` if it is
 missing; never infer an export schema from the tool name. Keep samples local
-and untracked. The human confirms availability with
-`- 15 confirmed <UTC date> | export-fixtures: ready | <local inventory sha256>`.
-The fixture inventory records pi's version and sample hashes.
+and untracked. The engineer confirms availability in `engineer.toml`:
+`[export_fixtures]` with `inventory_sha256`, the hash of the local fixture
+inventory, which records pi's version and sample hashes.
 
 - `scenarios/README.md`: one scenario per §7 observable result, each with
   the exact prompt to give the agent tool, the rollout fixture to prepare,
@@ -57,17 +57,19 @@ The fixture inventory records pi's version and sample hashes.
 python -m pytest -q tests/test_check_audit.py tests/test_normalize_transcript.py
 ```
 
-Then hand off to the human. This letter is `done` only after a human has
-appended this `confirmed` line to `office/progress.md`, with real values in
-place of the angle-bracket fields and `all-scenarios-pass` literally:
+Then hand off to the human. This letter is `done` only after the engineer
+has written this table to `engineer.toml`, with the real hash of the local
+result sheet and `all-scenarios-pass` literally:
 
-```
-- 15 confirmed <UTC date> | pi | <local result sheet sha256> | all-scenarios-pass
+```toml
+[validation.pi]
+result_sheet_sha256 = "<64 hex>"
+result = "all-scenarios-pass"
 ```
 
 Record `waiting` until that current-release confirmation exists, tied to its
-actual result sheet. When a further tool is brought into scope it adds its own
-line in the same shape; a line copied from pi's does not pass for it.
+actual result sheet. When a further tool is brought into scope it gets its own
+`[validation.<tool>]` table; pi's never passes for it.
 The engineer verifies sheet hashes, suite/contract versions and the same exact
 minimum-model profile in those sheets; model identity/configuration stays there,
 not in tracked progress. Read implementation-reference.md §9 for the matrix.

@@ -101,6 +101,11 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   `data-map/` to `work/history/<old scope[:12]>/`, resumably; old audit
   approvals remain intact. A process restart alone changes neither scope nor
   cumulative budgets.
+- Baseline adoption (spec §5): every `next-stop` carries `code_hash`, and the
+  `init` that creates a rollout may adopt stages 1 and 2 from a baseline
+  rollout, starting the new one at stage 3. `code_hash`, the three adoption
+  conditions, the `adopt` record and the stage 3 binding are pinned in
+  implementation-reference.md §3.
 
 ## Done when
 
@@ -138,3 +143,12 @@ change but `next_profile` makes `plan` exit 20. Scope: a stage 2 `init` keeps
 the stage 1 scope ID; a stage 3 re-`init` yields a new one; a crash after the
 `data-map/` move but before `work/scope.json` is written resumes without a
 second move; a rollout id with `/`, `..`, upper case or 33 characters exits 20.
+
+Also cover adoption, with `code_hash` and host injected: a baseline whose own
+stages 1 and 2 are result-approved on this host under the current `code_hash`
+yields a rollout whose `status` shows both stages `adopted` and current stage
+3, with the baseline's `llm` block in `rollout.json` and the adoption in the
+stage 3 plan payload. A baseline missing its stage 2 approval, approved on
+another host, run under another `code_hash`, or itself adopted makes `init`
+exit 20 and leaves no rollout directory. `init` on an existing rollout never
+asks for a baseline.

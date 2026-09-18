@@ -98,6 +98,16 @@ D="../$(basename "$PWD")-$M"
 
 The same script restarts a model from scratch: first delete everything in
 its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
+`engineer.toml` goes too: its confirmations belong to the discarded build.
+
+Only the agent writes `office/progress.md`; never add a line to it. When the
+agent needs an answer from you — skill discovery roots (letter 14), the
+validation result (letter 15), the rollout to operate, an extractor release
+— its `waiting` line says so and you write it in `engineer.toml` at the model
+folder's root. Copy `engineer.toml.example` there once; each table in it
+names the letter that reads it. Editing the file is what clears such a
+`waiting` line. It holds no host, remote path, budget or credential: those
+go to `init` and the keystore.
 
 `python tools/reset_model_folder.py --reset` from the hub (folder and slug are
 set at the top of the file; two arguments after the flag override them) does
@@ -115,7 +125,7 @@ Bring maintainer updates over between agent sessions: disable the schedule
 first and let the running agent and its child processes finish. Pull once in
 the hub, then copy the tracked files into the active model folder. There is
 no merge: the maintainer never writes in `office/`, `.env`,
-`equipment.toml`, `out/`, `.venv/` or the root build outputs, so every
+`equipment.toml`, `engineer.toml`, `out/`, `.venv/` or the root build outputs, so every
 tracked file can simply be replaced by the hub's copy.
 
 ```sh
@@ -196,14 +206,28 @@ letters, digits and `-`, at most 32 characters (`[a-z0-9][a-z0-9-]{0,31}`). In y
 Bash terminal after the CLI is validated:
 
 ```sh
-export ROLLOUT=<opaque-id>
-equipment-map init --rollout "$ROLLOUT"
+equipment-map init --rollout <opaque-id>
 ```
 
 Replace the placeholder before running; do not use an equipment identifier as
-its value. Start the office agent from that environment. For a subsequent
-rollout, append its human marker to progress as index.md specifies. Reuse the
-built CLI; retain prior letter history and all earlier rollout directories.
+its value. `init` first asks for a baseline rollout. Leave it empty for the
+first rollout: stages 1 and 2 then run on the fake tree (§2). For every later
+equipment, name the earlier rollout that ran its own stages 1 and 2: `init`
+adopts them only when they were approved on this PC under the CLI code
+installed now, then asks for the stage 3 settings, and the rollout starts at
+stage 3. After any CLI code change — a maintainer update that made the agent
+redo a letter, or a letter 21 release — adoption is refused; start that
+rollout without a baseline, and it becomes the next baseline.
+
+Then name the rollout for the agent in `engineer.toml`:
+
+```toml
+[rollout]
+id = "<opaque-id>"
+```
+
+Replacing that table is how you move to the next rollout. Reuse the built
+CLI; retain prior letter history and all earlier rollout directories.
 
 Use this agent prompt:
 
@@ -225,7 +249,7 @@ and glossary hashes, local model settings, data retention and stage input hash.
 Only after checking it, run in your terminal:
 
 ```sh
-equipment-map operator approve-plan --rollout "$ROLLOUT"
+equipment-map operator approve-plan --rollout <opaque-id>
 ```
 
 After `next` completes, review the files below yourself. Do not paste their
@@ -264,11 +288,12 @@ command can produce an honestly partial map.
 After accepting the current completed result, run:
 
 ```sh
-equipment-map operator approve-result --rollout "$ROLLOUT"
+equipment-map operator approve-result --rollout <opaque-id>
 ```
 
 Stages 2, 3 and 5 need another human `init` for LLM settings, the real target,
-and next profile respectively. `init` asks only for what the current stage may
+and next profile respectively; an adopted rollout got the first two at its
+first `init`. `init` asks only for what the current stage may
 change (spec §5 table): stage 2 the `llm` block and `llm_max_requests`, stage 5
 `next_profile`, and at stage 4 it refuses. Before stage-3 result approval you
 may revise that same equipment's scope/budgets with init and a new plan
@@ -288,7 +313,11 @@ review; report wrong results for a code/profile correction and an approved rerun
 - Unsupported file: retain metadata and evidence/reason. An approved copied
   sample may go through the human-only workbench outside rollouts. Its success
   does not modify this map; promotion needs tested extractor code and a separate
-  reviewed release. Autonomous operating stages never launch GUI automation.
+  reviewed release. To promote a successful deterministic attempt, name it in
+  `engineer.toml` `[release]` between rollouts; the agent builds it
+  (letter 21) and waits until you run `workbench` with the new extractor on
+  the same copy and get the same `result_sha256`. Then map the extension to
+  the new name in the next profile. Autonomous operating stages never launch GUI automation.
   The separate `hermes-gui` handoff permits only the engineer-supervised session
   and explicit result recording described in letter 08. Password guessing,
   macro execution and remote file modification remain prohibited.

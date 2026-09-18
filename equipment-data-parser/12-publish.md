@@ -54,7 +54,8 @@ the Fields table, masking, escaping and citations.
   `write_manifest`, `next-stop`.
 - `equipment_map/report.py`: `REPORT.md` holds only rollout id, stages
   completed, per-stage counts from the `next-stop` records, CLI version and
-  contract version. No model id or config, no equipment id, path, filename,
+  contract version. Stages 1 and 2 of an adopted rollout read
+  `adopted <baseline rollout id>` in place of counts. No model id or config, no equipment id, path, filename,
   or family key. It sits outside `data-map/` and outside the manifest.
 
 - Include `coverage.json` in the engineer review sheet and render coverage,

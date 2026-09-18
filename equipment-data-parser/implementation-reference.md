@@ -117,7 +117,7 @@ Lock release verifies ownership; an unsuccessful acquisition cannot unlink it.
 Audit records include `seq`, `ts`, `event`, `stage`, `epoch`, and where relevant
 `plan_hash`, `scope`, `manifest_hash`, `completed`, `reason`, `counts`. Epoch is
 an incrementing init sequence, not a wall-clock comparison. Enforce contiguous
-approvals for stages 1–5. Refuse malformed/truncated audit records and impossible
+approvals for stages 1–5; an `adopt` record stands for those of stages 1 and 2. Refuse malformed/truncated audit records and impossible
 sequences; do not repair or ignore them automatically.
 
 | Ledger state for current stage | Allowed action | Outcome |
@@ -171,7 +171,7 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
   whose hash that `next-start` names. Stage 1 has no baseline.
 - Scope ID is `sha256([collection_stage, epoch, source_hash])`. `epoch` is
   that of the latest `init` record whose `stage` is the collection stage (the
-  rollout-creating `init` is stage 1). `source_hash` is `sha256([equipment_id,
+  rollout-creating `init` is stage 1, or stage 3 in an adopted rollout). `source_hash` is `sha256([equipment_id,
   protocol, host, port, allowed_roots, realtime_candidates, allow_patterns,
   deny_patterns, profile, sha256(profile file bytes)])`. Stages 1 and 3 compute
   their own. Stages 2, 4 and 5 put `input: {scope, manifest_hash}` from the
@@ -182,6 +182,29 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
   exists), then write `work/scope.json` with the current scope. A crash
   between the two steps resumes cleanly: with no `data-map/` there is nothing
   to move. `work/scope.json` is a pipeline checkpoint, not stage state.
+
+Baseline adoption (spec §5):
+
+- `code_hash` is the compact canonical hash of the sorted
+  `[relative POSIX path, sha256(file bytes)]` pairs of every `*.py` file under
+  the installed `equipment_map` package directory. Every `next-stop` record
+  carries it.
+- Only the `init` that creates a rollout asks, first, for an optional baseline
+  rollout id. Adopt only when all of these hold; otherwise print the failed
+  condition's name and exit 20 without writing: the baseline's own ledger has
+  `approve-result` records for stages 1 and 2 (an `adopt` record does not
+  count); both carry this machine's `socket.gethostname()` as `host`; and the
+  completed `next-stop` each of them approved carries the current `code_hash`.
+- On adoption, append `adopt` `{stage: 2, baseline, approvals, code_hash}`,
+  where `approvals` holds the payload hashes of the baseline's two
+  `approve-result` records. Then write `rollout.json` with the `llm` block
+  copied from the baseline's approved stage-2 plan, prompting for every other
+  key but `next_profile`, and append `init` with `stage: 3`. An `init` on a
+  rollout whose ledger ends in `adopt` finishes that adoption after a crash.
+- `status` prints stages 1 and 2 as `adopted <baseline>` and current stage 3.
+  Stage 3 `plan` of an adopted rollout puts `adopted: {baseline, adopt_hash}`
+  into its payload, so approving the plan approves the adoption. An adopted
+  rollout never serves as a baseline.
 
 Fixture approvals are produced only by fake-TTY test calls in temporary roots.
 No code path fabricates human approval for a real rollout. Add tests for every

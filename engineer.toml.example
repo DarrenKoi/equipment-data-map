@@ -1,0 +1,33 @@
+# The engineer's answers to the office agent (equipment-data-parser/index.md).
+# Copy to engineer.toml at the model folder's root. Only the engineer edits it;
+# the agent reads it and never writes it. Fill a table when the agent's
+# `waiting` line asks for it: editing this file is what clears that line.
+# No host, remote path, budget or credential goes here: those belong to
+# `equipment-map init` and the OS keystore.
+
+# Letter 14: skill discovery roots, relative to your home folder.
+# [discovery]
+# codex = ".codex/skills"
+# claude_code = ".claude/skills"
+# opencode = ".config/opencode/skills"
+# pi = ".pi/agent/skills"
+
+# Letter 15: the synthetic pi export fixtures are in place.
+# [export_fixtures]
+# inventory_sha256 = ""
+
+# Letter 15: pi passed every scenario on the current release.
+# [validation.pi]
+# result_sheet_sha256 = ""
+# result = "all-scenarios-pass"
+
+# Letters 16-20: the rollout the agent operates. Replace it for the next one.
+# [rollout]
+# id = ""               # the opaque id you gave `equipment-map init`
+
+# Letter 21: one extractor release, between rollouts. Replace it for the next.
+# [release]
+# id = ""               # opaque, same form as a rollout id
+# workbench = ""        # the workbench copy dir that holds attempts.jsonl
+# result_sha256 = ""    # the successful attempt to promote
+# extractor = ""        # the new extractor's name

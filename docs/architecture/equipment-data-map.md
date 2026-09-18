@@ -246,7 +246,7 @@ direct와 proxy의 바이트 budget은 best-effort다. 전송 중 성장한 파�
 일부 관측으로 기록하므로 헤더와 필드 이름은 남는다. JSON·XML처럼 앞부분만으로 구조를 읽을 수 없는 형식은
 `too-large`로 기록한다.
 
-**Extractor workbench.** 미지원 형식은 엔지니어가 승인된 대표 샘플 하나를 `rollouts/` 밖의 로컬 복사본 디렉터리에 두고 엔지니어 전용 명령 `equipment-map workbench <copy-dir> --method <name>`으로 추가 방법을 시도한다. 시도마다 `<copy-dir>/attempts.jsonl`에 `{ts, input_sha256, method, method_config, result_sha256|null, failure_reason|null, next_safe_action}`을 append만 한다. `hermes-gui` 방법은 추출을 실행하지 않고 `<copy-dir>/handoff.json`(입력 hash, 엔지니어가 지정한 승인 GUI 도구, 허용 출력 경로)만 쓰며, 사람이 감독하는 Hermes 세션의 결과는 엔지니어가 `--record`로 기록한다. workbench는 `rollouts/`와 `data-map/`에 쓰지 않으며, 성공한 방법은 별도 검토·테스트를 거친 CLI 릴리스의 새 extractor 모듈로만 승격한다. 그 전까지 해당 파일군은 `unsupported-format` 보고로 남는다.
+**Extractor workbench.** 미지원 형식은 엔지니어가 승인된 대표 샘플 하나를 `rollouts/` 밖의 로컬 복사본 디렉터리에 두고 엔지니어 전용 명령 `equipment-map workbench <copy-dir> --method <name>`으로 추가 방법을 시도한다. 시도마다 `<copy-dir>/attempts.jsonl`에 `{ts, input_sha256, method, method_config, result_sha256|null, failure_reason|null, next_safe_action}`을 append만 한다. `hermes-gui` 방법은 추출을 실행하지 않고 `<copy-dir>/handoff.json`(입력 hash, 엔지니어가 지정한 승인 GUI 도구, 허용 출력 경로)만 쓰며, 사람이 감독하는 Hermes 세션의 결과는 엔지니어가 `--record`로 기록한다. workbench는 `rollouts/`와 `data-map/`에 쓰지 않으며, 성공한 방법은 별도 검토·테스트를 거친 CLI 릴리스의 새 extractor 모듈로만 승격한다. 승격 코드는 복사본의 샘플 내용이 아니라 `attempts.jsonl`에 기록된 방법·옵션·hash만으로 만들고, 엔지니어가 같은 복사본에서 새 모듈로 workbench를 다시 실행해 승격 대상 시도와 같은 `result_sha256`을 얻어야 릴리스한다. `hermes-gui` 결과는 자율 단계에서 GUI를 실행할 수 없으므로 승격하지 않는다. 그 전까지 해당 파일군은 `unsupported-format` 보고로 남는다.
 
 ### 4.6 Local LLM Analysis
 
@@ -416,6 +416,14 @@ equipment-map status --rollout <ID>
 
 하나의 rollout ID는 1단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(1단계 가짜 트리에서 3단계 실장비로 전환, LLM endpoint 추가, 5단계 프로필 등록) 엔지니어가 같은 ID로 `init`을 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
 
+새 rollout은 1·2단계를 **기준 rollout**에서 채택할 수 있다. 두 단계는 장비가 아니라 이 PC에 설치된 CLI 코드, 전송 경로와 LLM 설정을 가짜 트리로 검증하므로, 그것들이 그대로면 장비마다 반복하지 않는다. 엔지니어가 새 ID의 첫 `init`에서 기준 rollout ID를 입력하면 CLI는 다음을 모두 만족할 때만 채택한다.
+
+- 기준 rollout이 1·2단계 결과 승인을 직접 가진다. 채택으로 얻은 단계는 기준이 되지 않는다.
+- 두 결과 승인이 이 호스트에서 기록되었다.
+- 두 승인이 가리키는 완료 `next-stop` 기록의 `code_hash`가 현재 CLI의 `code_hash`와 같다. `code_hash`는 설치된 `equipment_map` 패키지의 모든 `.py` 파일에 대한 정렬된 상대 경로와 바이트 hash의 canonical hash이며 모든 `next-stop` 기록에 남는다.
+
+채택하면 기준 rollout의 2단계 승인 계획에서 `llm` 블록을 복사하고, 기준 ID와 두 결과 승인 기록의 hash, `code_hash`를 담은 `adopt` 감사 기록을 남긴 뒤 3단계 키를 묻는다. 현재 단계는 3단계이고, `status`와 `REPORT.md`는 1·2단계를 기준 ID와 함께 `adopted`로 표시한다. 3단계 계획은 `adopt` 기록을 입력으로 결합하므로 계획 승인이 채택도 확인한다. 조건이 하나라도 어긋나면 `init`은 어긋난 조건을 출력하고 아무것도 쓰지 않은 채 exit 20으로 끝나며, 엔지니어는 기준 없이 1단계부터 시작한다. 첫 rollout과 CLI 코드가 바뀐 뒤의 첫 rollout은 이렇게 1·2단계를 수행해 다음 rollout의 기준이 된다.
+
 `init`이 바꿀 수 있는 키는 현재 단계가 정한다. `init`은 그 키만 묻고 나머지 값은 그대로 둔다. `plan`은 바꿀 수 없는 키가 기준 계획과 다르면 exit 20으로 거부하며, 손으로 고친 `rollout.json`도 같은 검사를 받는다. 2·4·5단계의 기준 계획은 직전 단계의 마지막 계획 승인 기록이고, 3단계 장비 정체성의 기준은 3단계 첫 `next-start`가 실행한 계획이다.
 
 | 현재 단계 | `init`이 바꿀 수 있는 키 | 그 밖의 변경 |
@@ -426,13 +434,13 @@ equipment-map status --rollout <ID>
 | 4 | 없음 | `init` exit 20 |
 | 5 | `next_profile` | 5단계 `plan` exit 20 |
 
-현재 단계는 결과 승인된 가장 높은 단계의 다음 단계다. 각 `init` 기록은 현재 단계의 새 **epoch**을 연다. `status`는 현재 단계의 `plan`, `approve-plan`, `next-*` 기록 중 최신 `init`보다 앞선 것을 stale로 보고 무시하므로, 재설정 뒤에는 그 단계의 `plan`, 계획 승인, `next`를 다시 거친다. 결과 승인된 단계는 어떤 `init`으로도 무효가 되지 않는다. 승인된 범위를 넓히려면 새 rollout을 시작한다.
+현재 단계는 결과 승인되거나 채택된 가장 높은 단계의 다음 단계다. 각 `init` 기록은 현재 단계의 새 **epoch**을 연다. `status`는 현재 단계의 `plan`, `approve-plan`, `next-*` 기록 중 최신 `init`보다 앞선 것을 stale로 보고 무시하므로, 재설정 뒤에는 그 단계의 `plan`, 계획 승인, `next`를 다시 거친다. 결과 승인된 단계는 어떤 `init`으로도 무효가 되지 않는다. 승인된 범위를 넓히려면 새 rollout을 시작한다.
 
 실행 전 계획 승인과 실행 후 결과 승인은 엔지니어가 직접 수행한다. 승인·결과 승인·stale lock 해제 명령은 어떤 `SKILL.md`에도 넣지 않고 CLI의 다음 명령으로도 출력하지 않는다. 비대화형 stdin에서는 거부하며 OS 사용자, 호스트, UTC 시각, 계획 hash 또는 결과 manifest hash를 감사 기록에 남긴다. 이는 전자서명이 아니라 운영자 자기확인임을 명시한다.
 
 엔지니어 전용 명령은 `equipment-map operator approve-plan`, `equipment-map operator approve-result`, `equipment-map operator unlock`과 4.5절의 `equipment-map workbench`다. 이 명령은 LLM에 대한 보안 경계가 아니라 사람의 운영 절차다. 스킬이 대신 호출하면 시나리오 검증 실패로 처리한다.
 
-`next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 4.4.1절의 pass 반복은 이 한 호출 안에서 끝나며 pass마다 호출을 끊는 별도 프로토콜은 없다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다.
+`next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 4.4.1절의 pass 반복은 이 한 호출 안에서 끝나며 pass마다 호출을 끊는 별도 프로토콜은 없다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다. 1·2단계의 결과 승인은 채택으로 대신할 수 있다.
 
 CLI 종료 코드와 마지막 출력 행은 고정한다.
 
@@ -453,7 +461,7 @@ stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 �
 
 상태의 기준은 채팅 기록이 아니라 rollout 작업 디렉터리다.
 
-한 rollout ID는 정확히 장비 하나를 다룬다. `init` 재실행은 같은 장비의 단계 경계 설정 변경에만 쓰며, 다른 장비는 승인 계보를 섞지 않기 위해 새 rollout ID로 1단계부터 시작한다.
+한 rollout ID는 정확히 장비 하나를 다룬다. `init` 재실행은 같은 장비의 단계 경계 설정 변경에만 쓰며, 다른 장비는 승인 계보를 섞지 않기 위해 새 rollout ID로 시작한다. 5장의 기준 rollout 채택은 장비가 아니라 설치된 CLI와 LLM 설정에 대한 가짜 트리 검증만 가져오므로 장비 승인 계보를 섞지 않는다.
 
 rollout ID는 장비 이름, host와 IP를 포함하지 않는 불투명한 식별자이며 `[a-z0-9][a-z0-9-]{0,31}`에 맞아야 한다. stdout이 rollout 디렉터리 경로를 출력하므로 ID에 장비 식별자를 넣으면 반출 금지 항목이 경로로 노출된다.
 
@@ -472,7 +480,7 @@ rollout 단계·승인 상태의 진실 원천은 `audit.jsonl`이며 `status`�
 
 자격 증명, LLM 비밀 설정과 허용 범위를 넘는 원본 파일은 rollout 디렉터리에 넣지 않는다. 자격 증명은 `rollout.json`의 별칭으로만 참조하며 CLI가 OS의 승인된 비밀 저장소에서 직접 조회한다. command argument, 환경 변수와 stdout으로 전달하지 않는다. 민감한 대표 샘플을 포함해야 하면 회사 내부 접근 권한과 보존 기간이 적용되는 로컬 위치만 사용한다. Skill Market은 rollout 데이터를 배포하지 않는다.
 
-collection scope는 수집 단계(1 또는 3), 그 단계가 현재 단계일 때 기록된 최신 `init`의 epoch(rollout을 만든 `init`은 1단계 것), 정규화된 source 설정 hash로 식별하며 scope ID는 이 세 값 배열의 canonical hash다. source 설정 hash는 `equipment_id`·`protocol`·`host`·`port`·`allowed_roots`·`realtime_candidates`·`allow_patterns`·`deny_patterns`·`profile` 이름과 profile 파일 내용 hash로 만든다. 따라서 2·4·5단계의 `init`은 수집 scope를 바꾸지 않는다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트와 4.4.1절의 pass 선택 목록·prior snapshot은 모두 이 scope에 속한다. 1·3단계의 새 수집이나 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. 2·4·5단계는 수집하지 않고 직전 단계의 결과 승인 기록이 가리키는 scope와 manifest hash를 계획에 입력으로 결합한다(2단계는 1단계, 4단계는 3단계, 5단계는 4단계의 결과 승인). 새 scope의 첫 `next`는 이전 scope의 `data-map/`을 `work/history/<scope 앞 12자>/`로 옮긴 뒤 새 지도를 시작하고, 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
+collection scope는 수집 단계(1 또는 3), 그 단계가 현재 단계일 때 기록된 최신 `init`의 epoch(rollout을 만든 `init`은 1단계 것, 채택한 rollout에서는 3단계 것), 정규화된 source 설정 hash로 식별하며 scope ID는 이 세 값 배열의 canonical hash다. source 설정 hash는 `equipment_id`·`protocol`·`host`·`port`·`allowed_roots`·`realtime_candidates`·`allow_patterns`·`deny_patterns`·`profile` 이름과 profile 파일 내용 hash로 만든다. 따라서 2·4·5단계의 `init`은 수집 scope를 바꾸지 않는다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트와 4.4.1절의 pass 선택 목록·prior snapshot은 모두 이 scope에 속한다. 1·3단계의 새 수집이나 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. 2·4·5단계는 수집하지 않고 직전 단계의 결과 승인 기록이 가리키는 scope와 manifest hash를 계획에 입력으로 결합한다(2단계는 1단계, 4단계는 3단계, 5단계는 4단계의 결과 승인). 새 scope의 첫 `next`는 이전 scope의 `data-map/`을 `work/history/<scope 앞 12자>/`로 옮긴 뒤 새 지도를 시작하고, 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
 
 ### 5.2 상태 전이와 결과 무결성
 
@@ -545,7 +553,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 실행 결과 승인 없이 다음 rollout 단계에 진입할 수 없는지
 - CLI가 없거나 계약 버전이 맞지 않을 때 스킬이 실행을 계속하지 않는지
 
-추가 필수 시나리오: sample 경로에서 보호 파일 내용 요청 0건, 단계별 `init` 표 밖의 키 변경과 3단계 실행 뒤 장비 정체성 변경의 거부, 원격 이름의 금지 문자·`%`·예약 이름·장치 이름 변환, 대소문자 충돌과 120자 경로 상한에 걸린 항목의 로컬 조회·다운로드 전 제외, 기록과 맞지 않는 evidence 파일을 덮어쓰지 않는 중단, 같은 scope 재개에서 이미 받은 표본의 재전송 없음, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분을 검증한다.
+추가 필수 시나리오: sample 경로에서 보호 파일 내용 요청 0건, 단계별 `init` 표 밖의 키 변경과 3단계 실행 뒤 장비 정체성 변경의 거부, 원격 이름의 금지 문자·`%`·예약 이름·장치 이름 변환, 대소문자 충돌과 120자 경로 상한에 걸린 항목의 로컬 조회·다운로드 전 제외, 기록과 맞지 않는 evidence 파일을 덮어쓰지 않는 중단, 같은 scope 재개에서 이미 받은 표본의 재전송 없음, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분, 기준 rollout 채택이 다른 호스트·다른 `code_hash`·채택으로 얻은 단계·2단계 결과 승인이 없는 기준을 거부하고 채택한 rollout이 3단계에서 시작하며 `status`와 `REPORT.md`에 기준 ID를 드러내는지를 검증한다.
 
 pass 반복은 다음을 검증한다. pass 경계에서 강제 종료한 뒤 재개해도 중복 전송·중복 LLM 요청이 없고 pass 번호와 budget이 초기화되지 않는지, 적격 대상 소진이 `no-eligible-work`로 끝나고 `max_passes`·budget 도달이 각각의 사유로 끝나는지, 세 종료 모두 `completed: true`·exit 0이고 `NEXT: STOP`이 아닌지, `confidence` 값을 바꿔도 선택 순서가 변하지 않는지, 연결 파일군의 Observed가 바뀌면 재호출하고 prior만 바뀌면 재호출하지 않는지, `prior_inferred` 항목을 evidence로 인용한 응답이 거부되는지, 그리고 의도적으로 틀린 prior와 반대되는 Observed를 넣었을 때 결과가 `inferred`로 남고 관측 fact가 바뀌지 않는지다. 라벨이 pass 사이에 안정됐다는 사실을 정확도 증명으로 보고하지 않는다.
 
@@ -569,7 +577,7 @@ LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한
 
 ## 8. Rollout 단계별 운영
 
-다음 5단계는 3장의 런타임 파이프라인과 별개다. 장비, 현장 또는 CLI·스킬 버전별 rollout마다 반복하며, 한 엔지니어가 자기 PC에서 모든 단계를 수행한다. 각 단계에서 실행 전 계획과 실행 후 결과를 확인해야 다음 단계로 넘어간다. 승인 기록은 해당 단계의 정규화된 계획 hash 또는 결과 manifest hash를 포함한다.
+다음 5단계는 3장의 런타임 파이프라인과 별개다. 3~5단계는 장비마다 새 rollout에서 반복한다. 1·2단계는 PC, CLI 코드 또는 LLM 설정이 바뀔 때 반복하고, 그대로면 5장의 기준 rollout 채택으로 대신한다. 한 엔지니어가 자기 PC에서 모든 단계를 수행한다. 각 단계에서 실행 전 계획과 실행 후 결과를 확인해야 다음 단계로 넘어간다. 승인 기록은 해당 단계의 정규화된 계획 hash 또는 결과 manifest hash를 포함한다.
 
 ### 1단계: 로컬 가짜 장비로 수집기 검증
 
@@ -600,7 +608,7 @@ FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검�
 
 ### 5단계: 장비 종류 확장
 
-엔지니어가 새 장비 프로필 파일에 허용 경로, 파일명 규칙과 기존 extractor 매핑을 작성하고, 같은 rollout ID로 `init`을 다시 실행해 `next_profile`로 등록한다. 5단계 `plan`은 `next_profile`이 등록된 프로필 파일을 가리키고 현재 `profile`과 다를 때만 허용한다. 5단계 `next`는 그 프로필의 스키마와 extractor 매핑(기존 extractor 이름만 허용)을 검증하고, 현재 지도에서 `unsupported-format`으로 남은 파일군을 `data-map/extractor-requests.json`에 정리한 뒤 manifest를 다시 생성한다. 결과 승인으로 rollout이 끝나며, 새 장비는 이 프로필로 새 rollout을 1단계부터 시작한다. 새 extractor 코드가 필요하면 이 단계에서 즉석 생성하지 않고 별도 CLI 릴리스 절차로 넘긴다. 한 장비의 예외를 공통 로직에 억지로 넣지 않는다.
+엔지니어가 새 장비 프로필 파일에 허용 경로, 파일명 규칙과 기존 extractor 매핑을 작성하고, 같은 rollout ID로 `init`을 다시 실행해 `next_profile`로 등록한다. 5단계 `plan`은 `next_profile`이 등록된 프로필 파일을 가리키고 현재 `profile`과 다를 때만 허용한다. 5단계 `next`는 그 프로필의 스키마와 extractor 매핑(기존 extractor 이름만 허용)을 검증하고, 현재 지도에서 `unsupported-format`으로 남은 파일군을 `data-map/extractor-requests.json`에 정리한 뒤 manifest를 다시 생성한다. 결과 승인으로 rollout이 끝나며, 새 장비는 이 프로필로 새 rollout을 시작한다. 5장의 채택 조건을 만족하면 1·2단계를 채택하고 3단계부터 수행한다. 새 extractor 코드가 필요하면 이 단계에서 즉석 생성하지 않고 4.5절의 별도 CLI 릴리스 절차로 넘긴다. 릴리스는 CLI 코드를 바꾸므로 그 뒤 첫 rollout은 1·2단계를 다시 수행한다. 한 장비의 예외를 공통 로직에 억지로 넣지 않는다.
 
 ## 9. Skill Market 배포 구조
 

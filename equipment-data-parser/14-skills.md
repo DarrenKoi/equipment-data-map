@@ -45,11 +45,11 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
   `%USERPROFILE%`. All four stay in the contract as install targets even
   though letter 15 validates pi only; the other three are pre-wired for the
   later extension, not a claim that they are supported.
-  Before writing the installers, append `waiting` with
-  the candidate values (Codex `.codex/skills`, Claude Code
-  `.claude/skills`, OpenCode `.config/opencode/skills`, pi
-  `.pi/agent/skills`) and stop until `office/progress.md` holds a human line
-  `14 confirmed <UTC date> | discovery: <four values>`.
+  Before writing the installers, take the four roots from the `[discovery]`
+  table of `engineer.toml` (`codex`, `claude_code`, `opencode`, `pi`). While
+  it is missing, append `waiting` naming the candidate values (Codex
+  `.codex/skills`, Claude Code `.claude/skills`, OpenCode
+  `.config/opencode/skills`, pi `.pi/agent/skills`) and stop.
 - `install/install.sh` and `install/install.ps1`, same behaviour: read the
   roots from `VERSION.json`, copy each skill to `<root>/<skill-name>/` and
   write `VERSION.json` beside `SKILL.md`; install the CLI once on PATH with

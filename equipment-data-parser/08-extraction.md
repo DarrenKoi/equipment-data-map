@@ -57,7 +57,9 @@ decoding order, key/value patterns and field value rules.
   outside `rollouts/`; a path under `rollouts/` is refused). Appends one
   record per attempt to `<copy-dir>/attempts.jsonl`: `{ts, input_sha256,
   method, method_config, result_sha256|null, failure_reason|null,
-  next_safe_action}`; never overwrites. Methods: every deterministic
+  next_safe_action}`; never overwrites. `result_sha256` hashes the
+  extraction result alone, never the method name or its options, so a
+  promoted extractor can reproduce it. Methods: every deterministic
   extractor with explicit options, and `hermes-gui`, which writes
   `<copy-dir>/handoff.json` (input sha, approved GUI tool name given by
   the engineer, allowed output path) and records the attempt as
@@ -65,8 +67,8 @@ decoding order, key/value patterns and field value rules.
   and the engineer records its outcome with `equipment-map workbench
   <copy-dir> --record <result-file>`. The workbench never writes under
   `rollouts/` or `data-map/`; a working method reaches production only as
-  a new module in `equipment_map/extract/` with its test and a contract
-  version bump in a separate reviewed CLI release. `workbench` is in no
+  a new module in `equipment_map/extract/` with its test and a CLI version
+  bump in a separate reviewed release (letter 21). `workbench` is in no
   skill allowlist.
 
 ## Done when
@@ -92,7 +94,8 @@ cells reports type counts, max decimals 2, min/max and null/invalid counts
 over every parsed row; `1.230e-2` gives max decimals 3; extract JSON with
 numbers serializes without error. Same input twice gives
 byte-identical output; `workbench` refuses a copy dir under `rollouts/`,
-appends without rewriting earlier records, and `hermes-gui` produces
+appends without rewriting earlier records, gives the same `result_sha256`
+for two method names that produce the same result, and `hermes-gui` produces
 `handoff.json` and no extraction output.
 
 Add category-shaped fixtures for log/alarm, FDC, measurement, configuration,

@@ -4,3 +4,4 @@ __pycache__/
 equipment.toml
 out/
 .venv/
+engineer.toml
