@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo status
 
-Docs, one vendored library (`ftp_handler/`) and `spike.py`; no CLI and no build or lint command. The transport check runs with `python tests/test_ftp_transport.py`. `spike.py` (letter 00) runs as `python spike.py equipment.toml`; its local fake check is `uv run --python 3.11 --with pyftpdlib --with flask --with requests python tests/test_spike_fake.py` (fake FTP, real proxy blueprint, fake LLM). `equipment-data-parser/` fixes the letter-execution stack (Python 3.11, pytest), but the `equipment-map` CLI from letter 01 onward is built in the execution model folder and never comes back by git, so this repo gets no pytest suite from it. The maintainer checks are the bare scripts listed in `README.md`. The architecture doc is the spec the letters must lead that build to satisfy.
+Docs, one vendored library (`ftp_handler/`) and `spike.py`; no CLI and no build or lint command. The transport check runs with `python tests/test_ftp_transport.py`. `spike.py` (letter 00, retired — the sequence now starts at letter 01) still runs as `python spike.py equipment.toml`; its local fake check is `uv run --python 3.11 --with pyftpdlib --with flask --with requests python tests/test_spike_fake.py` (fake FTP, real proxy blueprint, fake LLM). `equipment-data-parser/` fixes the letter-execution stack (Python 3.11, pytest), but the `equipment-map` CLI from letter 01 onward is built in the execution model folder and never comes back by git, so this repo gets no pytest suite from it. The maintainer checks are the bare scripts listed in `README.md`. The architecture doc is the spec the letters must lead that build to satisfy.
 
 ## Where things are
 

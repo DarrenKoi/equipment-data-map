@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:,">
+<title>Qwen 실행 병목 진단 · Equipment Data Map</title>
+<style>
+:root{--ink:#182a37;--muted:#4f6270;--teal:#006b61;--line:#d4dfdf;--paper:#fff;--wash:#eef4f2;--amber:#89580c}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:var(--wash);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:16px;line-height:1.85;word-break:keep-all;overflow-wrap:anywhere}a{color:var(--teal);text-underline-offset:4px}a:hover{color:#003e39}a:focus-visible,[tabindex]:focus-visible{outline:3px solid #af6914;outline-offset:4px}.skip{position:absolute;top:-70px;left:16px;background:white;padding:10px;z-index:3}.skip:focus{top:10px}.top{background:#123e3b;color:white;padding:48px max(28px,calc((100vw - 1280px)/2));border-bottom:6px solid #70b7a5}.eyebrow{font-size:12px;letter-spacing:.16em;font-weight:800;color:#b6ddd2}.top h1{font-size:clamp(28px,3.2vw,44px);line-height:1.35;max-width:920px;margin:16px 0}.top p{max-width:870px;color:#e0efea;margin:12px 0 22px}.tag{display:inline-block;border:1px solid #a0c9be;border-radius:30px;padding:4px 13px;font-size:13px;margin:3px 8px 3px 0}.layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:32px;max-width:1340px;margin:32px auto;padding:0 28px}.sidebar{align-self:start;position:sticky;top:22px;max-height:calc(100vh - 44px);overflow:auto;font-size:13px;padding:12px 8px}.sidebar strong{display:block;font-size:13px;color:var(--muted);margin-bottom:14px}.sidebar ul{list-style:none;padding:0;margin:0}.sidebar li{margin:0 0 11px}.sidebar a{display:block;text-decoration:none;border-left:2px solid #b9cdca;padding-left:12px;line-height:1.55}.sidebar a:hover{border-color:var(--teal)}main{min-width:0}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 24px}.card{padding:22px;background:white;border:1px solid var(--line);border-top:4px solid var(--teal);border-radius:10px}.card b{display:block;font-size:34px;letter-spacing:-.04em;line-height:1.2;color:var(--teal);margin:7px 0 13px}.card small{display:block;color:var(--muted);font-size:12px;line-height:1.65}.card span{font-size:13px;font-weight:700}.card.warn{border-top-color:#b37e31}.card.warn b{color:var(--amber)}.article{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:38px 44px;box-shadow:0 4px 20px #163a2f05}.article>h1{font-size:27px;line-height:1.45;margin:0 0 22px;letter-spacing:-.025em}h2{font-size:25px;line-height:1.45;margin:62px 0 24px;padding:16px 0 12px;border-top:2px solid var(--teal);letter-spacing:-.025em}h3{font-size:19px;line-height:1.5;margin:32px 0 15px}p{margin:15px 0}li{margin:8px 0}ul,ol{padding-left:25px}blockquote{margin:24px 0;padding:15px 20px;border-left:4px solid #9caeaa;background:#f2f5f4;color:var(--muted);font-size:14px}blockquote p{margin:0}.table-scroll{overflow-x:auto;margin:24px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.7;min-width:600px}th{background:#e8f1ed;text-align:left;font-weight:750;color:#20463f;vertical-align:top}td,th{padding:13px 15px;border-bottom:1px solid var(--line);min-width:105px}td{vertical-align:top}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#fafcfb}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.86em;background:#edf2f1;border-radius:4px;padding:2px 5px;word-break:break-word}pre{background:#163b39;color:#e5f3ed;border-radius:9px;padding:23px;overflow:auto;line-height:1.8;font-size:13px;white-space:pre;word-break:normal}pre code{background:none;padding:0;color:inherit;font-size:inherit;word-break:normal}.footer{color:var(--muted);font-size:13px;padding:24px 0 40px}.footer a{margin-right:18px}strong{font-weight:750}@media(max-width:1050px){.layout{grid-template-columns:190px minmax(0,1fr);gap:20px;padding:0 20px}.article{padding:28px}.cards{gap:10px}.card{padding:16px}.card b{font-size:29px}}@media(max-width:760px){.top{padding:30px 22px}.layout{display:block;margin-top:20px;padding:0 14px}.sidebar{position:static;max-height:none;background:#e3ede8;border-radius:8px;padding:18px;margin-bottom:20px}.sidebar .toc ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px}.cards{grid-template-columns:1fr}.card{display:grid;grid-template-columns:1fr 1fr;column-gap:12px;padding:16px 20px}.card b{grid-column:2;grid-row:1/3;margin:0;align-self:center;text-align:right}.card small{grid-column:1}.article{padding:24px 20px}.article>h1{font-size:23px}h2{font-size:22px;margin-top:45px}pre{font-size:12px;padding:16px}body{font-size:15px}.table-scroll{margin-left:-6px;margin-right:-6px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{@page{margin:18mm}body{background:white;font-size:10pt}.top{padding:12px 0;background:white;color:var(--ink);border-bottom:2px solid var(--teal)}.top p,.eyebrow{color:var(--muted)}.top h1{font-size:25pt}.tag{border-color:#aaa}.layout{display:block;margin:0;padding:0}.sidebar,.skip{display:none}.cards{margin-top:20px}.card{padding:10px}.card b{font-size:24pt}.article{padding:0;border:0;box-shadow:none}.article>h1{margin-top:25px}h2{break-after:avoid;font-size:17pt;margin-top:30px}h3{break-after:avoid}table{min-width:0;font-size:9pt}th,td{padding:6px;min-width:0}tr{break-inside:avoid}.table-scroll{overflow:visible;border-radius:0}pre{white-space:pre-wrap;color:var(--ink);background:#f0f3f2;overflow:visible;font-size:8pt}a{color:var(--ink)}.footer{font-size:9pt}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">본문으로 건너뛰기</a>
+<header class="top">
+<div class="eyebrow">EQUIPMENT DATA MAP / PERFORMANCE PROPOSAL</div>
+<h1>하루 걸리는 탐색,<br>Qwen이 해야 할 일부터 줄입니다.</h1>
+<p>도구는 미리 만들어 배포하고, Qwen은 대표 표본의 의미를 해석합니다.<br>병목의 근거, 작은 표본 묶음·최대 8개 병렬, 사람과 LLM이 읽는 Wiki까지.</p>
+<span class="tag">2026.09.19</span><span class="tag">제안 · 구현 전</span><span class="tag">실장비 성능 미측정</span>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="문서 목차"><strong>이 문서의 순서</strong><div class="toc">
+<ul>
+<li><a href="#1-qwen">1. 결론: Qwen에게 만드는 일보다 읽고 판단하는 일을 맡긴다</a></li>
+<li><a href="#2">2. 확인된 사실과 아직 모르는 것</a></li>
+<li><a href="#3">3. 병목 후보의 확인 순서</a></li>
+<li><a href="#4">4. 세 가지 접근 중 권장하는 것</a></li>
+<li><a href="#5">5. 미리 만들어 배포할 코드의 범위</a></li>
+<li><a href="#6">6. 원하는 수집·패턴·샘플링 흐름</a></li>
+<li><a href="#7-8">7. 작은 배치와 최대 8개 병렬 요청</a></li>
+<li><a href="#8">8. 호출 축소도 한 번에 하나씩</a></li>
+<li><a href="#9">9. 하루의 실제 원인을 확정할 최소 계측</a></li>
+<li><a href="#10-wiki-llm">10. 최종 Wiki는 엔지니어와 LLM이 함께 읽는다</a></li>
+<li><a href="#11">11. 적용 순서와 완료 판정</a></li>
+<li><a href="#12">12. 이번 조사 범위와 검토 상태</a></li>
+</ul>
+</div>
+</nav>
+<main id="content">
+<section class="cards" aria-label="핵심 진단">
+<div class="card"><span>Qwen의 정상 운영 중 코드 생성</span><b>0회 목표</b><small>검증된 단일 CLI를 사전 배포</small></div>
+<div class="card warn"><span>한 요청의 근거 묶음</span><b>1~5파일</b><small>기존 파일군 대표본 유지<br>파일 수를 맞추는 추가 작업 없음</small></div>
+<div class="card"><span>해석 HTTP 요청 동시 상한</span><b>최대 8</b><small>고정 worker pool로 처리<br>FTP 연결은 별도로 1개 유지</small></div>
+</section>
+<article class="article"><h1 id="qwen-cli">Qwen 실행 병목 진단과 사전 제작 CLI 전환 개선안</h1>
+<blockquote><p>2026-09-21: 이 문서의 선정 모드·사전 제작 CLI·제한된 병렬화·Wiki 방향은 <a href="equipment-data-map.md">통합 아키텍처</a>에 통합했다. 아래는 당시 진단·제안의 근거와 실험 배경이며 별도 실행 계약이 아니다.</p></blockquote>
+
+<blockquote>
+<p><strong>제안 · 2026-09-19</strong> — 기준 checkout <code>8fab382</code>. 이 문서는 개선안이다. 이후 오프라인 Wiki 생성기와 조사 이력을 구현했으며 범위와 명령은 <a href="wiki-generator.md">구현 안내</a> · <a href="wiki-generator.html">실행 안내 HTML</a>에 구분했다. 전체 운영 CLI 완료 선언은 아니다. 현행 규칙은 <a href="equipment-data-map.md">아키텍처 원본</a>과 <a href="../../equipment-data-parser/index.md">실행 계약</a>이 우선한다. <a href="equipment-data-parser-performance-proposal.html">읽기 쉬운 HTML</a>에서도 같은 본문을 읽을 수 있다.</p>
+</blockquote>
+<h2 id="1-qwen">1. 결론: Qwen에게 만드는 일보다 읽고 판단하는 일을 맡긴다</h2>
+<p><strong>수집·필터·샘플링·추출·재개·Wiki 생성을 미리 구현해 배포하는 방향이 맞다.</strong> Qwen3.8-27B는 정해진 명령을 실행하고, 제한된 대표 표본의 의미를 해석하고, 모호한 항목을 엔지니어에게 전달하는 역할로 좁힌다. 현재 편지 01–15는 Qwen에게 이 도구 자체를 만들고 시험하라고 요구한다. 사용자가 원한 빠른 장비 탐색에 앞서 상당한 소프트웨어 개발이 들어가 있다.</p>
+<p>두 번째 비용은 <strong>파일군 하나를 설명하기 위해 발생하는 많은 LLM 요청</strong>이다. 현행 계약은 의미·신뢰도·근거를 나눠 물으며, 최대 16개 필드의 의미도 따로 묻는다. 조건에 따라 파일군당 정상 첫 시도만 69회가 된다. 사전 제작만으로 이 런타임 비용까지 없어지지는 않는다.</p>
+<p>따라서 우선순위는 다음과 같다.</p>
+<ol>
+<li><strong>빌드와 운영 분리:</strong> 한 번 검증한 CLI를 배포하고 장비마다 Python을 다시 생성하지 않는다.</li>
+<li><strong>실제 시간 분해:</strong> 빌드, 승인 대기, FTP, 추출, LLM, 재시작 비용을 따로 잰다.</li>
+<li><strong>요청 수와 중복 제거:</strong> 파일군 단위 근거 패킷, 유효 결과 재개, 제한된 묶음 응답을 적용한다.</li>
+<li><strong>작은 파일 묶음·최대 8개 요청 병렬화:</strong> 사용자의 후속 단순화 요청에 따라 파일 수를 맞추는 배치 구성을 생략한다. 파일군의 기존 승인 표본 1~5개를 유지하고, 복잡한 크기별 배치 최적화는 만들지 않는다.</li>
+<li><strong>Wiki는 코드가 생성:</strong> 사람과 LLM이 같은 Markdown과 근거를 읽도록 한다.</li>
+</ol>
+<p>실장비나 사내 LLM에 접속하지 않았다. <strong>하루라는 증상은 사용자 보고이며, 그중 어느 구간이 몇 시간인지는 아직 측정되지 않았다.</strong> 아래 진단은 현재 저장소의 코드·계약에서 확인한 구조와 현장에서 검증할 가설을 구분한다.</p>
+<h2 id="2">2. 확인된 사실과 아직 모르는 것</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>구분</th>
+<th>확인 내용</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>현재 저장소</td>
+<td><code>ftp_handler/</code>, <code>spike.py</code>, 편지와 maintainer 테스트가 있다. 진단 시점에는 <code>equipment_map/</code>와 <code>pyproject.toml</code>이 없었다. 이후 검토용 Wiki 모듈만 추가했다.</td>
+<td>이 checkout은 완성된 운영 CLI 배포본이 아니다. 사무실 복사본의 구현 여부와는 별개다.</td>
+</tr>
+<tr>
+<td>실행 계약</td>
+<td>편지 01–15는 CLI·테스트·스킬 구현, 16–20은 운영이다. 새 모델 복사본은 01부터 시작한다. 완료한 빌드 편지도 파일 hash가 바뀌면 redo가 된다.</td>
+<td>업데이트를 복사한 뒤 기존 코드 대조·수정·재시험 비용이 반복될 수 있다. redo는 처음부터 재구현하라는 지시가 아니다.</td>
+</tr>
+<tr>
+<td>LLM 계약</td>
+<td>의미 항목별 요청과 claim별 confidence/evidence 후속 요청을 요구한다.</td>
+<td>짧은 답이어도 반복된 프롬프트 처리·HTTP·생성 시간이 누적된다.</td>
+</tr>
+<tr>
+<td>병렬 계약</td>
+<td>빌드 편지 병렬화는 최대 3개다. 해석 HTTP 요청의 8개 동시 실행은 명시되어 있지 않다.</td>
+<td>편지 병렬화가 파일 해석 병렬화를 제공하지 않는다. 실제 사무실 구현이 직렬인지는 코드·로그 확인이 필요하다.</td>
+</tr>
+<tr>
+<td>FTP 구현</td>
+<td><code>size_dirs</code>의 worker는 파일마다 <code>SIZE</code>, 성공한 항목에 <code>MDTM</code>을 수행한다.</td>
+<td>다운로드가 빨라도 대규모 목록의 왕복 비용은 클 수 있다.</td>
+</tr>
+<tr>
+<td>현재 표본 정책</td>
+<td>pattern 최대 5개, loose 최대 3개. deny·최신/실시간/변경 중 후보 제외, 전체 파일 저장, 같은 scope의 검증된 표본 재사용.</td>
+<td>이미 좋은 정책이 명세에 있다. 새로운 다운로더보다 이 정책의 검증된 구현이 필요하다.</td>
+</tr>
+<tr>
+<td>과거 spike</td>
+<td>디렉터리 순회 도중 동기 LLM 호출, 실행마다 새 출력, 샘플 앞부분은 메모리에만 유지. 현행 순서에서는 은퇴한 편지 00이다.</td>
+<td>사무실에서 아직 spike를 실행한다면 별도 병목 후보다. 현행 CLI의 동작으로 일반화하지 않는다.</td>
+</tr>
+<tr>
+<td>미확인</td>
+<td>현재 편지 번호, 사무실 생성 코드, 실제 파일군 수, 호출 수·재시도, 승인 대기, GPU·서빙 설정, endpoint queue.</td>
+<td>모델 크기나 토큰 속도만으로 하루의 원인을 확정할 수 없다.</td>
+</tr>
+</tbody>
+</table></div>
+<p>근거: <a href="../../equipment-data-parser/index.md">index.md:9–38, 159–174, 201–236</a>, <a href="../../equipment-data-parser/11-llm.md">Letter 11</a>, <a href="../../equipment-data-parser/implementation-reference.md">implementation-reference §8</a>, <a href="../../ftp_handler/direct_downloader/fleet_downloader.py">FTP sizing worker:816 이후</a>, <a href="../../spike.py">spike.py:239–322, 373–400</a>. 줄 번호는 위 기준 checkout의 위치다.</p>
+<h2 id="3">3. 병목 후보의 확인 순서</h2>
+<p>아래 순서는 저비용 확인 순서이며 시간 점유율 순위가 아니다. FTP의 승인 요청 속도가 낮으면 LLM보다 FTP가 오래 걸릴 수 있다.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>확인 순서</th>
+<th>병목 후보</th>
+<th>확인할 증거</th>
+<th>맞다면 적용할 개선</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>초기 구현 또는 편지 변경 후 redo</td>
+<td><code>office/progress.md</code>의 현재 01–15 항목과 wip 시각, 복사한 편지 hash 변경, 코딩·시험 시간</td>
+<td>통과한 빌드를 고정해 배포. 기존 office 구현이 완성됐다면 교체 전에 검증하고 재사용</td>
+</tr>
+<tr>
+<td>2</td>
+<td>의미 요청의 증폭</td>
+<td>파일군당 HTTP 요청 수, confidence/evidence 비중, 동일 근거의 반복 입력 토큰</td>
+<td>버전이 명시된 묶음 응답 계약과 공통 근거 패킷</td>
+</tr>
+<tr>
+<td>3</td>
+<td>실제 직렬 실행·서버 큐·긴 생성</td>
+<td>in-flight 분포, 요청 지연 p50/p95, 서버 queue/prefill/decode, 출력·reasoning 토큰</td>
+<td>병렬도 1→2→4→6→8 비교, 출력 상한·프롬프트 축소</td>
+</tr>
+<tr>
+<td>4</td>
+<td>재시도·재시작으로 같은 작업 반복</td>
+<td>같은 입력 키의 중복 요청, HTTP 오류, 미완료 예약, 외부 runner 종료</td>
+<td>durable 결과 재사용, 유한 재시도, runner와 요청 timeout 분리</td>
+</tr>
+<tr>
+<td>5</td>
+<td>메타데이터 왕복과 2회 inventory</td>
+<td>목록·SIZE·MDTM 건수/시간, 파일 수, pass별 요청</td>
+<td>좁은 승인 root·불필요 하위 탐색 제외, 같은 pass의 완료 디렉터리 재사용</td>
+</tr>
+</tbody>
+</table></div>
+<p>승인 대기는 별도 항목이다. 프로세스가 일하지 않은 8시간을 모델 추론 8시간으로 계산하지 않는다. 엔지니어 부재 중 승인 전 단계가 멈추는 것은 성능 오류가 아니다. 승인된 한 단계 내부는 사람의 파일별 확인 없이 끝까지 진행하도록 만든다.</p>
+<h3 id="_1">호출 수가 하루를 만들 수 있는 경로</h3>
+<p>현행 §8의 의미 항목은 description, category, producer, lifecycle, expected period, operational use, sensitivity의 <strong>7개</strong>이며, 관측 필드 의미가 최대 <strong>16개</strong> 추가된다. 모든 의미 응답이 유효하고 UNKNOWN이 아닌 경우 각 claim에 confidence와 evidence가 추가된다.</p>
+<pre><code class="language-text">F = 해석할 파일군 수
+K = 파일군에서 의미를 요청하는 관측 필드 수, 0 ≤ K ≤ 16
+S = 7 + K
+정상 첫 시도 요청 수 = F × S × 3
+F=100, K=16 → 6,900회
+요청 평균 12초, 직렬 실행이라는 가정 → 82,800초 ≈ 23시간
+</code></pre>
+<p>이는 <strong>원인 가능성을 보여 주는 산술 예시이며 실측이 아니다.</strong> 실제 승인 계획에 최소 6,900회의 요청 budget과 해당 경과 시간이 있어야 이 경로로 23시간을 쓸 수 있다. 먼저 실제 한도로 이 가설을 확인하거나 배제한다. UNKNOWN이면 후속 두 호출이 없어지고, 이미 저장된 유효 결과도 호출하지 않는다. 반대로 의미 슬롯 2개와 슬롯별 최대 3회 전송 시도는 한 필드 작업에 최대 6회 HTTP 시도를 허용한다. 전체 요청·시간 budget이 이 상한보다 먼저 멈출 수 있다.</p>
+<p>FTP도 무시하지 않는다. 성공한 파일 N개의 크기·시각 조회만 약 2N개의 FTP 명령을 쓴다. 예를 들어 N=100,000, 명령 왕복 평균 10ms라면 한 pass의 SIZE/MDTM만 약 33분이다. 두 번이면 약 67분이며 목록·연결·서버 처리·rate-limit 대기는 별도다. 이것도 실측이 아닌 예시다. <strong>한 번의 HTTP <code>size_dirs</code>를 장비 요청 한 번으로 세면 진단이 틀린다.</strong></p>
+<p>특히 현행 계약은 각 장비 명령을 <code>requests_per_second</code>로 제한한다. r=5라면 2N/r은 약 <strong>11.1시간/pass</strong>, 두 pass는 <strong>22.2시간</strong>이다. 이는 전송 지연만 계산한 33분보다 큰 속도 제한상의 대략적 하한이다. 승인된 요청 속도와 실제 명령 수부터 확인한다. vendor sizing worker 자체의 반복문에는 명령별 pacing hook이 보이지 않으므로 사무실 adapter/proxy가 이를 어떻게 보장하는지도 확인해야 한다. 제어할 수 없으면 기존 capability gate에서 멈춰야 하며, 빠르게 만들기 위해 rate limit을 생략하지 않는다.</p>
+<h2 id="4">4. 세 가지 접근 중 권장하는 것</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>접근</th>
+<th>장점</th>
+<th>한계</th>
+<th>판단</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>현행 편지만 짧게 고친다</td>
+<td>배포 변경이 작다</td>
+<td>여전히 Qwen이 코드를 만들며 런타임 호출 수가 유지됨</td>
+<td>임시 개선</td>
+</tr>
+<tr>
+<td>검증된 단일 CLI를 사전 제작하고 Qwen은 운영·해석만 한다</td>
+<td>반복 개발 제거, 공통 재개·정책·Wiki 유지</td>
+<td>패키지 및 Windows/proxy 검증 필요</td>
+<td><strong>권장</strong></td>
+</tr>
+<tr>
+<td>여러 Qwen 코딩 에이전트가 각자 파일 탐색·다운로드·문서 작성</td>
+<td>즉석 유연성</td>
+<td>중복 호출, 공유 상태 경쟁, 장비 부하·근거 일관성 관리 어려움</td>
+<td>이번 목적에 부적합</td>
+</tr>
+</tbody>
+</table></div>
+<p>이미 office에 동작하는 CLI가 있다면 처음부터 다시 쓰지 않는다. 유지관리자가 사내 검증 결과와 민감정보를 제거한 문제 요약으로 현재 구현의 충족 여부를 확인하고, 호환되는 모듈을 표준 배포본으로 정리하는 것이 가장 짧은 경로다. 외부로 장비 원본·실제 설정·프롬프트를 가져오는 과정은 필요하지 않다.</p>
+<p>기존 office 구현을 채택한다면 <strong>그 구현을 가진 사내 환경에서 패키지를 만든다.</strong> 코드를 밖으로 가져왔다고 가정하지 않는다. 외부 유지관리 환경에서 새 코드를 제공하는 대안은 합성 fixture와 공개된 계약으로 작성·검증한 뒤 반입하는 방식이다. 현재 통과한 빌드와 해당 지침 버전을 고정하고, 업데이트는 실행 중 끼워 넣지 않고 검토된 릴리스 단위로 적용한다.</p>
+<h2 id="5">5. 미리 만들어 배포할 코드의 범위</h2>
+<p>사용자가 제안한 “예상 스크립트를 미리 제공”을 아래 범위로 구체화한다. 각 행은 별도 임의 실행 스크립트가 아니라 <strong>기존에 설계된 <code>equipment-map</code> CLI 내부 기능</strong>이다. Qwen에게 이 파일들을 생성하라는 새 편지를 주지 않고, 유지관리 측에서 구현·시험한 코드와 설치 묶음을 제공한다.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>사전 제공 기능</th>
+<th>입력 → 출력</th>
+<th>재사용·구현 경계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>실행 제어·계측</td>
+<td>승인된 rollout → 상태·집계·시간 기록</td>
+<td>기존 init/plan/next/status·잠금·감사 계약 구현. CLI 하나가 제어</td>
+</tr>
+<tr>
+<td>Inventory</td>
+<td>승인 root → SQLite 목록·미완료 frontier</td>
+<td><code>ftp_handler.fleet_downloader()</code>와 proxy 표면 재사용. FTP 클라이언트 새로 작성하지 않음</td>
+</tr>
+<tr>
+<td>정책·Grouping·Sampling</td>
+<td>메타데이터·프로필 → 선택 manifest·mirror evidence</td>
+<td>download guard 한 곳에서 모든 전송 판정. 파일명 규칙·보호 사유 보존</td>
+</tr>
+<tr>
+<td>Extraction</td>
+<td>로컬 전체 표본 → 제한된 descriptor·근거 위치</td>
+<td>stdlib CSV/JSON/XML/INI/텍스트부터. 미지원은 기록하고 진행</td>
+</tr>
+<tr>
+<td>LLM runner</td>
+<td>제한된 파일군 패킷 → 검증된 inferred claim·재개 기록</td>
+<td><code>requests</code> + 제한된 worker pool + 기존 SQLite. 새 분산 큐/프레임워크 불필요</td>
+</tr>
+<tr>
+<td>Publisher</td>
+<td>검토된 canonical map → 폴더별 Wiki·graph·REPORT</td>
+<td>Python 템플릿으로 결정론적 생성. 문서 조립에 LLM 호출 0회</td>
+</tr>
+</tbody>
+</table></div>
+<p>실행에는 현재 편지의 Python 3.11+·pip·사내 패키지 공급 방식을 유지한다. 운영 경로에는 표준 라이브러리와 이미 허용된 <code>requests</code>를 우선한다. 가짜 FTP/proxy와 실패 주입 시험은 제공자가 함께 묶어 배포한다. 사용자가 장비마다 테스트 코드를 생성할 필요는 없다.</p>
+<p><strong>이 문서 작성에서는 위 런타임을 구현하지 않았다.</strong> 이번 산출물은 진단 및 구현 범위·전환 계획이다. 아직 없는 subcommand를 실행 가능한 명령처럼 제시하지 않는다. 실제 배포 때 기존 계약 명령인 <code>preflight</code>, <code>stage N plan</code>, <code>stage N next</code>, <code>status</code>로 사용할 수 있어야 한다. 유지관리자의 root-level build 산출물 작성 제한은 이 전환을 채택할 때 AGENTS 계약과 함께 명시적으로 조정한다.</p>
+<h2 id="6">6. 원하는 수집·패턴·샘플링 흐름</h2>
+<pre><code class="language-text">엔지니어: root·보호 패턴·budget 승인
+    ↓
+FTP 목록 수집 [장비 연결 1개, 요청 속도 제한]
+    ↓
+이름 규칙으로 파일군 구성 → 기본 필터/보호/변경 중 상태 표시
+    ↓
+heavy·medium·light로 분석 대상 선정 → 선정/제외 이유 저장
+    ↓
+선정된 대상 안에서 규칙 기반 대표본 선택 → 장비 경로를 보존한 전체 파일 저장
+    ↓
+로컬 결정론적 추출 → 파일군별 제한된 해석 패킷
+    ↓
+Qwen 해석 [파일군별 작은 표본 묶음, 전역 동시 HTTP ≤ 8]
+    ↓
+검증·체크포인트 → canonical map → 사람·LLM 공용 Wiki
+</code></pre>
+<h3>파일 선정 모드: heavy · medium · light</h3>
+<blockquote>
+<p><strong>2026-09-20 설계 추가 · 미구현.</strong> 목표는 내용을 읽고 나서 Wiki에서 숨기는 것이 아니라, 다운로드·추출·LLM 해석 전에 대상을 최대한 줄이는 것이다. 현행 운영 계약의 자동 선택 규칙을 이미 바꿨다는 뜻은 아니다.</p>
+</blockquote>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>모드</th>
+<th>대상 선정</th>
+<th>사용자 개입</th>
+<th>범위와 완료 의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>heavy</strong></td>
+<td>승인 범위 안에서 기본 필터와 보호 규칙을 통과한 모든 파일군을 대상으로 삼는다.</td>
+<td>root·필터·budget을 정한다. 중요도에 따른 추가 제외는 하지 않는다.</td>
+<td>모든 적격 파일군을 대표 표본으로 조사한다. budget으로 남은 대상은 미완료로 표시한다.</td>
+</tr>
+<tr>
+<td><strong>medium</strong></td>
+<td>LLM이 폴더별로 조사할 파일군·파일과 제외할 대상을 제안하고, 사용자가 논의 후 확정한다.</td>
+<td>폴더/파일군 단위로 포함·제외·보류를 수정한다. 파일 수가 적으면 개별 파일로 논의한다.</td>
+<td>합의한 대상만 조사한다. 논의가 끝나지 않은 항목은 보류하고 자동 포함하지 않는다.</td>
+</tr>
+<tr>
+<td><strong>light</strong></td>
+<td>LLM이 조사 목적에 중요하다고 추정한 파일군·파일만 스스로 선정한다.</td>
+<td>처음 정한 목적·허용 범위·budget 안에서는 개별 선정 확인을 요구하지 않는다.</td>
+<td>선택한 소수 대상만 조사하며, 선정되지 않은 항목의 중요도·내용은 미확인이다.</td>
+</tr>
+</tbody>
+</table></div>
+<p>heavy의 “전체”는 <strong>모든 적격 파일군의 coverage</strong>로 정의한다. 반복 파일까지 전부 내려받는 전수 내용 검사는 기존 대표 표본 정책과 다르므로 이 세 모드에 암묵적으로 포함하지 않는다. 세 모드 모두 보호 파일, 접근 범위, 누적 budget을 그대로 지킨다. light의 자율성은 대상 축소에 한정하며 보호 예외나 새로운 다운로드 권한을 주지 않는다.</p>
+<p>선정은 다음 순서로 한다.</p>
+<ol>
+<li><strong>스크립트가 목록을 요약한다.</strong> 승인된 inventory에서 폴더별 파일 수, 파일군, 확장자, 크기·시각 범위, 보호·제외 건수를 만든다. 반복 파일 수천 개를 LLM에 그대로 나열하지 않는다. 미탐색 폴더와 목록 잘림은 별도로 표시한다.</li>
+<li><strong>공통 필터를 먼저 적용한다.</strong> 제외 대상은 내용 다운로드와 내용 해석 후보에서 제거한다. 메타데이터와 제외 이유는 남긴다.</li>
+<li><strong>모드에 따라 대상을 좁힌다.</strong> medium/light는 사용자 질문, 경로·명명 규칙, 형식의 다양성, 기존 검증된 지도에 남은 질문을 근거로 선정한다. 예를 들어 recipe 변경 분석이면 관련 설정·recipe·이벤트 파일군을 우선 제안할 수 있지만, 이름만 보고 실제 용도를 확정하지 않는다. 판단을 위해 모든 파일 내용을 먼저 읽지 않는다.</li>
+<li><strong>선정 결과를 고정한다.</strong> 폴더·파일군·개별 경로의 포함/제외/보류, 이유, 판단 주체와 적용 범위를 저장한다. 폴더 선택은 알려진 하위 후보로 펼치고 개별 제외를 반영한다. 최종 집합은 스크립트가 scope·실재 경로·보호·상한을 검증한다. LLM 응답 실패나 잘못된 경로는 보류하며 heavy로 자동 전환하지 않는다.</li>
+<li><strong>대표본만 수집·해석한다.</strong> 선정된 파일군의 허용된 구성원 안에서 기존 pattern 최대 5개, loose 최대 3개의 결정론적 선택을 적용한다. 특정 파일을 포함해도 현재 보호·표본 상한을 우회하는 강제 다운로드 명령으로 취급하지 않는다. loose는 같은 형식이라는 보장이 없으므로 선택한 파일 외의 내용을 일반화하지 않는다.</li>
+<li><strong>Wiki에 조사 범위를 표시한다.</strong> 발견 수, 필터 제외 수, 모드별 선정/보류 수, 실제 표본·해석 완료 수와 미탐색 범위를 구분한다. 선정하지 않은 파일군도 메타데이터와 사유를 남겨 이후 추가 조사 대상으로 찾을 수 있게 한다.</li>
+</ol>
+<p>medium에서는 LLM이 <strong>추천 대상·제외 대상·판단이 어려운 대상</strong>, 각각의 이유와 예상 표본 수·다운로드 바이트를 한 검토표로 보여 준다. 크기를 모르면 unknown으로 표시하고, 처리 시간은 측정 근거가 있을 때만 추정한다. 사용자는 “이 폴더는 제외, 이 설정은 포함”처럼 범위를 조정한다. 전역 파일 수만으로 임의의 전환 임계값을 두지 않고 큰 폴더를 요약한 뒤 필요한 곳만 펼쳐 논의한다.</p>
+<p>light도 선정용 LLM 입력·요청 수·시간에 상한을 둔다. 한 번에 다 담기지 않는 목록은 폴더별 요약으로 제한하고, 검토하지 못한 부분은 보류로 남긴다. 중요도 점수나 LLM 자기평가 confidence를 사실로 취급하지 않는다. 선정 기록과 입력 요약 hash·모델·프롬프트 버전을 저장하고 재개 시 검증된 결과를 재사용해 매번 대상을 다시 바꾸지 않는다.</p>
+<h3>공통 기본 필터와 사용자 제외</h3>
+<ul>
+<li><strong>스크립트 기본값:</strong> 세 모드 모두 이름이 <code>.</code>으로 시작하거나 <code>temp</code>, <code>tmp</code>, <code>lock</code>을 포함한 경로 구성 요소를 content-deny로 적용하도록 한다. 대소문자를 무시하고, 디렉터리가 맞으면 하위 파일에도 적용한다. LLM 프롬프트의 권고가 아니라 다운로드 전 스크립트 검사다. 현재 정식 수집기에 이미 구현되어 있다는 뜻은 아니다.</li>
+<li><strong>오탐 예외:</strong> 단순 포함 규칙은 <code>temperature.csv</code>, <code>attempt.log</code>, <code>clock.cfg</code>도 제외한다. 규칙별 매칭 이유와 건수를 먼저 보여 주며 엔지니어가 정확한 경로 예외를 지정할 수 있게 한다. 예외는 해당 기본 이름 필터만 해제하고 명시적 deny·실시간 보호·범위·budget 검사를 우회하지 않는다. LLM은 예외를 제안할 수 있지만 스스로 적용하지 않는다.</li>
+<li><strong>사용자 제외:</strong> 관심 없는 폴더·파일군·개별 파일을 추가로 제외할 수 있다. 중요도에 따른 미선정, 사용자가 정한 제외, 기본 필터, 보호 상태, budget 부족을 서로 다른 사유로 기록한다. 선정 목록에 들어 있어도 content-deny가 우선한다.</li>
+<li><strong>목록과 내용 구분:</strong> content-deny는 내용을 받지 않는 정책이다. 목록 조회도 필요 없는 폴더는 별도 탐색 제외로 정하고 그 하위를 열거하지 않는다. 이때 내부 파일 수·내용을 추측하지 않고 미탐색 범위로 남긴다. content-deny만으로 “장비에 아무 명령도 하지 않았다”고 보고하지 않는다.</li>
+<li><strong>기타 보호:</strong> newest/realtime/actively-changing 후보, 충돌·너무 긴 Windows 경로, 범위 밖 경로는 현행 계약대로 제외한다. 두 번 크기가 같다는 이유로 실시간 파일의 보호를 풀지 않는다.</li>
+</ul>
+<p><strong>구현 시 계약 변경 범위:</strong> 선정 모드·목적·상한·필터·예외와 선택 결과의 검증/재개 규칙을 계획에 결합하고, canonical 아키텍처 §4.3–4.4·§5–6, spec snapshot, 관련 build letter와 검증 시나리오를 함께 갱신한다. medium의 목록 검토는 승인된 metadata inventory 뒤, 내용 수집 전에 멈출 수 있어야 하므로 해당 체크포인트도 필요하다. light는 사전 승인한 선택 정책 안에서 결과를 확정하되 범위 확대·deny 해제·budget 증가는 기존 재승인 계약을 따른다. 반복 pass나 Wiki의 추가 조사 요청으로 미선정 항목을 몰래 다시 포함하지 않는다. Wiki 생성기는 수집기의 확정 결과를 표시하고 독자적인 이름 필터나 LLM 선정 호출을 추가하지 않는다.</p>
+<p><strong>최소 확인 시나리오:</strong> 반복 파일이 많은 가짜 트리에서 heavy는 적격 파일군을 모두 대상으로 삼고, medium은 사용자 확정 전 내용 수집을 하지 않으며, light는 고정된 모의 LLM 선정 결과만 처리하는지 확인한다. 세 모드 모두 기본 필터와 사용자 제외가 적용되고, 오탐 예외가 다른 보호를 해제하지 않으며, 잘못된 선정·재개·budget 소진·미탐색 범위가 누락 없는 사유로 남아야 한다. 실제 시간 절감은 같은 목록의 선정 파일군 수·전송량·LLM 호출 수·경과 시간을 비교해 확인한다.</p>
+<h3>샘플·경로는 기존 설계를 살린다</h3>
+<p>pattern은 최신 <strong>적격</strong> 3개와 나머지 hash 순위 2개, loose는 최대 3개를 사용한다. 전체 반복 파일을 읽는 것이 아니라 파일군 대표본을 읽는다. 이미 받은 표본은 같은 collection scope의 완료 record와 현재 파일 hash가 일치할 때만 재사용한다. 다른 경로의 같은 바이트를 합쳐 파일 경로를 잃지 않는다.</p>
+<p>예를 들어 합성 원격 경로 <code>/Data/Logs/run_001.csv</code>는 <code>data-map/evidence/Data/Logs/run_001.csv</code>에 둔다. 금지 문자·예약 이름은 기존 <code>%XX</code> 규칙을 적용하고 매핑을 보존한다. 실제로 받지 않은 파일까지 받은 것처럼 빈 원본 파일을 만들지 않는다. 나머지는 inventory와 coverage에 남긴다. Wiki는 표본 저장 트리와 구분된 <code>data-map/wiki/Data/Logs/index.md</code>다.</p>
+<h2 id="7-8">7. 작은 배치와 최대 8개 병렬 요청</h2>
+<p>사용자가 말한 6 batch는 <strong>파일군이 아니라 실제 파일 6개</strong>였다. 이후 “크기별 처리가 별도 일이 된다면 2~3파일로 단순화해도 된다”고 명확히 했다. 최종 권고는 <strong>기존 파일군의 작은 표본 묶음 유지, 복잡한 배치 알고리즘 없음, 최대 8개 HTTP 요청</strong>이다. 6을 큐 공급량이나 필드 개수로 재해석하지 않는다.</p>
+<p>가장 단순한 작업 단위는 <strong>파일군 하나의 대표 표본 묶음</strong>이다. loose는 현행 정책상 최대 3파일이며 pattern은 최대 5파일이다. 2~3개 표본이면 그대로 쓰지만, 2~3이라는 별도 목표나 강제 상한은 만들지 않는다. 이미 선택한 pattern 표본이 5개라면 3개로 줄이거나 새 파일군으로 쪼개지 않고, 5개의 제한된 추출 근거를 한 파일군 패킷으로 유지한다. 파일 개수를 맞추기 위한 추가 다운로드도 없다. 작은 파일군들을 서로 섞어 정확히 3개나 6개를 채우는 작업은 하지 않는다.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>항목</th>
+<th>단순한 기본안</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>작업 단위</td>
+<td>파일군별 근거 패킷. 실제 적격 표본 1~5개, 현행 상한 5/3 유지. 표본 0개는 호출하지 않음</td>
+</tr>
+<tr>
+<td>동시성</td>
+<td>HTTP 요청을 처리하는 단일 worker pool. 4개부터 시험하고 8개와 비교, 최대 8</td>
+</tr>
+<tr>
+<td>공급</td>
+<td>준비된 요청을 큐 순서대로 처리하고 완료된 슬롯을 보충. 배치 전체 완료 장벽 없음</td>
+</tr>
+<tr>
+<td>큰 입력</td>
+<td>같은 파일군만 담은 요청으로 처리. 입력·출력 한도에 맞지 않으면 제한된 추출·부분 관측 또는 unresolved</td>
+</tr>
+<tr>
+<td>저장</td>
+<td>결과별 즉시 커밋. worker가 map이나 Wiki에 직접 쓰지 않음</td>
+</tr>
+<tr>
+<td>FTP</td>
+<td>연결 1개와 승인된 rate limit 유지. 해석 worker 수와 분리</td>
+</tr>
+</tbody>
+</table></div>
+<p>v1은 한 파일군 패킷을 근거로 여러 필드 요청을 만든다. 따라서 파일군 수와 HTTP 요청 수는 같지 않다. 3파일을 한 패킷에 넣었다는 사실만으로 필드별 69회 호출이 줄지는 않는다. 요청 수 축소는 다음 절의 별도 변경이다. v1에서도 독립 필드 요청은 병렬 처리하고, confidence/evidence는 해당 의미 값이 저장된 다음에만 예약한다.</p>
+<h3 id="200k-context">약 200k context는 한도이지 채울 목표가 아니다</h3>
+<p>사용자가 알려 준 약 200k는 배포 context의 가정이며 실제 server max context와 tokenizer는 사내에서 확인한다. 파일의 디스크 바이트 수와 <strong>추출 후 LLM이 받는 입력 크기</strong>는 다르다. context 적합성은 아래 관계를 만족해야 하지만, 이를 위해 새로운 tokenizer나 토큰 가중 큐를 먼저 만들지는 않는다. 기존 byte cap과 preflight에서 확인한 모델 설정을 우선 사용한다.</p>
+<pre><code class="language-text">최종 입력 토큰 + 출력 예약 + 여유분 ≤ 확인된 서버 context
+최종 입력 바이트 ≤ 승인된 입력 byte cap
+</code></pre>
+<p>현행 계약의 user message 상한은 32 KiB다. 200k context가 있다고 이 한도를 자동으로 올리지 않는다. 우선 현재의 짧은 패킷으로 병렬화를 시험한다. 이를 넘는 근거가 실제 정확도를 높인다는 결과가 있거나 context 초과 오류가 실제 나타날 때만, 제공되는 tokenizer/계수 endpoint를 이용한 정확한 확인과 한도 변경을 별도로 검토한다. 바이트를 정확한 토큰 수라고 보고하지 않는다. context 거절은 api-error로 기록하고 같은 oversized 요청을 반복하지 않는다.</p>
+<p>200k짜리 입력 8개를 동시에 보내는 구성은 기본안에서 제외한다. 제한된 패킷과 고정 worker 수부터 쓰면 크기 구간 큐·최적 packing·별도 토큰 가중 scheduler를 지금 만들 필요가 없다. 서버의 KV 부족·재계산·p95 지연을 측정해 worker 수를 낮출 수 있다. vLLM은 KV 부족 시 재계산이 발생할 수 있고 동시성·배치 토큰 조정을 안내하지만, 사내 서버의 설정은 별도 확인 대상이다. <a href="https://docs.vllm.ai/en/latest/configuration/optimization/">vLLM Optimization and Tuning</a></p>
+<p>부분 읽기는 extractor의 기존 제한을 따른다. 원본은 전체 파일로 저장하고, 제한된 추출에서 관측한 범위와 생략을 기록한다. 단독 파일도 제한 안에서 의미 있는 근거를 만들지 못하면 <code>too-large</code> 등 사유를 남긴다. 큰 파일을 영구히 큐 뒤로 보내거나 무한 chunk 분석을 새로 만들지 않는다.</p>
+<h3 id="_4">최소 병렬 제어</h3>
+<p><code>ThreadPoolExecutor</code>와 coordinator 하나, 기존 SQLite면 충분하다. coordinator가 요청 전에 작업 키·슬롯·budget을 원자적으로 예약하고 결과를 저장한다. endpoint·모델은 승인된 사내 설정을 그대로 사용한다.</p>
+<p>병렬 실행 전 시간 차감 계약을 명확히 바꿔야 한다. 실행 중에는 누적 active wall time을 한 번만 차감한다. crash 후에는 마지막으로 저장한 active 시각부터 미완료 요청의 가장 늦은 예약 deadline까지의 구간을 보수적으로 한 번만 추가하고, 그 이후 downtime은 차감하지 않는 방식을 제안한다. 겹치는 예약 timeout을 8번 더하지 않는다. 요청 수·전송 시도는 예약별로 각각 차감한다. 이 규칙과 주기적 elapsed 저장은 <strong>v1 병렬화를 배포하기 전에</strong> 스키마·테스트·승인 계획에 반영하며 기존 실행에 소급 적용하지 않는다.</p>
+<p>인증 실패·deadline·budget 소진은 새 요청 예약을 중단한다. 이미 전송된 요청의 취소가 서버 추론 취소를 보장하지는 않는다. 남은 요청은 유한 timeout으로 정리하고 미완료 예약은 사용된 요청으로 남긴다. 429·503의 Retry-After를 새 예약에도 반영해 재시도 폭주를 막는다. 재시작은 완료 결과·소모한 budget을 초기화하지 않는다.</p>
+<h3 id="pi-oneshot-subagent">pi oneshot과 subagent 중 어떤 방법을 쓰는가</h3>
+<p><strong>권장: pi 운영 세션 하나 + Python CLI의 병렬 HTTP worker.</strong> pi는 승인된 단계의 고정 명령을 실행하고 결과를 전달한다. 큐 선택, 8개 상한, 작은 근거 패킷, 재시도·budget·저장은 CLI가 담당한다. 같은 endpoint의 Qwen 모델을 여러 번 호출하되, 파일군마다 도구를 가진 코딩 에이전트를 새로 띄우지는 않는다.</p>
+<pre><code class="language-text">사람 또는 스케줄러
+    └─ pi 운영 세션 1개 (필요하면 oneshot)
+          └─ 승인된 equipment-map 단계 실행 1개
+                ├─ FTP 수집: 연결 1개
+                ├─ 로컬 추출·근거 패킷·작업 큐
+                ├─ Qwen HTTP 요청: 전역 최대 8개
+                └─ SQLite 저장 → canonical map → Wiki
+</code></pre>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>방식</th>
+<th>언제 적합한가</th>
+<th>이번 작업에서의 판단</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python이 Qwen API를 직접 병렬 호출</td>
+<td>입력·출력과 검증 방식이 정해진 대량 표본 해석</td>
+<td><strong>기본 실행 경로.</strong> 작업별 agent loop와 도구 선택이 필요 없음</td>
+</tr>
+<tr>
+<td>pi oneshot 1개가 CLI 실행·상태 전달</td>
+<td>무인 스케줄러, 체크포인트 이후 재개</td>
+<td><strong>운영 진입점으로 적합.</strong> 한 파일군마다 다시 시작하지 않음</td>
+</tr>
+<tr>
+<td>여러 pi oneshot을 외부 큐에서 실행</td>
+<td>작업마다 파일 탐색·도구 사용 판단이 실제로 필요함</td>
+<td>정형 해석에는 불필요. agent가 필요한 경우에만 별도 비교</td>
+</tr>
+<tr>
+<td>부모 pi가 subagent를 골라 위임</td>
+<td>서로 다른 코드 모듈 구현·리뷰, 승인된 예외 조사</td>
+<td>구축/예외 작업용. 정상 수집·해석 루프의 기본 단위로 쓰지 않음</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>oneshot은 “한 번 실행하고 종료하는 에이전트 세션”이지 LLM 요청 한 번이라는 뜻이 아니다.</strong> 그 안에서 read→판단→도구 호출→결과 확인이 여러 차례 일어날 수 있다. 파일군 100개에 pi를 100번 시작하면 모델 지시·프로젝트 문맥 처리와 도구 왕복이 반복될 수 있다. 이 비용은 측정해야 하며 pi 자체가 항상 느리다는 주장은 아니다.</p>
+<p>또한 두 방식은 완전히 다른 엔진이 아니다. pi 공식 subagent 예제는 자식마다 별도 pi 프로세스를 실행하며, 현재 로컬 설치 예제의 인자는 <code>--mode json -p --no-session</code>이다. 즉 subagent도 내부적으로 oneshot 실행을 감쌀 수 있다. 예제는 한 번에 최대 8개 작업을 받고 <strong>동시 실행은 4개</strong>로 제한한다. 이는 해당 예제의 설정이며 사용자의 설치된 확장 기능이나 Qwen 서버의 한도를 뜻하지 않는다. <a href="https://github.com/earendil-works/pi/tree/main/packages/coding-agent/examples/extensions/subagent">pi 공식 subagent 예제</a></p>
+<p>pi core는 subagent를 고정 내장 기능으로 제공하지 않고 확장 또는 별도 패키지로 구성하도록 안내한다. print·JSON·RPC·SDK 중 모드를 바꾼다고 추론 용량이 늘지는 않는다. 이번에는 새 pi harness 확장을 만들 필요가 없다. <a href="https://github.com/earendil-works/pi/blob/main/packages/coding-agent/README.md">pi 공식 README</a></p>
+<p>실행 단위는 원본 파일 하나도, 작은 파일 묶음마다 새 pi 프로세스도 아닌 <strong>승인된 단계 하나</strong>로 둔다. CLI는 이미 진행 중인 작업을 잠금으로 거부하고 durable 상태에서 재개한다. oneshot wrapper가 먼저 끝났다는 이유로 살아 있는 CLI를 재실행하지 않는다. timeout 후에는 프로세스 종료·잠금·미완료 예약을 기존 계약으로 확인하며 자동 unlock하지 않는다. 승인 대기·blocked·진전 없음이면 스케줄러도 멈춘다.</p>
+<p>Qwen endpoint를 pi 운영 모델과 해석 worker가 공유하면 둘의 부하가 합쳐진다. 우선 CLI 실행 중 pi가 반복 요약·감독용 추론을 하지 않도록 실행 단계를 분리한다. 둘을 동시에 추론시켜야 한다면 부모 요청까지 합친 endpoint 총량을 별도로 제한한다. 자식 수 8개가 GPU 8개나 처리량 8배를 뜻하지 않는다.</p>
+<p>현행 운영 계약은 에이전트가 장비 원본·추출 내용을 직접 읽는 것을 허용하지 않는다. 따라서 subagent가 원본을 자유롭게 탐색하는 예외 조사도 자동으로 열지 않는다. 필요한 경우 엔지니어가 승인한 로컬 복사본과 도구·파일 범위를 따로 정의하고, 정상 rollout과 분리해 검증한다. 원장·canonical map·Wiki의 작성자는 계속 하나다. 현재 빌드 편지는 의존성과 파일 소유권을 지켜 최대 3개만 병렬 수행하며, LLM 해석 요청 8개 설정으로 이 한도를 바꾸지 않는다.</p>
+<h2 id="8">8. 호출 축소도 한 번에 하나씩</h2>
+<p><strong>먼저 배포된 CLI와 v1 병렬 실행을 검증한다.</strong> 동일 입력의 유효 결과 재사용, UNKNOWN의 정상 종료, 제한된 프롬프트를 우선한다. 동시 실행·계측 설정은 현재 rollout schema에 없으므로 코드·스키마·계획 hash·지침을 함께 갱신한다.</p>
+<p>그다음 LLM 호출 수가 여전히 지배적일 때만 <strong>claim 하나의 값·confidence·evidence를 한 응답으로 받는 작은 계약 변경</strong>을 시험한다. 다음은 응답 형식 후보이며 현행 validator가 이미 허용하는 형식은 아니다.</p>
+<pre><code class="language-text">VALUE: &lt;short value or UNKNOWN&gt;
+CONFIDENCE: &lt;high|medium|low&gt;
+EVIDENCE: &lt;only current-family sample IDs&gt;
+</code></pre>
+<p>모든 23개 의미 항목이 유효하다는 앞 절의 예에서 69회가 <strong>23회</strong>로 줄 수 있다. 약 67%의 요청 감소이며 속도 실측은 아니다. 짧은 고정 형식은 JSON schema 지원을 선행조건으로 요구하지 않는다. 엔지니어가 정확도와 파싱 실패율을 비교해 채택한다.</p>
+<p>코드는 응답의 세 항목, enum·길이·근거를 검증하고 canonical map을 조립한다. evidence는 같은 요청에 보인 아무 파일이 아니라 <strong>현재 파일군 소유의 sample record</strong>만 허용한다. UNKNOWN은 정상 미해결이고, support가 무효면 claim을 완성된 결과로 발행하지 않는다. 의미/근거별 남은 슬롯과 전송 시도 상한을 보존해 잘못된 항목만 제한적으로 재요청한다. fallback이 새 budget을 만들지 않게 한다.</p>
+<p>초기안의 69→4회는 기본 의미와 필드 설명을 큰 객체로 합쳤을 때의 이론적 예였다. 사용자 단순화 요청과 Claude 검토를 반영해 <strong>그 목표와 다중 파일군·다중 claim JSON batching을 기본안에서 제외한다.</strong> 파일 수를 3으로 정하는 것과 3개 의미 필드를 한 응답으로 합치는 것도 서로 다른 일이다.</p>
+<p>이 고정 형식도 기존 “한 요청에 한 필드” 계약의 변경이다. 아키텍처 §4.6·§7·§10, implementation-reference §8, Letter 11, schema/prompt version과 검증 시나리오를 함께 바꿔야 한다. 의미 정확성, inferred 표시, 근거와 승인·재개 계약은 유지한다.</p>
+<p>서빙 최적화는 나중이다. 지원 서버의 prefix cache는 반복 prefill을 줄일 수 있지만 decode 자체를 줄이지 않으며 durable 결과 캐시를 대신하지 않는다. <a href="https://docs.vllm.ai/en/latest/features/automatic_prefix_caching/">vLLM Automatic Prefix Caching</a></p>
+<p>reasoning·양자화·GPU 수는 지금 임의로 바꾸지 않는다. 실제 served model ID와 설정을 기록하고, 긴 출력이 지배적인지 확인한 뒤 같은 정답 시험을 통과하는 출력 설정만 선택한다.</p>
+<h2 id="9">9. 하루의 실제 원인을 확정할 최소 계측</h2>
+<p>새 계측을 만들기 전에 기존 <code>office/progress.md</code>의 wip/redo 시각, <code>audit.jsonl</code>, <code>work/llm-attempts.jsonl</code>과 승인 budget부터 읽어 빌드/운영/승인 대기·호출 수·재시도를 분류한다. 해당 파일이 사무실 구현에 없다면 그 사실을 먼저 기록한다. 기존 기록으로 알 수 없는 시간·토큰 항목만 추가한다. 추가 비교는 <strong>이미 받은 승인 표본으로 만든 동일한 로컬 패킷</strong>을 사용해 FTP를 반복하지 않는다. 계측은 CLI가 파일에 쓰고 stdout에는 집계만 내보낸다. Qwen에게 매번 로그 분석 Python을 새로 작성시키지 않는다.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>구간</th>
+<th>최소 기록</th>
+<th>진단 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>전체</td>
+<td>실행 시작/종료, active 경과 시간, 사람 대기, 재시작 수</td>
+<td>실제 기계 처리와 달력상의 하루 분리</td>
+</tr>
+<tr>
+<td>빌드</td>
+<td>편지별 시작/완료, 시험·수정 횟수</td>
+<td>대부분 01–15라면 배포 문제부터 해결</td>
+</tr>
+<tr>
+<td>FTP</td>
+<td>list/SIZE/MDTM/RETR 건수·시간·바이트, pass, 정책 제외</td>
+<td>큰 N·지연·rate-limit 중 어디가 비용인지 구분</td>
+</tr>
+<tr>
+<td>추출</td>
+<td>파일/형식별 시간, 입력/출력 바이트, truncated/unsupported</td>
+<td>큰 파일·특정 parser 비용 식별</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>job/request ID, 입력 hash, enqueue/send/end, 상태, 의미/전송 시도, cache hit</td>
+<td>client 대기와 실제 HTTP 지연, 중복과 재시도 분리</td>
+</tr>
+<tr>
+<td>토큰·서버</td>
+<td>입력/출력/reasoning token 수, 서버 queue·prefill·decode·KV 지표</td>
+<td>토큰/초 저하와 요청 큐 적체 구분</td>
+</tr>
+<tr>
+<td>품질</td>
+<td>검증된 파일군·claim/분, unresolved 사유, 수동 정답 일치·인용 정확도</td>
+<td>빨라졌지만 내용이 사라지는 최적화 방지</td>
+</tr>
+</tbody>
+</table></div>
+<p>미지원 토큰/서버 지표는 <code>unknown</code>으로 기록한다. 기존 비스트리밍 호출의 클라이언트에서는 정확한 TTFT를 알 수 없으므로 HTTP 완료 지연을 TTFT라고 부르지 않는다. 서버가 vLLM일 경우 공식 metrics의 대기·토큰 지표를 사용할 수 있으나 설치 버전과 노출 항목을 확인해야 한다. <a href="https://docs.vllm.ai/en/latest/design/metrics/">vLLM Metrics</a></p>
+<p>병렬 구간의 요청 시간 합은 전체 경과 시간보다 클 수 있다. 단순 합을 병목 점유율로 표시하지 말고, 단계별 실제 시작/종료와 중첩 구간을 함께 본다. raw prompt/response, 비밀번호, 실제 장비 경로는 성능 집계에 넣지 않는다.</p>
+<h3 id="_5">비교 실험표</h3>
+<p>같은 내용과 정답이 준비된 로그·측정·설정 등 최대 30개 파일군으로 시작한다. 작은 집합만 있으면 전부 쓰고 표본 수를 표시한다. cold/warm 결과를 분리하며, 같은 모델·추출·용어집으로 한 변수씩 바꾼다. 각 실험은 엔지니어가 승인한 유한한 요청·시간 한도 안에서 수행한다.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>실험</th>
+<th>응답 형식</th>
+<th>동시 요청</th>
+<th>알고 싶은 것</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기준</td>
+<td>현행 fields-v1</td>
+<td>1</td>
+<td>요청 수·품질·시간 기준선</td>
+</tr>
+<tr>
+<td>병렬도 비교</td>
+<td>fields-v1 고정</td>
+<td>2, 4, 6, 8</td>
+<td>처리량 증가가 멈추는 지점, p95·429 증가 여부</td>
+</tr>
+<tr>
+<td>응답 통합 비교</td>
+<td>claim의 값·신뢰도·근거를 함께 받는 후보</td>
+<td>위에서 고른 값</td>
+<td>요청 감소가 실제 시간·품질 개선으로 이어지는지</td>
+</tr>
+<tr>
+<td>복구 비교</td>
+<td>채택 후보</td>
+<td>동일</td>
+<td>완료 결과 재호출 0, 중단 예약·예산 보존</td>
+</tr>
+</tbody>
+</table></div>
+<p>완료까지 실행하지 못하면 분모에 투입 파일군과 미완료·미해결 수를 그대로 남긴다. 실패한 작업을 빼고 성공 요청의 속도만 발표하지 않는다. 결과표에는 <code>F, K, calls, retries, cache_hits, wall_seconds, p50, p95, validated_claims, unresolved_by_reason</code>를 최소 열로 둔다.</p>
+<h2 id="10-wiki-llm">10. 최종 Wiki는 엔지니어와 LLM이 함께 읽는다</h2>
+<p><strong>이 요구는 필수 완료 기준으로 유지한다.</strong> 각 폴더의 <code>index.md</code>는 파일 목록부터 나열하는 페이지가 아니라 <strong>그 폴더를 이해하고 다음 탐색 위치를 선택하는 안내 페이지</strong>다. Obsidian 전용 문법에 의존하지 않는 표준 Markdown으로 쓰고, 사람이 읽는 짧은 설명과 기계가 추적할 수 있는 근거를 함께 둔다. LLM에게 긴 최종 보고서를 다시 작성시키지 않는다.</p>
+<pre><code class="language-text">data-map/
+  file-families.json          ← canonical 의미·관측 결과
+  paths.json / coverage.json  ← 구조와 빠진 범위
+  extracts.jsonl             ← 제한된 추출 근거
+  metadata-evidence.jsonl    ← 내용 미열람 파일군의 근거
+  evidence/Data/Logs/...     ← 실제 받은 전체 표본
+  wiki/index.md             ← 장비 전체 개요·범위·coverage·탐색 안내
+  wiki/Data/index.md        ← 폴더 개요·하위 폴더 안내·대표 파일 요약
+  wiki/Data/Logs/index.md    ← 해당 폴더 설명·대표 파일 내용·근거
+  graph/*.jsonl             ← 같은 map에서 생성
+</code></pre>
+<h3 id="indexmd">폴더마다 설명부터 읽는 index.md</h3>
+<p>inventory한 각 폴더와 탐색에 필요한 상위 폴더에 <code>index.md</code>를 둔다. 각 페이지의 표시 순서는 다음과 같다.</p>
+<ol>
+<li><strong>이 폴더는 무엇인가:</strong> 어떤 성격의 파일·폴더가 모여 있고 무엇을 확인할 때 찾아오는지 2~4문장으로 먼저 설명한다. 관측한 구성과 추정한 용도를 문장별로 구분한다. 의미를 모르면 구성만 설명하고 용도 미확인이라고 쓴다.</li>
+<li><strong>하위 폴더와 탐색 방향:</strong> 직접 하위 폴더마다 상대 링크, 담긴 자료의 짧은 설명, 어떤 질문에 관련되는지, 탐색 완료/부분/미탐색 상태를 보여 준다. 폴더 이름만 나열하지 않는다.</li>
+<li><strong>대표 파일과 내용 요약:</strong> 실제 선택·다운로드한 대표 파일 각각에 이름, 소속 파일군, 관측 형식, 주요 필드·구조, 내용 1~3문장, 표본의 관측 범위와 근거를 표시한다. 같은 파일군이어도 해당 파일에서 확인한 내용을 쓴다. 내용이 다른 예외 표본을 같은 요약으로 덮지 않는다.</li>
+<li><strong>파일군별 상세:</strong> 이름 패턴, 전체 관측 개수, 표본 수, Fields와 기존 Observed/Inferred/Evidence/Relationships/Unresolved 정보를 둔다. 반복 파일 전체 목록을 첫 화면에 펼치지 않는다.</li>
+<li><strong>모르는 것과 다음 경로:</strong> 보호·미다운로드·미지원·부분 추출을 구분하고 관련 하위 폴더 또는 근거가 있는 관계의 도착 폴더로 안내한다. 내용 미확인 파일에는 제목만 보고 만든 내용 요약을 붙이지 않는다.</li>
+</ol>
+<p>대표 파일 표는 최소 <code>대표 파일 | 담긴 내용 | 주요 필드/구조 | 관측 범위·상태 | 근거</code> 열을 가진다. 파일군 공통 의미를 함께 보여 줄 때는 파일군의 추정이라고 표시하며, 해당 파일의 관측 사실로 바꾸지 않는다. 모든 원격 파일의 개별 내용까지 확인한 것처럼 쓰지 않는다. <strong>개별 내용 요약의 대상은 실제로 읽은 대표 파일</strong>이고 나머지는 파일군 패턴·개수·미열람 범위로 표현한다.</p>
+<h3 id="_6">화면 구조 예시</h3>
+<p>아래는 합성 예시로, 실제 장비 문서나 유효한 evidence record가 아니다. <code>E1</code> 같은 표기는 읽기 쉬운 인용 표시의 예이며 실제 생성물에서는 현재 scope의 전체 SHA·observation ID·extract locator로 해석되어야 한다.</p>
+<pre><code class="language-markdown"># /Data
+
+## 이 폴더는 무엇인가
+관측: 직접 하위에 Logs와 Measurements 폴더가 있고, 이 폴더에는
+설정 형식의 대표 파일이 있다. [E1]
+추정: 운전 기록과 측정 결과를 찾아보는 출발점으로 활용할 수 있다. [C1]
+
+## 어디로 가면 되는가
+| 하위 폴더 | 담긴 자료와 찾아볼 내용 | 확인 상태 |
+|---|---|---|
+| [Logs](Logs/index.md) | 표본에서 시각·상태 코드 필드를 확인한 기록 파일 | 일부 표본 확인 [E2] |
+| [Measurements](Measurements/index.md) | 표본에서 측정값·단위 열을 확인한 표 형식 파일 | 일부 표본 확인 [E3] |
+
+## 대표 파일에는 무엇이 들어 있는가
+| 대표 파일 | 담긴 내용 | 주요 필드/구조 | 관측 범위·상태 | 근거 |
+|---|---|---|---|---|
+| `settings.ini` | 설정 섹션과 숫자형 항목이 있다. 항목의 실제 장비 제어 역할은 미확인이다. | `channel`, `interval` | 제한된 추출 범위 | E1 |
+
+## 파일군 상세
+### 설정 파일군
+#### Observed
+관측한 이름 규칙·형식·개수와 표본 수.
+#### Fields
+필드별 관측 자료형·단위·표본 값 요약.
+#### Inferred
+검증된 의미 해석만 근거와 함께 표시.
+#### Evidence
+E1의 sample 경로·전체 SHA·observation ID·extract locator.
+#### Relationships
+근거가 있는 관련 폴더 링크와 관계의 관측/추정 범위.
+#### Unresolved
+읽지 않은 파일, 제한에 걸린 내용, 아직 모르는 의미.
+</code></pre>
+<h3 id="_7">장비 전체를 따라 찾아가는 방법</h3>
+<p><code>wiki/index.md</code>에서 장비의 관측 범위와 최상위 폴더의 짧은 설명을 읽고, 질문에 맞는 하위 폴더의 <code>index.md</code>로 내려간다. 그 페이지에서 대표 파일의 내용 요약으로 관련성을 판단한 뒤 파일군 상세와 근거를 확인한다. 다른 폴더의 관련 데이터가 필요하면 검증된 Relationships의 도착 폴더 안내를 따른다. 자식 페이지에는 부모 <code>index.md</code>로 돌아가는 상대 링크를 둔다.</p>
+<p>부모는 자식의 상세를 모두 복제하지 않는다. 직접 하위 폴더별 설명만 요약하고, 더 깊은 설명과 대표 파일은 해당 폴더의 페이지에 맡긴다. 하위 폴더 설명은 canonical map의 자식 관측 요약과 이미 검증된 의미를 코드로 조합한다. 인용은 원래 근거까지 이어지고 추정 표시는 유지한다. 허용 root 밖의 연결용 상위 페이지나 미탐색 폴더는 링크와 범위 상태만 두며 역할·내용을 만들어 내지 않는다.</p>
+<p><strong>추가 LLM 호출 없이 먼저 구현한다.</strong> 대표 파일별 관측 요약은 기존 extract descriptor에서 형식·주요 필드·구조·부분 관측 여부를 템플릿으로 조립한다. 의미 설명은 이미 검증된 claim을 재사용하고 없으면 미확인으로 남긴다. 폴더 개요도 이 요약과 하위 폴더 정보를 이용한다. publisher는 원본을 다시 읽거나 폴더마다 새 해석 요청을 보내지 않는다. 문장을 자연스럽게 만드는 작업보다 근거와 탐색 가능성을 우선한다.</p>
+<p>파일군별 상세는 아래의 고정 절을 사용한다. 표본의 원문 행을 복사하는 대신 구조와 필드 단위 요약을 보여 준다.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="가로 스크롤 가능한 비교 표"><table>
+<thead>
+<tr>
+<th>절</th>
+<th>엔지니어가 읽는 내용</th>
+<th>LLM이 추적할 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Observed</td>
+<td>이름 규칙, 개수·크기·시각, 관측 형식</td>
+<td>scope·observation ID·검증 가능한 근거</td>
+</tr>
+<tr>
+<td>Fields</td>
+<td>이름, 관측 자료형·명시된 단위, 표본 min/max·예시</td>
+<td>정확한 필드 경로·extract locator</td>
+</tr>
+<tr>
+<td>Inferred</td>
+<td>용도·의미·운영 활용의 짧은 설명</td>
+<td>claim ID·model/prompt 버전·confidence·evidence</td>
+</tr>
+<tr>
+<td>Evidence</td>
+<td>어떤 표본에서 확인했는가</td>
+<td>evidence 종류·상대 경로·SHA·위치</td>
+</tr>
+<tr>
+<td>Relationships</td>
+<td>관측 또는 추정된 파일군 연결</td>
+<td>관계 종류·관측 범위·양쪽 근거</td>
+</tr>
+<tr>
+<td>Unresolved</td>
+<td>왜 제외·미확인인가, 다음에 무엇을 검토하는가</td>
+<td>no-sample/denied/unsupported/budget 등의 명시적 상태</td>
+</tr>
+</tbody>
+</table></div>
+<p>파일명 패턴만 보고 용도를 사실로 만들지 않고 Inferred에 남긴다. metadata-only는 “내용 미확인”으로 표시한다. 표본 범위는 장비의 허용 스펙 범위가 아니다. 민감 필드의 예시·범위를 가리고, 데이터 유래 Markdown/HTML을 escape하며, 근거가 잘못되었거나 외부 scope를 인용한 항목은 발행하지 않는다. Wiki 내용은 LLM에게도 신뢰할 수 없는 분석 자료이고 도구 실행 지시가 아니다.</p>
+<p>승인 대상 원본은 고정한다. Obsidian은 <code>rollouts/</code> 밖으로 복사한 Wiki를 열어 <code>.obsidian/</code> 생성이나 편집으로 승인 manifest를 깨뜨리지 않게 한다. <strong>이번 개선안 HTML과 최종 장비 Wiki는 별개다.</strong> 최종 Wiki의 원본은 Markdown이며 필요하면 사내 렌더러로 볼 수 있다.</p>
+<h2 id="11">11. 적용 순서와 완료 판정</h2>
+<h3 id="1">1차: 배포된 도구로 전환</h3>
+<ol>
+<li>office의 현재 편지가 빌드인지 운영인지, 편지 업데이트로 redo가 생겼는지 원장으로 확인한다. 이미 통과한 코드를 다시 만들지 않는다. 현재 승인된 실행은 해당 코드·지침 버전으로 마치거나 정식 중단하고, 업데이트는 다음 검토된 릴리스에서 적용한다.</li>
+<li>사전 제작한 단일 CLI·시험·오프라인 설치 자료를 준비한다. 현재 maintainer/build 파일 소유권 규칙을 새 배포 역할과 맞춘다.</li>
+<li><code>index.md</code>에 설치된 검증 패키지를 쓰는 운영 경로를 정의한다. 빌드 편지는 유지보수 참고로 남기고 정상 운영의 선행 코딩 작업으로 요구하지 않는다. 임의로 01–15 done 원장을 조작하지 않는다.</li>
+<li>새 코드 hash 또는 LLM 설정이면 가짜 proxy/FTP와 모델 정확도 검증을 다시 수행한다. 기존 1·2단계 채택 조건이 맞을 때만 baseline을 재사용한다.</li>
+<li>승인된 좁은 실장비 범위에서 시간·coverage·부하를 계측하고 검토한다. 이후 같은 설치본으로 다음 장비를 수행한다.</li>
+</ol>
+<h3 id="2_1">2차: 제한된 병렬화와 호출 축소</h3>
+<ol>
+<li>v1 계측 기준선을 만들고 병렬도 1/2/4/6/8을 비교한다.</li>
+<li>필요할 때만 claim 응답 통합 후보의 실패 주입·정답 검증을 별도로 통과시킨다. 다중 파일군 packing은 구현하지 않는다.</li>
+<li>아키텍처 §4.6·§5·§7·§9·§10, <code>spec.md</code> 미러, <code>index.md</code>, implementation-reference §2·§8, Letters 02·11·14·15 및 운영 지침을 함께 갱신한다. 필터·선택을 바꾸면 §4.3–4.4 및 Letters 06–07도 갱신한다. 설명 우선의 폴더 Wiki는 §4.7.3·implementation-reference §7·Letter 12에 화면 순서·대표 파일별 요약·부모/자식 안내와 검증 기준을 반영한다.</li>
+<li>endpoint·모델·prompt/schema·동시성·시간 차감 정책은 승인 계획에 포함한다. 의미 결과 재사용 키는 scope·파일군 관측 입력·claim 식별자·모델의 의미 관련 설정·prompt/schema·용어집에 결합한다. 단순 worker 수·큐 순서·대기 정책은 새 계약에서 의미 키와 분리한다. 현행 scope 생성 규칙까지 바꾸지 않고 다른 scope의 캐시를 자동 재사용하지 않는다. 비교 실험은 독립 작업 DB에서 동일 패킷을 다시 실행하고, 재개 실험은 같은 DB에서 완료 항목 무호출을 별도로 확인한다. 승인된 실행 도중 설정을 조용히 바꾸지 않는다.</li>
+</ol>
+<h3 id="_8">최소 합격선</h3>
+<ul>
+<li>Qwen이 정상 운영 중 Python을 생성·수정한 횟수 <strong>0</strong>. 설치된 CLI의 정해진 명령만 실행한다.</li>
+<li>합성 100개 반복 파일에서 현행 대표본 상한을 지키고, <code>.</code>, temp/tmp/lock 보호·active 후보는 내용 다운로드 <strong>0</strong>. 오탐 조정은 승인된 프로필에서만 적용한다.</li>
+<li>fake direct·proxy에서 읽기 전용과 모든 budget·시간·재개 경계를 통과한다. 장비 연결 <strong>1</strong>, LLM 진행 중 HTTP <strong>8 이하</strong>다.</li>
+<li>완료 커밋 후 재시작에서 같은 입력의 전송·LLM 재호출 <strong>0</strong>. 응답 전후 강제 종료의 미완료 예약은 보수적으로 차감하고 remote exactly-once는 주장하지 않는다.</li>
+<li>고정 map 입력에서 Wiki/graph가 byte-identical하며 모든 링크·typed citation이 유효하다. 미지원·미수집·미해결 범위가 사라지지 않는다.</li>
+<li>모든 표현 가능한 관측 폴더에 <code>index.md</code>가 있고, 허용 범위 안의 페이지는 목록보다 폴더 설명·하위 탐색 안내·대표 파일별 내용 요약을 먼저 보여 준다. 합성 중첩 트리에서 엔지니어와 LLM이 루트부터 설명과 링크만으로 목표 대표 파일의 폴더 및 근거를 찾는지 확인한다. 같은 파일군의 다른 형식 표본, 내용 미열람 폴더, 추정 용도를 관측으로 오해하지 않는지도 검증한다. 이 발행 과정의 추가 LLM 호출은 0회다.</li>
+<li>최소 모델의 같은 정답 세트에서 근거 없는 관측 승격 <strong>0</strong>. 엔지니어가 의미·인용 정확도를 검토하고, coverage가 줄어든 결과를 가속 성공으로 세지 않는다.</li>
+<li>성능 목표는 <strong>같은 완료 범위·품질에서 개선된 validated claims/분과 전체 처리 시간</strong>이다. 하루→몇 분을 지금 보장하지 않는다. pi 및 실제 Windows/proxy/사내 모델 검증은 로컬 합성 시험과 구분해 기록한다.</li>
+</ul>
+<h2 id="12">12. 이번 조사 범위와 검토 상태</h2>
+<p>현행 저장소·아키텍처·편지·FTP sizing·spike 경로를 읽고 구조적 병목과 이행안을 작성했다. 진단 이후 <code>wiki_review.publish</code>와 <code>wiki_review.exploration</code>을 구현하고 canonical spec에 폴더 설명·추가 조사 계약을 반영했다. <a href="wiki-generator.md">구현 안내</a> · <a href="wiki-generator.html">실행 안내 HTML</a>의 별도 검토 입력과 명령으로 사용한다. 장비 접속, office 원장 변경, 실제 FTP/병렬 LLM 실행기 구현은 수행하지 않았으므로 하루 걸리는 운영 사이클의 단축은 아직 실측하지 않았다.</p>
+<p>문서 검증으로 Markdown→HTML 본문 생성, 12개 절과 목차, 로컬 링크·앵커, 기존 아키텍처/spec 미러 일치를 확인했다. 브라우저에서 데스크톱 1440px·모바일 390px 폭을 확인했으며 페이지 전체의 가로 넘침은 없고 넓은 표는 내부에서 스크롤된다. 이는 문서 검증이며 사내 파이프라인 성능 시험은 아니다.</p>
+<p>사용자의 명시적 전달 승인 후 <code>herdr</code>의 별도 Claude 세션에서 소스 대조와 설계 검토를 수행했다. 실제 장비 원본·자격 증명·office/rollouts 자료 접근은 금지했다. 검토에서 편지 hash 변경에 따른 redo, FTP rate limit, 배치 단위 혼동, plan hash와 의미 재사용 키, 병렬 시간 차감, 과도한 묶음 응답 설계를 지적했고 원문 대조 후 이 문서에 반영했다. Claude도 pi 운영 세션 하나와 CLI의 제한된 HTTP worker 구성을 권고했다. 사용자의 후속 요청에 따라 6은 파일 수로 정정했고, 최종안은 2~3개에 맞추는 추가 작업도 생략하고 기존 표본 1~5개의 파일군 패킷을 그대로 쓰도록 단순화했다. 검토는 실장비 실행이나 사내 모델 성능 입증이 아니다.</p>
+<p>참고 자료:</p>
+<ul>
+<li><a href="equipment-data-map.md">아키텍처: 런타임·표본·LLM·Wiki·승인</a></li>
+<li><a href="../../equipment-data-parser/index.md">실행 계약: 빌드와 운영, 파일 소유권, 병렬 편지</a></li>
+<li><a href="../../equipment-data-parser/implementation-reference.md">LLM 프롬프트·validator·호출 수: implementation-reference §8</a></li>
+<li><a href="../../equipment-data-parser/11-llm.md">LLM durable 상태와 실패 검증: Letter 11</a></li>
+<li><a href="../../equipment-data-parser/05-inventory.md">Inventory: Letter 05</a>, <a href="../../equipment-data-parser/07-sampling.md">Sampling: Letter 07</a>, <a href="../../equipment-data-parser/12-publish.md">Wiki 발행: Letter 12</a></li>
+<li><a href="../../ftp_handler/direct_downloader/fleet_downloader.py">FTP 파일별 SIZE/MDTM 구현</a>, <a href="../../spike.py">은퇴한 spike의 직렬 호출</a></li>
+<li><a href="https://docs.vllm.ai/en/latest/design/metrics/">vLLM Metrics</a>, <a href="https://docs.vllm.ai/en/latest/features/automatic_prefix_caching/">Automatic Prefix Caching</a>, <a href="https://docs.vllm.ai/en/latest/features/structured_outputs/">Structured Outputs</a> — 2026-09-19 확인. 사내 배포 기능 보증은 아님.</li>
+</ul></article>
+<footer class="footer"><a href="equipment-data-parser-performance-proposal.md">Markdown 원문</a><a href="#content">본문 처음으로</a><p>외부 폰트·스크립트·이미지 없이 열리는 독립 HTML입니다. 본문은 Markdown 원문에서 생성했습니다.</p></footer>
+</main>
+</div>
+</body>
+</html>

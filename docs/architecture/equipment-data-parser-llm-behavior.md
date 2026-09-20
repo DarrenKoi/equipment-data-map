@@ -1,5 +1,7 @@
 # equipment-data-parser와 LLM의 동작 방식 — Markdown 지시와 Data Map 산출물
 
+> 이 문서는 현행 letter 실행을 설명하는 보조 안내다. 전체 역할·개선 iteration·용어 사전·목표 배포 구조의 기준은 [통합 아키텍처](equipment-data-map.md)이며, 목표 계약을 현행 구현으로 해석하지 않는다.
+
 이 문서는 `equipment-data-parser/`의 Markdown 파일이 LLM을 어떻게 움직이고,
 그 결과가 어떤 canonical JSON, Markdown, graph JSONL로 나오는지 설명한다. 규칙의 원본은
 `equipment-data-map.md`(스펙)와 `equipment-data-parser/index.md`(사무실
@@ -56,7 +58,8 @@ office/progress.md. Reach the next checkpoint, record it, and stop.
 
 모델에게는 저장소를 통째로 복사한 폴더 하나(`<repo>-<model>/`)를 주고, 그
 폴더의 작업 디렉터리가 곧 정체성이다. 다음 모델은 새 복사본을 받는다. 각
-폴더는 `main`에서 로컬 커밋을 쌓고, 허브 클론 하나만 원격을 본다. 원장 첫
+작업 폴더는 git 없는 plain copy이며 git을 실행하지 않는다. 허브 클론만 `main`을
+pull하고, 엔지니어가 세션 사이에 업데이트를 복사한다. 원장 첫
 줄이 에이전트 모델을 기록하고, rollout 설정이 내부 해석 모델을 기록한다
 (`engineer-guide.md` §1).
 
@@ -186,7 +189,7 @@ FDC/측정 row와 임의의 원문 발췌는 Wiki에 넣지 않는다. JSON 파�
 ## 5. 한 장 요약
 
 ```text
-Markdown 지시 ──읽기──▶ 에이전트 LLM ──코드·커밋──▶ equipment-map CLI
+Markdown 지시 ──읽기──▶ 에이전트 LLM ──빌드/고정 명령──▶ equipment-map CLI
                                                        │
                           증거표·샘플 발췌·용어집 ──HTTP──▶ 내부 해석 LLM
                                                        │        │
