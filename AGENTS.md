@@ -87,7 +87,10 @@ translate one into the other.
   deployment's real host out of the source tree, and `fleet_downloader`
   refusing `FTP_TRANSPORT=direct` on Windows, since the company allows no
   direct FTP from engineer PCs. Both are deliberate and must not be pushed
-  upstream.
+  upstream. One more change (2026-09-22) is a bug fix that *should* be
+  ported: `flask_proxy._unauthorized` treats an empty `FTP_PROXY_TOKEN` as
+  no auth, matching the client, so a blank `.env` line no longer makes the
+  proxy answer 401 (`tests/test_proxy_token.py`).
 
 ## Skill deliverables
 

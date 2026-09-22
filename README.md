@@ -27,6 +27,7 @@ Home checks (no real equipment or credentials):
 python3 tests/test_ftp_transport.py
 python3 tests/test_sizing_mtime.py
 python3 tests/test_worker_isolation.py
+uv run --python 3.11 --with flask --with requests python tests/test_proxy_token.py
 ```
 
 The checks replace external responses and inspect issued requests; none

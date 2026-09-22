@@ -36,7 +36,7 @@ used by the host app:
          "failures":[{"host","error","remote_path"}]}
     GET  /healthz_sknn_v3 -> {"status":"ok"}
 
-Auth: if env FTP_PROXY_TOKEN is set, requests must carry
+Auth: if env FTP_PROXY_TOKEN is set and non-empty, requests must carry
 ``Authorization: Bearer <token>`` or get 401. Always serve behind HTTPS in
 production — file bytes AND the equipment FTP credentials cross this
 connection. Each wire spec normally carries the ``user``/``password`` the
@@ -133,7 +133,7 @@ def _unauthorized():
     """Return a 401 response if the request fails the bearer-token check, else
     ``None``. Token is read per request so it can be configured independently of
     when the host app (and this blueprint) were imported."""
-    token = os.getenv("FTP_PROXY_TOKEN")
+    token = os.getenv("FTP_PROXY_TOKEN") or None   # "" (a blank .env line) is no auth
     if token is not None and not hmac.compare_digest(
         request.headers.get("Authorization", ""), f"Bearer {token}"
     ):
