@@ -143,8 +143,13 @@ before completion; stale/future-stage calls; init after terminal completion;
 lock collision preserving the owner's lock; malformed audit records; concurrent
 plan/init/approval; and repeated plan preserving a valid approval when unchanged.
 
-Also cover the per-stage `init` table: at stage 2 `init` prompts only for
-`llm` and `budgets.llm_max_requests`, and a hand-edited `host` makes
+Also cover the `init` prompts: a fresh stage 1 `init` fed exactly
+`equipment_id`, `host`, `allowed_roots` and two Enters (`protocol`, `port`)
+writes a `rollout.json` that passes validation with every spec §5 default in
+place and never prints `missing required value` or `missing budget`; with
+the four `LLM_*` variables set it also holds the `llm` block. Also cover
+the per-stage `init` table: at stage 2 `init` prompts for nothing beyond
+re-reading `LLM_*`, and a hand-edited `host` makes
 `stage 2 plan` exit 20 naming `host` with no host value on stdout; at stage 3
 an identity change is accepted before the first `next-start` and refused by
 `plan` after it, while a roots or budgets change after it is accepted; `init`

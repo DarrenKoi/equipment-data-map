@@ -588,19 +588,22 @@ equipment-map status --rollout <ID>
 
 | 묻는 키 | 단계 | 보여 주는 기본값 |
 |---|---|---|
-| `equipment_id`, `host`, `allowed_roots`, `profile` | 1·3 | 없음 |
-| `budgets.max_download_files` | 1·3 | 200 |
-| `budgets.max_total_bytes` | 1·3 | 524288000 (500 MiB) |
-| `budgets.max_elapsed_seconds` | 1·3 | 7200 |
+| `equipment_id`, `host`, `allowed_roots` | 1·3 | 없음 |
+| `protocol` | 1·3 | `ftp` |
+| `port` | 1·3 | 21 |
 | `next_profile` | 5 | 없음 |
+
+이 다섯 개(5단계는 하나) 밖의 키로 `init`이 "missing required value"나 "missing budget"을 내면 그것은 `init`의 결함이다.
 
 `llm` 블록은 묻지 않는다. endpoint, 모델, 키 별칭, 용어집 경로는 proxy 위치와 같은 기계의 배포 사실이므로 `.env`의 `LLM_ENDPOINT`, `LLM_MODEL`, `LLM_KEY_ALIAS`, `LLM_GLOSSARY_PATH`에서 읽어 rollout을 만드는 `init`이 그대로 `rollout.json`에 복사한다(실제 환경 변수 우선). 네 값이 그때 비어 있었으면 2단계 `plan`이 거부하며, 엔지니어가 `.env`를 채우고 같은 ID로 `init`을 다시 실행한다. 2단계 전용 `init`은 그 경우와 `llm` 값을 바꿀 때만 필요하다.
 
 | 기본값을 쓰는 키 | 기본값 |
 |---|---|
-| `protocol` | `ftp` |
-| `port` | 21 |
 | `realtime_candidates`, `allow_patterns`, `deny_patterns` | `[]` (allow가 비면 허용 루트 전체, deny는 4.4절 공통 content-deny에 추가되는 것) |
+| `profile` | `generic` (CLI가 동봉하는 `profiles/generic.json`) |
+| `budgets.max_download_files` | 200 |
+| `budgets.max_total_bytes` | 524288000 (500 MiB) |
+| `budgets.max_elapsed_seconds` | 7200 |
 | `budgets.max_file_bytes` | 10485760 |
 | `budgets.max_connections` | 6 (허용 범위 1–8, `ftp_handler`의 `max_concurrency`로 전달) |
 | `budgets.requests_per_second` | 8 (연결 전체 합산) |

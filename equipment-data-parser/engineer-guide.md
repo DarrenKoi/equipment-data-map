@@ -196,7 +196,7 @@ Keep a local readiness sheet with these entries:
 | Proxy HTTP/auth/capabilities | Correct deployment and upstream test evidence; health alone is insufficient |
 | Local storage | Restricted ACL, capacity and approved retention for rollouts, history, samples and diagnostics |
 | Profile/glossary | Local paths, version and checked contents; do not commit equipment-specific values |
-| Scope/budgets/window | Engineer enters roots and the three hard budgets in init; the CLI writes fixed defaults for the rest (spec §5 table), never the model |
+| Scope/budgets/window | Engineer enters id, host, port, protocol and roots in init; the CLI writes fixed defaults for every budget, pattern and window (spec §5 table), never the model |
 | Tool discovery/export formats | Verify on the installed pi version before letter 14/15 implementation; the other three tools only when they are brought into scope |
 
 Use `http://` for both the company FTP proxy and the internal LLM endpoint.

@@ -43,10 +43,9 @@ required values. `port` is an integer 1–65535. No secret values in config.
 `access_window` is `always` or UTC timestamps `{start, end}` with start < end;
 interval semantics are start inclusive, end exclusive, not a recurring schedule.
 
-Budget keys and units (all required in the file; `init` asks only for
-`max_download_files`, `max_total_bytes` and `max_elapsed_seconds`, each with
-the spec §5 default offered, and writes the §5 defaults for the rest — the
-validator never fills a missing key itself):
+Budget keys and units (all required in the file; `init` asks for none of
+them and writes the spec §5 defaults — the validator never fills a missing
+key itself, and `init` never reports a budget as missing):
 
 | Key | Type | Meaning and exhaustion |
 |---|---|---|
