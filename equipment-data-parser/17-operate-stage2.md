@@ -14,11 +14,12 @@ measurement family and one log family with the engineer.
 1. Run `equipment-map status --rollout <id>`. When it shows stage 2
    `adopted <baseline>`, append this letter's `done` line with
    `adopted <baseline>` as its result and go on to letter 18.
-2. The `llm` block was copied from `.env` by the `init` that created the
-   rollout (spec §5). Only when `stage 2 plan` in step 3 refuses for a
-   missing `llm` block, ask the engineer to fill `LLM_ENDPOINT`,
-   `LLM_MODEL`, `LLM_KEY_ALIAS` and `LLM_GLOSSARY_PATH` in `.env` and run
-   `equipment-map init --rollout <id>` again; append `waiting` and stop.
+2. The `llm` block was written with defaults by the `init` that created the
+   rollout (spec §5); the endpoint and key are `OPENAI_BASE_URL` and
+   `OPENAI_API_KEY` in your harness environment, never in a file. When
+   `preflight --stage 2` in step 3 exits 30 for a missing `OPENAI_BASE_URL`,
+   append `blocked` naming the variable and stop; the engineer sets it in
+   the harness.
 3. `equipment-map preflight --stage 2 --contract 1`, then
    `equipment-map stage 2 plan --rollout <id>`; report the hash and
    append `waiting` until `operator approve-plan`.

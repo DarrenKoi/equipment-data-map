@@ -35,7 +35,8 @@ rather than silently inventing a resolution.
 Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
 `rollouts/<id>/data-map/` with `wiki/` and `graph/`. One rollout id runs from
-stage 1 to stage 5; the engineer re-runs `init` on it at stage boundaries.
+stage 1 to stage 5; you re-run `init` on it at stage boundaries with the
+values the engineer gives you.
 Every further equipment is a new rollout through 16–20 with the profile
 registered at stage 5 (see letter 13 for profiles); one that adopts stages 1
 and 2 from a baseline rollout (spec §5) passes 16 and 17 at once. Letter 21
@@ -73,9 +74,11 @@ the maintainer's: read it, and report what is wrong here in a problem entry.
 The maintainer never writes in `office/`, so updates leave it untouched.
 
 `engineer.toml` at the repository root is the engineer's answer sheet, the
-only way the engineer tells you anything: the rollout and release to work
-on, and the confirmations letters 14 and 15 wait for. Read it; never write
-it. It holds no equipment facts. A missing file or table is an unanswered
+way the engineer tells you things between sessions: the rollout and release
+to work on, the equipment for `init` (`[equipment]`: id, host, port, roots),
+and the confirmations letters 14 and 15 wait for. Read it; never write it.
+In an interactive session the engineer may give you the `[equipment]`
+values in chat instead. A missing file or table is an unanswered
 question, so a letter that needs one appends `waiting` with the check
 `[ engineer.toml -nt office/progress.md ]` — true once the engineer has
 edited the file since that line — and re-reads it when the check passes.
@@ -84,30 +87,32 @@ edited the file since that line — and re-reads it when the check passes.
 
 - Letters 01–15 and 21: implement and test the CLI and skills. Preserve
   unrelated changes; stage only the current build item's files.
-- Letters 16–20: run only the permitted CLI commands. The engineer supplies
-  scope, budgets, credentials and approvals. Never run `init`, `operator`
-  commands or the workbench on their behalf, or write in `engineer.toml`.
+- Letters 16–20: run only the permitted CLI commands, `init` included when
+  the letter says so. The engineer supplies the equipment values, credentials
+  and approvals. Never run `operator` commands or the workbench on their
+  behalf, or write in `engineer.toml`.
 - Follow documented waiting and blocker conditions. Record the next safe
   action before ending a session; never bypass a failing gate to make
   progress.
 
-Your prompt carries no equipment facts, and you do not accept any. If one
-arrives anyway — a tool name, host or IP, an account and password, a target
-directory, a budget — do not act on it, do not put it in a file, a command, a
-`office/progress.md`, and do not repeat a password back in your
-output. Say once that these belong in `init` and the keystore, and continue
-from `office/progress.md` as if the prompt had named nothing. Tell the engineer to
-rotate a password that reached you this way: it is in a transcript now,
-wherever that tool keeps one, and no later care on your side takes it back.
+The equipment values you may accept are exactly the `init` flags: an
+equipment id, host, port, protocol and allowed roots, from `engineer.toml
+[equipment]` or from the engineer in chat. They go into `init` and nowhere
+else — not into `office/progress.md`, a problem entry or your output, which
+carry counts and hashes only. Anything else that arrives — an account and
+password, an LLM key, a budget — you do not act on and do not put in a file
+or command; say once where it belongs (the keystore, the harness
+environment, a hand edit of `rollout.json`) and continue. Never repeat a
+password back. Tell the engineer to rotate a password that reached you this
+way: it is in a transcript now, wherever that tool keeps one, and no later
+care on your side takes it back.
 
-That is not pedantry about where a value is typed. `rollout.json` is the only
-input to `plan`, written by an `init` that only the engineer runs, so a value
-from a prompt has no legitimate route into a run: acting on it means inventing
-a flag the spec does not have. Credentials resolve by alias from the OS
-keystore, never from argv or the environment, so a pasted password is already
-outside the design the moment it reaches you — the useful reply is which alias
-to store it under, not a way to use it. And a rollout id must stay opaque: a
-tool name in the prompt is not a rollout id, however convenient the naming
+`rollout.json` is the only input to `plan`, so a value has exactly one
+legitimate route into a run: an `init` flag. Credentials resolve by alias
+from the OS keystore, never from argv or the environment, so a pasted
+password is outside the design the moment it reaches you — the useful reply
+is which alias to store it under, not a way to use it. And a rollout id must
+stay opaque: a tool name is not a rollout id, however convenient the naming
 looks.
 
 ## Iterative progress to the final letter
@@ -356,9 +361,10 @@ the morning: if you can still write, put the cause in
   assembly, or cross-skill calls; no `equipment-map-common` skill.
 - `audit.jsonl` is the rollout stage/approval state: append-only under `rollouts/<id>/`; `status`
   derives the stage from it. No mutable `state.json`.
-- Outside isolated build tests, operator commands stay human: `init`, `operator approve-plan`,
+- Outside isolated build tests, approvals stay human: `operator approve-plan`,
   `operator approve-result`, `operator unlock` appear in no skill, no
-  `NEXT:` line, and are never run by you.
+  `NEXT:` line, and are never run by you. `init` you run, with the
+  engineer's values as flags.
 - `rollout.json` is the only input to `plan`: roots, budgets, patterns,
   credential aliases never come from flags.
 - Exit contract: `0` done or safe no-op, `10` await approval, `20` stop,

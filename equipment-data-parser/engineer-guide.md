@@ -97,16 +97,18 @@ validation result (letter 15), the rollout to operate, an extractor release
 — its `waiting` line says so and you write it in `engineer.toml` at the model
 folder's root. Copy `engineer.toml.example` there once; each table in it
 names the letter that reads it. Editing the file is what clears such a
-`waiting` line. It holds no host, remote path, budget or credential: those
-go to `init` and the keystore.
+`waiting` line. Its `[equipment]` table (id, host, port, roots) is what the
+agent passes to `init`; no password, budget or LLM setting goes in it —
+passwords live in the keystore, budgets are defaults you edit in
+`rollout.json`, LLM access is your agent harness's own configuration.
 
 `python tools/reset_model_folder.py --reset` from the hub (folder and slug are
 set at the top of the file; two arguments after the flag override them) does
 both the first setup and a restart in one step. Without `--reset` the script
 refreshes instead, which is the between-sessions move below.
 
-Supply equipment facts only through the engineer-run `init` flow and
-`.env`.
+Supply equipment facts only through `engineer.toml [equipment]` (or the
+agent's chat) and `.env`.
 Launch that model's agent tool, one-shot loop or scheduled task with the
 model folder as the working directory; the letters say "repository root" and
 mean that directory.
@@ -158,8 +160,9 @@ this list, in order, in Git Bash at the model folder's root:
    15's confirmation and every operating gate need your review, so a night
    that reaches one ends there; that is expected.
 3. **If the night can reach letters 16–17**, start the fixture server in its
-   own terminal (§2, `python -m tests.fixtures.serve`) and run `init` (§3).
-   The agent starts no server and runs no `init`.
+   own terminal (§2, `python -m tests.fixtures.serve`) and fill
+   `engineer.toml [equipment]` with `localhost` and the printed port (§3).
+   The agent starts no server; it runs `init` from that table.
 4. **Bring maintainer updates over first**, never during the run (above).
 5. **Start the loop and leave the window open.** The `until` loop in
    index.md's "One-shot sessions", run from the model folder's root, is the
@@ -196,7 +199,7 @@ Keep a local readiness sheet with these entries:
 | Proxy HTTP/auth/capabilities | Correct deployment and upstream test evidence; health alone is insufficient |
 | Local storage | Restricted ACL, capacity and approved retention for rollouts, history, samples and diagnostics |
 | Profile/glossary | Local paths, version and checked contents; do not commit equipment-specific values |
-| Scope/budgets/window | Engineer enters id, host, port, protocol and roots in init; the CLI writes fixed defaults for every budget, pattern and window (spec §5 table), never the model |
+| Scope/budgets/window | Engineer writes id, host, port and roots in `engineer.toml [equipment]`; the agent passes them to init and the CLI writes fixed defaults for every budget, pattern and window (spec §5 table) |
 | Tool discovery/export formats | Verify on the installed pi version before letter 14/15 implementation; the other three tools only when they are brought into scope |
 
 Use `http://` for both the company FTP proxy and the internal LLM endpoint.
@@ -239,26 +242,28 @@ Choose an opaque identifier with no equipment name, host or IP: lowercase
 letters, digits and `-`, at most 32 characters (`[a-z0-9][a-z0-9-]{0,31}`). In your own Git
 Bash terminal after the CLI is validated:
 
-```sh
-equipment-map init --rollout <opaque-id>
-```
-
-Replace the placeholder before running; do not use an equipment identifier as
-its value. `init` first asks for a baseline rollout. Leave it empty for the
-first rollout: stages 1 and 2 then run on the fake tree (§2). For every later
-equipment, name the earlier rollout that ran its own stages 1 and 2: `init`
-adopts them only when they were approved on this PC under the CLI code
-installed now, then asks for the stage 3 settings, and the rollout starts at
-stage 3. After any CLI code change — a maintainer update that made the agent
-redo a letter, or a letter 21 release — adoption is refused; start that
-rollout without a baseline, and it becomes the next baseline.
-
-Then name the rollout for the agent in `engineer.toml`:
+You do not run `init`; the agent does, from `engineer.toml`:
 
 ```toml
 [rollout]
-id = "<opaque-id>"
+id = "<opaque-id>"        # not an equipment identifier
+# baseline = ""           # a later equipment: the rollout that ran stages 1-2
+
+[equipment]
+id = "etch-03"            # your label; stage 1: anything
+host = "localhost"        # stage 1: the fixture server; stage 3: the equipment
+port = 2121               # stage 1: the port tests.fixtures.serve printed
+roots = ["/"]             # stage 1: the fixture root; stage 3: narrow real roots
 ```
+
+Leave `baseline` out for the first rollout: stages 1 and 2 then run on the
+fake tree (§2). For every later equipment, set it to the earlier rollout that
+ran its own stages 1 and 2: `init` adopts them only when they were approved
+on this PC under the CLI code installed now, and the rollout starts at stage
+3. After any CLI code change — a maintainer update that made the agent redo
+a letter, or a letter 21 release — adoption is refused; start that rollout
+without a baseline, and it becomes the next baseline. In an interactive
+session you may instead tell the agent the `[equipment]` values in chat.
 
 Replacing that table is how you move to the next rollout. Reuse the built
 CLI; retain prior letter history and all earlier rollout directories.
@@ -325,13 +330,14 @@ After accepting the current completed result, run:
 equipment-map operator approve-result --rollout <opaque-id>
 ```
 
-Stages 3 and 5 need another human `init` for the real target and next
-profile respectively; an adopted rollout got the target at its first `init`.
-LLM settings are never prompted: the first `init` copies `LLM_ENDPOINT`,
-`LLM_MODEL`, `LLM_KEY_ALIAS` and `LLM_GLOSSARY_PATH` from `.env`, so fill
-those before that `init` and stage 2 needs no `init` at all. `init` asks
-only for what the current stage may change (spec §5 table), stage 5
-`next_profile`, and at stage 4 it refuses. Before stage-3 result approval you
+Stages 3 and 5 need another `init`, which the agent runs once you have
+replaced `[equipment]` with the real target (stage 3) or added
+`[rollout] next_profile` (stage 5); an adopted rollout got the target at its
+first `init`. LLM access is your harness's own configuration
+(`OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` in the agent's
+environment); nothing in this kit stores it, and stage 2 needs no `init`.
+`init` accepts only the flags the current stage may change (spec §5
+table), and at stage 4 it refuses. Before stage-3 result approval you
 may revise that same equipment's scope/budgets with init and a new plan
 approval; it creates a new collection scope. After approval, wider scope
 requires a new rollout. Equipment identity (id, protocol, host, port) is fixed

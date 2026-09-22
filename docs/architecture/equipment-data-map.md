@@ -568,7 +568,7 @@ equipment-map stage <N> next --rollout <ID>
 equipment-map status --rollout <ID>
 ```
 
-`init`은 엔지니어가 직접 실행하는 대화형 명령이다. 다음을 `rollout.json`에 저장한다.
+`init`은 에이전트가 엔지니어에게서 받은 장비 사실로 실행하는 명령이다. 값은 flag로 준다: `--equipment-id`, `--host`, `--root`(반복 가능), 선택으로 `--port`, `--protocol`, `--baseline`, `--next-profile`. flag 없이 TTY에서 실행하면 같은 값을 묻고, flag도 TTY도 없으면 빠진 flag 이름을 출력하며 exit 20이다. 비밀번호와 LLM 키는 어느 경로로도 받지 않는다. 다음을 `rollout.json`에 저장한다.
 
 - 장비 식별자, 프로토콜, 접속 정보(host, port)
 - 허용 루트, 실시간 데이터 후보 경로, 샘플 allow/deny 패턴
@@ -580,18 +580,18 @@ equipment-map status --rollout <ID>
 - prompt/response 보존 위치 식별자(선택, `rollouts/` 밖의 접근 제어된 경로)
 - 5단계에서 등록할 다음 프로필 이름(`next_profile`, 5단계 `plan`부터 필수)
 
-`init`은 엔지니어의 결정이 필요한 키만 묻고, 나머지는 아래 기본값을 `rollout.json`에 직접 쓴다. 기본값도 파일에 있는 값이므로 계획 hash에 똑같이 결합되고, 엔지니어는 파일을 고쳐 바꿀 수 있다. 재설정 `init`은 기존 값을 기본값으로 보여 준다. 기본값이 있는 질문은 Enter로 받아들인다.
+`init`은 엔지니어의 결정이 필요한 키만 flag로 받고, 나머지는 아래 기본값을 `rollout.json`에 직접 쓴다. 기본값도 파일에 있는 값이므로 계획 hash에 똑같이 결합되고, 엔지니어는 파일을 고쳐 바꿀 수 있다. 재설정 `init`은 주지 않은 flag의 기존 값을 그대로 둔다.
 
-| 묻는 키 | 단계 | 보여 주는 기본값 |
-|---|---|---|
-| `equipment_id`, `host`, `allowed_roots` | 1·3 | 없음 |
-| `protocol` | 1·3 | `ftp` |
-| `port` | 1·3 | 21 |
-| `next_profile` | 5 | 없음 |
+| flag | 키 | 단계 | 생략 시 |
+|---|---|---|---|
+| `--equipment-id`, `--host`, `--root` | `equipment_id`, `host`, `allowed_roots` | 1·3 | 필수 |
+| `--protocol` | `protocol` | 1·3 | `ftp` |
+| `--port` | `port` | 1·3 | 21 |
+| `--next-profile` | `next_profile` | 5 | 필수 |
 
-이 다섯 개(5단계는 하나) 밖의 키로 `init`이 "missing required value"나 "missing budget"을 내면 그것은 `init`의 결함이다.
+이 다섯 키(5단계는 하나) 밖의 키로 `init`이 "missing required value"나 "missing budget"을 내면 그것은 `init`의 결함이다. 엔지니어는 이 값을 `engineer.toml`의 `[equipment]` 표(`id`, `host`, `port`, `roots`)에 적거나 대화 중인 에이전트에게 직접 말하고, 에이전트가 그것을 flag로 옮긴다.
 
-`llm` 블록은 묻지 않는다. endpoint, 모델, 키 별칭, 용어집 경로는 proxy 위치와 같은 기계의 배포 사실이므로 `.env`의 `LLM_ENDPOINT`, `LLM_MODEL`, `LLM_KEY_ALIAS`, `LLM_GLOSSARY_PATH`에서 읽어 rollout을 만드는 `init`이 그대로 `rollout.json`에 복사한다(실제 환경 변수 우선). 네 값이 그때 비어 있었으면 2단계 `plan`이 거부하며, 엔지니어가 `.env`를 채우고 같은 ID로 `init`을 다시 실행한다. 2단계 전용 `init`은 그 경우와 `llm` 값을 바꿀 때만 필요하다.
+LLM endpoint와 키는 이 kit의 어디에도 두지 않는다. 그것은 pi 같은 에이전트 harness가 관리하는 실행 환경의 사실이므로 CLI의 LLM 클라이언트는 실행 환경의 `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`을 그대로 쓴다. `init`은 `OPENAI_MODEL`을 `llm.model`로 복사해 계획 hash에 넣고, 4.6절대로 서버가 돌려준 실제 모델 ID를 provenance에 남긴다. `OPENAI_BASE_URL`이 비어 있으면 2단계 `preflight`가 exit 30이다.
 
 | 기본값을 쓰는 키 | 기본값 |
 |---|---|
@@ -609,7 +609,8 @@ equipment-map status --rollout <ID>
 | `max_passes` | 1 |
 | `credential_alias` | `equipment_id`와 같은 값 |
 | `access_window` | `always` |
-| `llm.endpoint`, `llm.model`, `llm.key_alias`, `llm.glossary_path` | `.env`의 값 |
+| `llm.model` | 실행 환경의 `OPENAI_MODEL` |
+| `llm.glossary_path` | `profiles/<profile>.glossary.json` (프로필과 함께 동봉) |
 | `llm.glossary_version` | 용어집 파일 내용 SHA-256의 앞 12자리 |
 | `llm.temperature` | 0 |
 | `llm.max_tokens` | 512 |
@@ -621,9 +622,9 @@ equipment-map status --rollout <ID>
 
 `plan`은 이 파일만 입력으로 사용하며 모델이 장비 경로와 budget을 command flag로 만들 수 없게 한다. 각 단계의 `plan`은 그 단계에 필요한 필드가 없으면 거부한다.
 
-하나의 rollout ID는 1단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(1단계 가짜 트리에서 3단계 실장비로 전환, LLM endpoint 추가, 5단계 프로필 등록) 엔지니어가 같은 ID로 `init`을 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
+하나의 rollout ID는 1단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(1단계 가짜 트리에서 3단계 실장비로 전환, LLM endpoint 추가, 5단계 프로필 등록) 에이전트가 같은 ID로 `init`을 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
 
-새 rollout은 1·2단계를 **기준 rollout**에서 채택할 수 있다. 두 단계는 장비가 아니라 이 PC에 설치된 CLI 코드, 전송 경로와 LLM 설정을 가짜 트리로 검증하므로, 그것들이 그대로면 장비마다 반복하지 않는다. 엔지니어가 새 ID의 첫 `init`에서 기준 rollout ID를 입력하면 CLI는 다음을 모두 만족할 때만 채택한다.
+새 rollout은 1·2단계를 **기준 rollout**에서 채택할 수 있다. 두 단계는 장비가 아니라 이 PC에 설치된 CLI 코드, 전송 경로와 LLM 설정을 가짜 트리로 검증하므로, 그것들이 그대로면 장비마다 반복하지 않는다. 새 ID의 첫 `init`에 `--baseline <기준 ID>`를 주면 CLI는 다음을 모두 만족할 때만 채택한다.
 
 - 기준 rollout이 1·2단계 결과 승인을 직접 가진다. 채택으로 얻은 단계는 기준이 되지 않는다.
 - 두 결과 승인이 이 호스트에서 기록되었다.
@@ -814,7 +815,7 @@ FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검�
 
 ### 3단계: 승인된 장비 1대에서 읽기 전용 시범 운영
 
-엔지니어가 같은 rollout ID로 `init`을 다시 실행해 실장비 접속 정보, 좁은 허용 루트와 작은 budget을 입력한다. 실시간 데이터 후보 경로가 있으면 함께 입력한다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
+에이전트가 엔지니어에게 받은 실장비 host와 좁은 허용 루트로 같은 rollout ID의 `init`을 다시 실행한다. 작은 budget과 실시간 데이터 후보 경로는 엔지니어가 `rollout.json`을 직접 고쳐 넣는다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
 
 3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. `max_passes`가 1보다 크면 4.4.1절의 pass 반복이 같은 `next` 안에서 이어진다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
 
@@ -826,7 +827,7 @@ FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검�
 
 ### 5단계: 장비 종류 확장
 
-엔지니어가 새 장비 프로필 파일에 허용 경로, 파일명 규칙과 기존 extractor 매핑을 작성하고, 같은 rollout ID로 `init`을 다시 실행해 `next_profile`로 등록한다. 5단계 `plan`은 `next_profile`이 등록된 프로필 파일을 가리키고 현재 `profile`과 다를 때만 허용한다. 5단계 `next`는 그 프로필의 스키마와 extractor 매핑(기존 extractor 이름만 허용)을 검증하고, 현재 지도에서 `unsupported-format`으로 남은 파일군을 `data-map/extractor-requests.json`에 정리한 뒤 manifest를 다시 생성한다. 결과 승인으로 rollout이 끝나며, 새 장비는 이 프로필로 새 rollout을 시작한다. 5장의 채택 조건을 만족하면 1·2단계를 채택하고 3단계부터 수행한다. 새 extractor 코드가 필요하면 이 단계에서 즉석 생성하지 않고 4.5절의 별도 CLI 릴리스 절차로 넘긴다. 릴리스는 CLI 코드를 바꾸므로 그 뒤 첫 rollout은 1·2단계를 다시 수행한다. 한 장비의 예외를 공통 로직에 억지로 넣지 않는다.
+엔지니어가 새 장비 프로필 파일에 허용 경로, 파일명 규칙과 기존 extractor 매핑을 작성하고, 에이전트가 같은 rollout ID로 `init --next-profile <이름>`을 실행해 등록한다. 5단계 `plan`은 `next_profile`이 등록된 프로필 파일을 가리키고 현재 `profile`과 다를 때만 허용한다. 5단계 `next`는 그 프로필의 스키마와 extractor 매핑(기존 extractor 이름만 허용)을 검증하고, 현재 지도에서 `unsupported-format`으로 남은 파일군을 `data-map/extractor-requests.json`에 정리한 뒤 manifest를 다시 생성한다. 결과 승인으로 rollout이 끝나며, 새 장비는 이 프로필로 새 rollout을 시작한다. 5장의 채택 조건을 만족하면 1·2단계를 채택하고 3단계부터 수행한다. 새 extractor 코드가 필요하면 이 단계에서 즉석 생성하지 않고 4.5절의 별도 CLI 릴리스 절차로 넘긴다. 릴리스는 CLI 코드를 바꾸므로 그 뒤 첫 rollout은 1·2단계를 다시 수행한다. 한 장비의 예외를 공통 로직에 억지로 넣지 않는다.
 
 ## 9. Skill Market 배포 구조
 
@@ -863,13 +864,13 @@ equipment-map-suite/
 | 스킬 | 허용된 CLI 호출 |
 |---|---|
 | `equipment-map-run` | `preflight`, `status` (`--rollout` 생략 시 로컬 목록) |
-| `equipment-map-stage1-harness` | `preflight --stage 1`, `stage 1 plan`, `stage 1 next`, `status` |
+| `equipment-map-stage1-harness` | `init`, `preflight --stage 1`, `stage 1 plan`, `stage 1 next`, `status` |
 | `equipment-map-stage2-llm` | `preflight --stage 2`, `stage 2 plan`, `stage 2 next`, `status` |
-| `equipment-map-stage3-pilot` | `preflight --stage 3`, `stage 3 plan`, `stage 3 next`, `status` |
+| `equipment-map-stage3-pilot` | `init`, `preflight --stage 3`, `stage 3 plan`, `stage 3 next`, `status` |
 | `equipment-map-stage4-publish` | `preflight --stage 4`, `stage 4 plan`, `stage 4 next`, `status` |
-| `equipment-map-stage5-expand` | `preflight --stage 5`, `stage 5 plan`, `stage 5 next`, `status` |
+| `equipment-map-stage5-expand` | `init --next-profile`, `preflight --stage 5`, `stage 5 plan`, `stage 5 next`, `status` |
 
-`init`, 실행 전 계획 승인, 실행 후 결과 승인과 stale lock 해제는 엔지니어 전용이며 어떤 스킬의 허용 명령에도 포함하지 않는다. 스킬에서 허용하는 유일한 분기는 `preflight` 실패 시 설치 안내를 전달하고 중단하는 것이다.
+`init`은 스킬이 엔지니어에게 받은 값을 flag로 넘겨 실행한다. 실행 전 계획 승인, 실행 후 결과 승인과 stale lock 해제는 엔지니어 전용이며 어떤 스킬의 허용 명령에도 포함하지 않는다. 스킬에서 허용하는 유일한 분기는 `preflight` 실패 시 설치 안내를 전달하고 중단하는 것이다.
 
 낮은 성능 모델에서도 스킬의 역할은 “정해진 명령 실행과 결과 전달”로 제한한다. 모델이 승인 여부, 다음 단계, budget 초과 또는 상태 무결성을 판단하게 하지 않는다.
 

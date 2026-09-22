@@ -164,9 +164,10 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
   `budgets.llm_max_requests`; 3 all but `next_profile`, and the identity keys
   `equipment_id`, `protocol`, `host`, `port` only while no stage-3
   `next-start` exists; 4 none; 5 `next_profile`. Within the editable set
-  `init` prompts only for the spec §5 "묻는 키", writes the §5 default for
-  any other editable key that is still absent, and copies every other value
-  unchanged. `init` while stage 4 is
+  `init` takes only the spec §5 flags, writes the §5 default for any other
+  editable key that is still absent, and copies every other value
+  unchanged; a flag outside the current stage's editable set exits 20
+  naming it. `init` while stage 4 is
   current exits 20 without writing.
 - `plan` refuses with exit 20, printing key names but never values, when a
   non-editable key differs from its baseline. Stages 2, 4 and 5 compare with
@@ -193,8 +194,8 @@ Baseline adoption (spec §5):
   `[relative POSIX path, sha256(file bytes)]` pairs of every `*.py` file under
   the installed `equipment_map` package directory. Every `next-stop` record
   carries it.
-- Only the `init` that creates a rollout asks, first, for an optional baseline
-  rollout id. Adopt only when all of these hold; otherwise print the failed
+- Only the `init` that creates a rollout accepts `--baseline <id>`. Adopt
+  only when all of these hold; otherwise print the failed
   condition's name and exit 20 without writing: the baseline's own ledger has
   `approve-result` records for stages 1 and 2 (an `adopt` record does not
   count); both carry this machine's `socket.gethostname()` as `host`; and the
@@ -202,9 +203,9 @@ Baseline adoption (spec §5):
 - On adoption, append `adopt` `{stage: 2, baseline, approvals, code_hash}`,
   where `approvals` holds the payload hashes of the baseline's two
   `approve-result` records. Then write `rollout.json` with the `llm` block
-  copied from the baseline's approved stage-2 plan, prompting for the stage-3
-  "묻는 키" and defaulting the rest as at stage 1, and append `init` with
-  `stage: 3`. An `init` on a
+  copied from the baseline's approved stage-2 plan, the stage-3 equipment
+  flags applied and the rest defaulted as at stage 1, and append `init`
+  with `stage: 3`. An `init` on a
   rollout whose ledger ends in `adopt` finishes that adoption after a crash.
 - `status` prints stages 1 and 2 as `adopted <baseline>` and current stage 3.
   Stage 3 `plan` of an adopted rollout puts `adopted: {baseline, adopt_hash}`
@@ -659,9 +660,10 @@ causal aliases.
 
 ## 8. Field prompts and validators — letter 11
 
-Use the approved internal endpoint's chat-completion route only after the
-engineer confirms its exact base URL and compatibility locally. Require `http://`
-for the internal LLM endpoint as well as local fixtures. Disable redirects and
+Use the chat-completion route of the base URL in `OPENAI_BASE_URL`, with
+`OPENAI_API_KEY` as bearer and `OPENAI_MODEL` as the requested model; the
+agent harness owns these three and no file in the kit stores them. Require
+`http://` for the internal LLM endpoint as well as local fixtures. Disable redirects and
 never route through a public fallback or automatically upgrade to HTTPS.
 The configured endpoint is a base URL, not a URL guessed from model output.
 Bound response bodies to 64 KiB. Unsupported API contracts stop with api-error.

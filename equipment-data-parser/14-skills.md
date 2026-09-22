@@ -37,9 +37,10 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
   and `What you read` ("stdout, `status` output, and `REPORT.md` only;
   `data-map/`, `evidence/`, and `work/` are for the engineer"). Stage
   descriptions name stage number, role, and unique task; only
-  `equipment-map-run` is broad. A skill never names or shows `init`,
+  `equipment-map-run` is broad. A skill never names or shows
   `operator`, `approve-plan`, `approve-result`, `unlock`, or `workbench`;
-  it says "human gate" instead.
+  it says "human gate" instead. The stage 1, 3 and 5 skills run `init`
+  with the engineer's values as flags (spec §9 table) and nothing else.
 - Discovery roots are suite-version contract values stored in
   `VERSION.json` under `discovery`, one per tool, relative to `$HOME` or
   `%USERPROFILE%`. All four stay in the contract as install targets even
@@ -62,7 +63,8 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
 - `tests/test_skill_lint.py`: parse every `SKILL.md`, extract every
   `equipment-map ...` invocation, assert it is in that skill's §9 row and
   carries `--rollout "$ROLLOUT"` where the row has `--rollout`; assert none
-  contains `init`, `operator`, `approve`, `unlock`, or `workbench`; assert
+  contains `operator`, `approve`, `unlock`, or `workbench`, and that `init`
+  appears only in the stage 1, 3 and 5 skills; assert
   no skill mentions another skill by name; assert the nine headings above
   appear in order and `What you read` contains the sentence quoted above.
 

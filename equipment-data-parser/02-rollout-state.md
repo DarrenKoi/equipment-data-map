@@ -24,7 +24,7 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   `deny_patterns`, `budgets` (every §4.4 budget plus `llm_max_requests`),
   `max_passes` (integer >= 1, default 1; spec §4.4.1 — a pass ceiling, not
   a budget), `credential_alias`, `access_window` (`always` or `{start, end}` UTC),
-  `profile`, `llm` (`endpoint`, `key_alias`, `glossary_path`,
+  `profile`, `llm` (`glossary_path`,
   `glossary_version`, `model`, `temperature`, `max_tokens`,
   `connect_timeout_seconds`, `request_timeout_seconds`, `max_elapsed_seconds`,
   `transport_max_attempts`, `retry_backoff_seconds`, `prior_max_bytes`
@@ -34,18 +34,18 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   refuses when the fields that stage needs are absent (`llm` from stage 2,
   `next_profile` at stage 5). `retention_location`, when set, must not
   resolve under the rollouts dir.
-- `init --rollout <id>`: interactive prompts for the keys the spec §5 "묻는
-  키" table lists; every other key is written with the spec §5 default (an
-  empty `allow_patterns` means everything under `allowed_roots`;
-  `glossary_version` defaults to the first 12 hex of the glossary file's
-  SHA-256). The `llm` block is never prompted: `endpoint`, `model`,
-  `key_alias` and `glossary_path` come from `LLM_ENDPOINT`, `LLM_MODEL`,
-  `LLM_KEY_ALIAS`, `LLM_GLOSSARY_PATH` (`.env` via `ftp_handler.load_dotenv`,
-  real env wins) at the `init` that creates the rollout; when any is empty
-  the block is omitted and stage 2 `plan` refuses until an `init` rerun
-  finds them. Defaults land in the file like any other value, so `plan`
-  hashes them and a hand edit changes them. Refuse when
-  stdin is not a TTY (exit 20). On an existing rollout it is a
+- `init --rollout <id>`: takes the spec §5 flags — `--equipment-id`,
+  `--host`, `--root` (repeatable), optional `--port`, `--protocol`,
+  `--baseline`, `--next-profile` — and writes every other key with the spec
+  §5 default (an empty `allow_patterns` means everything under
+  `allowed_roots`; `llm.model` is `OPENAI_MODEL` from the environment;
+  `llm.glossary_path` is the profile's bundled glossary; `glossary_version`
+  is the first 12 hex of that file's SHA-256). No LLM endpoint or key is
+  stored anywhere: letter 11's client reads `OPENAI_BASE_URL` and
+  `OPENAI_API_KEY` from the environment at call time. Defaults land in the
+  file like any other value, so `plan` hashes them and a hand edit changes
+  them. With a required flag missing, prompt for it when stdin is a TTY;
+  otherwise print the missing flag names and exit 20. On an existing rollout it is a
   reconfiguration: refuse when `.lock` exists (exit 20); otherwise prompt
   only for the keys the current stage may change (spec §5 table,
   implementation-reference.md §3), with current values as defaults, copy
@@ -123,8 +123,8 @@ Read implementation-reference.md §2–3 before defining schemas or state.
 python -m pytest -q tests/test_rollout_state.py
 ```
 
-That file covers, with a fake TTY and a temp rollouts dir: init refuses
-non-TTY; plan without prior result approval is refused; next before
+That file covers, with a fake TTY and a temp rollouts dir: init without
+flags refuses non-TTY; plan without prior result approval is refused; next before
 approve-plan exits 10; next after plan change exits 20; concurrent lock
 exits 20; unlock is TTY-only; stage 2 plan before stage 1 result approval is
 refused; `status` derives stage from the ledger alone; no `NEXT:` line ever
@@ -143,13 +143,13 @@ before completion; stale/future-stage calls; init after terminal completion;
 lock collision preserving the owner's lock; malformed audit records; concurrent
 plan/init/approval; and repeated plan preserving a valid approval when unchanged.
 
-Also cover the `init` prompts: a fresh stage 1 `init` fed exactly
-`equipment_id`, `host`, `allowed_roots` and two Enters (`protocol`, `port`)
-writes a `rollout.json` that passes validation with every spec §5 default in
-place and never prints `missing required value` or `missing budget`; with
-the four `LLM_*` variables set it also holds the `llm` block. Also cover
-the per-stage `init` table: at stage 2 `init` prompts for nothing beyond
-re-reading `LLM_*`, and a hand-edited `host` makes
+Also cover the `init` flags: a fresh stage 1 `init --equipment-id x --host
+h --root /a` with no TTY writes a `rollout.json` that passes validation with
+every spec §5 default in place and never prints `missing required value` or
+`missing budget`; the same call without `--host` and without a TTY exits 20
+naming `--host`; with `OPENAI_MODEL` set `llm.model` carries it. Also cover
+the per-stage `init` table: at stage 2 `init` accepts no equipment flags,
+and a hand-edited `host` makes
 `stage 2 plan` exit 20 naming `host` with no host value on stdout; at stage 3
 an identity change is accepted before the first `next-start` and refused by
 `plan` after it, while a roots or budgets change after it is accepted; `init`

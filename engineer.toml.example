@@ -2,8 +2,16 @@
 # Copy to engineer.toml at the model folder's root. Only the engineer edits it;
 # the agent reads it and never writes it. Fill a table when the agent's
 # `waiting` line asks for it: editing this file is what clears that line.
-# No host, remote path, budget or credential goes here: those belong to
-# `equipment-map init` and the OS keystore.
+# No password or budget goes here: passwords belong to the OS keystore,
+# budgets are defaults in rollout.json that you edit there.
+
+# Letters 16 and 18: the equipment the agent passes to `equipment-map init`.
+# Stage 1 points at the fixture server; stage 3 at the real equipment.
+# [equipment]
+# id = ""               # your own label, e.g. "etch-03"; not a hostname
+# host = ""             # FTP IP or hostname
+# port = 21
+# roots = ["/"]         # only these folders are listed or downloaded from
 
 # Letter 14: skill discovery roots, relative to your home folder.
 # [discovery]
@@ -23,7 +31,9 @@
 
 # Letters 16-20: the rollout the agent operates. Replace it for the next one.
 # [rollout]
-# id = ""               # the opaque id you gave `equipment-map init`
+# id = ""               # opaque, [a-z0-9][a-z0-9-]{0,31}; not an equipment name
+# baseline = ""         # letter 16, later equipment only: rollout that ran stages 1-2
+# next_profile = ""     # letter 20: the profiles/<name>.json to register
 
 # Letter 21: one extractor release, between rollouts. Replace it for the next.
 # [release]

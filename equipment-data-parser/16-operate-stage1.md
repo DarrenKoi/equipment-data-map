@@ -13,13 +13,16 @@ wait for approvals.
 
 ## Rules for letters 16–20
 
-- You run only `preflight`, `status`, `stage N plan`, `stage N next`.
+- You run only `preflight`, `status`, `stage N plan`, `stage N next`, and
+  `init` where a letter says so — always with flags, never interactively.
 - Relay the exit code and the `NEXT:` line verbatim. Exit `10`: append a
   `waiting` line and stop. Exit `20` or `30`: append `blocked` with the
   CLI's reason and stop. Never craft a workaround command.
-- The engineer runs `init` and every `operator` command in their own
-  terminal. Tell them what to run and what hash they will be asked to
-  confirm; never run it yourself.
+- The engineer runs every `operator` command in their own terminal. Tell
+  them what to run and what hash they will be asked to confirm; never run
+  it yourself. `init` is yours: its values come from `engineer.toml
+  [equipment]` or from the engineer in chat (index.md), never from your
+  own guess.
 - The rollout is the one `engineer.toml` names in `[rollout] id` (index.md
   Loop step 1). Below it is written `<id>`: put the id itself in every
   command that takes `--rollout` — `plan`, `next` and `status`; `preflight`
@@ -43,16 +46,22 @@ history, so approval of stage 1 may show current stage 2.
    `adopted <baseline>`, this rollout took stages 1 and 2 from a baseline
    rollout (spec §5): append this letter's `done` line with
    `adopted <baseline>` as its result and go on to letter 17. When it does
-   not know the rollout, the engineer has not run `init` yet: ask for it
-   (engineer-guide.md §3 — with a baseline, or steps 2 and 3 below) and
-   append `waiting` with this same `status` command as the check.
+   not know the rollout, no `init` has run yet: go to steps 2 and 3. For a
+   later equipment the engineer may name a baseline in `engineer.toml
+   [rollout] baseline`; then step 3 adds `--baseline <that id>` and the
+   rollout starts at stage 3 (letter 18).
 2. Prerequisite the engineer performs in their own terminal: start the
    fixtures with `python -m tests.fixtures.serve` (letter 03) and read the
    printed ports. For FTP on Windows use the local fake proxy, never the office
    production proxy; see engineer-guide.md §2. You start no server. Both adapters
    have already passed build tests; this rollout selects one protocol.
-3. The engineer runs `equipment-map init --rollout <id>` with no baseline,
-   pointing at `localhost` and those ports, with small budgets.
+3. Take `id`, `host`, `port` and `roots` from `engineer.toml [equipment]`
+   (or from the engineer in chat) and run
+   `equipment-map init --rollout <id> --equipment-id <id> --host <host> --port <port> --root <r>...`.
+   While the table is missing, append `waiting` asking for `[equipment]`
+   with the check `[ engineer.toml -nt office/progress.md ]` and stop. At
+   stage 1 the host is `localhost` and the port is the fixture's. Budgets
+   are defaults; the engineer edits `rollout.json` for smaller ones.
 4. `equipment-map preflight --stage 1 --contract 1`, then
    `equipment-map stage 1 plan --rollout <id>`. Report the plan
    hash. Append `waiting` until the engineer has run `operator approve-plan`.

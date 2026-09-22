@@ -15,9 +15,11 @@ Rules from letter 16 apply.
 
 1. The engineer writes `profiles/<type>.json` for the next equipment type
    (allowed path patterns, filename token rules, mapping to existing
-   extractor names) and runs `equipment-map init --rollout <id>`
-   again, entering its name as `next_profile`. You write no profile and no
-   extractor code.
+   extractor names) and names it in `engineer.toml [rollout] next_profile`
+   (or in chat). You run
+   `equipment-map init --rollout <id> --next-profile <name>`; while the
+   name is missing, append `waiting` for it and stop. You write no profile
+   and no extractor code.
 2. `equipment-map preflight --stage 5 --contract 1`, then
    `equipment-map stage 5 plan --rollout <id>`; append `waiting`
    until `operator approve-plan`.

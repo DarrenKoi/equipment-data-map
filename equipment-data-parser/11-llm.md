@@ -14,9 +14,13 @@ results, bounded API failures, and explicit interpretation coverage.
 
 Read implementation-reference.md §8 for prompts, field validators and limits.
 
-- `equipment_map/llm/client.py`: use the approved `llm` configuration from
-  letter 02, key via `secrets.lookup`. Use the approved internal `http://`
-  endpoint; HTTP applies to office deployments and fixtures alike.
+- `equipment_map/llm/client.py`: base URL and key come from
+  `OPENAI_BASE_URL` and `OPENAI_API_KEY` in the process environment — the
+  agent harness manages them; nothing in `rollout.json`, `.env` or the
+  keystore names an LLM endpoint. The tuning values (`model`, `temperature`,
+  timeouts, retries) come from the `llm` block of letter 02. Require an
+  `http://` base URL; HTTP applies to office deployments and fixtures alike.
+  `preflight --stage 2` exits 30 when `OPENAI_BASE_URL` is unset.
   Send `model`, `temperature` and
   `max_tokens`; record requested alias separately from returned model ID,
   revision and serving settings. Unknown backend details remain `unknown`.
