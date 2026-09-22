@@ -34,18 +34,27 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   refuses when the fields that stage needs are absent (`llm` from stage 2,
   `next_profile` at stage 5). `retention_location`, when set, must not
   resolve under the rollouts dir.
-- `init --rollout <id>`: takes the spec §5 flags — `--equipment-id`,
-  `--host`, `--root` (repeatable), optional `--port`, `--protocol`,
-  `--baseline`, `--next-profile` — and writes every other key with the spec
-  §5 default (an empty `allow_patterns` means everything under
+- `equipment template <path>`: write the commented blank equipment file
+  (`host`, `port`, `user`, `password`, `roots`, `next_profile`, `fixture`)
+  and exit 0; exit 20 without writing when the file exists and is not
+  empty.
+- `init --equipment <path>`: the rollout id is the file's stem (spec §5.1
+  regex, else exit 20; `fixture-<code_hash[:8]>` when the file has
+  `fixture = true`). Parse the file with `tomllib`; missing `host`, `user`
+  or `password` exits 20 naming the key. Store `user`/`password` in the
+  keystore under the stem via `secrets.store` and write `rollout.json`
+  with `equipment_id` and `credential_alias` = stem, `host`, `port`
+  (default 21), `allowed_roots` from `roots` (default `["/"]`),
+  `next_profile` when present, and every other key with the spec §5
+  default (an empty `allow_patterns` means everything under
   `allowed_roots`; `llm.model` is `OPENAI_MODEL` from the environment;
   `llm.glossary_path` is the profile's bundled glossary; `glossary_version`
   is the first 12 hex of that file's SHA-256). No LLM endpoint or key is
   stored anywhere: letter 11's client reads `OPENAI_BASE_URL` and
   `OPENAI_API_KEY` from the environment at call time. Defaults land in the
   file like any other value, so `plan` hashes them and a hand edit changes
-  them. With a required flag missing, prompt for it when stdin is a TTY;
-  otherwise print the missing flag names and exit 20. On an existing rollout it is a
+  them. The password never appears on stdout, in the ledger or in
+  `rollout.json`. No TTY is needed. On an existing rollout it is a
   reconfiguration: refuse when `.lock` exists (exit 20); otherwise prompt
   only for the keys the current stage may change (spec §5 table,
   implementation-reference.md §3), with current values as defaults, copy
@@ -111,9 +120,10 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   `data-map/` to `work/history/<old scope[:12]>/`, resumably; old audit
   approvals remain intact. A process restart alone changes neither scope nor
   cumulative budgets.
-- Baseline adoption (spec §5): every `next-stop` carries `code_hash`, and the
-  `init` that creates a rollout may adopt stages 1 and 2 from a baseline
-  rollout, starting the new one at stage 3. `code_hash`, the three adoption
+- Baseline adoption (spec §5): every `next-stop` carries `code_hash`; the
+  fixture file's rollout `fixture-<code_hash[:8]>` is the baseline, and the
+  `init` that creates a real equipment's rollout adopts its stages 1 and 2
+  automatically, starting the new one at stage 3. `code_hash`, the three adoption
   conditions, the `adopt` record and the stage 3 binding are pinned in
   implementation-reference.md §3.
 
@@ -123,8 +133,8 @@ Read implementation-reference.md §2–3 before defining schemas or state.
 python -m pytest -q tests/test_rollout_state.py
 ```
 
-That file covers, with a fake TTY and a temp rollouts dir: init without
-flags refuses non-TTY; plan without prior result approval is refused; next before
+That file covers, with a fake keystore and a temp rollouts dir: init
+without `--equipment` exits 20; plan without prior result approval is refused; next before
 approve-plan exits 10; next after plan change exits 20; concurrent lock
 exits 20; unlock is TTY-only; stage 2 plan before stage 1 result approval is
 refused; `status` derives stage from the ledger alone; no `NEXT:` line ever
@@ -143,13 +153,18 @@ before completion; stale/future-stage calls; init after terminal completion;
 lock collision preserving the owner's lock; malformed audit records; concurrent
 plan/init/approval; and repeated plan preserving a valid approval when unchanged.
 
-Also cover the `init` flags: a fresh stage 1 `init --equipment-id x --host
-h --root /a` with no TTY writes a `rollout.json` that passes validation with
-every spec §5 default in place and never prints `missing required value` or
-`missing budget`; the same call without `--host` and without a TTY exits 20
-naming `--host`; with `OPENAI_MODEL` set `llm.model` carries it. Also cover
-the per-stage `init` table: at stage 2 `init` accepts no equipment flags,
-and a hand-edited `host` makes
+Also cover the equipment file: `equipment template` writes a file that
+`init` rejects only for the three empty required keys, and refuses to
+overwrite a non-empty file; `init --equipment fx.toml` with `fixture =
+true` creates `fixture-<code_hash[:8]>`, and with a full file
+`etch-03.toml` (after that baseline is approved) creates `etch-03` at stage
+3 with every spec §5 default in place, the password in the fake keystore
+under `etch-03` and nowhere on disk or stdout, never printing `missing
+required value` or `missing budget`; a file missing `host` exits 20 naming
+`host`; a stem with upper case or 33 characters exits 20; with
+`OPENAI_MODEL` set `llm.model` carries it. Also cover the per-stage `init`
+table: at stage 2 a re-`init` changes nothing but `llm`, and a hand-edited
+`host` makes
 `stage 2 plan` exit 20 naming `host` with no host value on stdout; at stage 3
 an identity change is accepted before the first `next-start` and refused by
 `plan` after it, while a roots or budgets change after it is accepted; `init`
@@ -159,11 +174,13 @@ the stage 1 scope ID; a stage 3 re-`init` yields a new one; a crash after the
 `data-map/` move but before `work/scope.json` is written resumes without a
 second move; a rollout id with `/`, `..`, upper case or 33 characters exits 20.
 
-Also cover adoption, with `code_hash` and host injected: a baseline whose own
-stages 1 and 2 are result-approved on this host under the current `code_hash`
-yields a rollout whose `status` shows both stages `adopted` and current stage
-3, with the baseline's `llm` block in `rollout.json` and the adoption in the
-stage 3 plan payload. A baseline missing its stage 2 approval, approved on
-another host, run under another `code_hash`, or itself adopted makes `init`
-exit 20 and leaves no rollout directory. `init` on an existing rollout never
-asks for a baseline.
+Also cover adoption, with `code_hash` and host injected: with
+`fixture-<code_hash[:8]>` result-approved through stage 2 on this host, a
+real equipment file yields a rollout whose `status` shows both stages
+`adopted` and current stage 3, with the baseline's `llm` block in
+`rollout.json` and the adoption in the stage 3 plan payload. No fixture
+rollout for the current `code_hash`, one missing its stage 2 approval, or
+one approved on another host makes `init` exit 20 naming the condition and
+leaves no rollout directory. `status` without `--rollout` prints the
+`code_hash` and `baseline: <id>` or `baseline: none`. A re-`init` on an
+existing rollout never adopts again.

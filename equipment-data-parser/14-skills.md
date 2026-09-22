@@ -39,8 +39,9 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
   descriptions name stage number, role, and unique task; only
   `equipment-map-run` is broad. A skill never names or shows
   `operator`, `approve-plan`, `approve-result`, `unlock`, or `workbench`;
-  it says "human gate" instead. The stage 1, 3 and 5 skills run `init`
-  with the engineer's values as flags (spec §9 table) and nothing else.
+  it says "human gate" instead. The stage 1, 3 and 5 skills run
+  `init --equipment <path>` with a path from `engineer.toml [equipment]`
+  (spec §9 table) and never read that file.
 - Discovery roots are suite-version contract values stored in
   `VERSION.json` under `discovery`, one per tool, relative to `$HOME` or
   `%USERPROFILE%`. All four stay in the contract as install targets even

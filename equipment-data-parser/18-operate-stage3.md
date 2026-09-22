@@ -17,17 +17,14 @@ Rules from letter 16 apply.
 1. Preconditions the engineer confirms before anything runs: firewall and
    access approval done, a read-only account exists, and its credential is
    in the OS keystore under an alias. You never check or change any of these.
-2. Take the real equipment's `id`, `host`, `port` and `roots` from
-   `engineer.toml [equipment]` (the engineer replaced the stage 1 fixture
-   values; in chat they may give them directly) and run
-   `equipment-map init --rollout <id> --equipment-id <id> --host <host> --port <port> --root <r>...`
-   on the same rollout — an adopted rollout got this at its first `init`.
-   While the table still holds the fixture host, append `waiting` asking
-   for the real `[equipment]` and stop. Real-time candidate paths,
-   allow/deny patterns, smaller budgets, `max_passes`, credential alias,
-   profile and access window are the engineer's hand edits to
-   `rollout.json` before `plan`; tell them so once. The CLI refuses while a
-   `.lock` exists.
+2. This rollout was created by letter 16's `init --equipment
+   <dir>/<stem>.toml`, which adopted the fixture baseline and wrote the
+   real host, port, roots and credential alias; `status` shows stages 1
+   and 2 `adopted`. Nothing to run here. Real-time candidate paths,
+   allow/deny patterns, smaller budgets, `max_passes`, profile and access
+   window are the engineer's hand edits to `rollout.json` before `plan`;
+   tell them so once. Their credential is already in the keystore from the
+   equipment file.
 3. `equipment-map preflight --stage 3 --contract 1`, then
    `equipment-map stage 3 plan --rollout <id>`. Report the hash and
    the window it includes; append `waiting` until `operator approve-plan`.

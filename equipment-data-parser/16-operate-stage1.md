@@ -20,11 +20,13 @@ wait for approvals.
   CLI's reason and stop. Never craft a workaround command.
 - The engineer runs every `operator` command in their own terminal. Tell
   them what to run and what hash they will be asked to confirm; never run
-  it yourself. `init` is yours: its values come from `engineer.toml
-  [equipment]` or from the engineer in chat (index.md), never from your
-  own guess.
-- The rollout is the one `engineer.toml` names in `[rollout] id` (index.md
-  Loop step 1). Below it is written `<id>`: put the id itself in every
+  it yourself. `init --equipment <path>` is yours: the path comes from
+  `engineer.toml [equipment]` or from the engineer in chat (index.md); you
+  never open the file.
+- The rollout is the one index.md Loop step 1 selects from `engineer.toml
+  [equipment]` and `equipment-map status`: the fixture rollout
+  `fixture-<code_hash[:8]>` while no baseline exists, else the first
+  equipment file's stem. Below it is written `<id>`: put the id itself in every
   command that takes `--rollout` — `plan`, `next` and `status`; `preflight`
   takes none — and as the `rollout: <id>` field of every ledger line.
 - Resume in a later session with `equipment-map status --rollout <id>`.
@@ -43,24 +45,22 @@ history, so approval of stage 1 may show current stage 2.
 ## Steps
 
 1. Run `equipment-map status --rollout <id>`. When it shows stage 1
-   `adopted <baseline>`, this rollout took stages 1 and 2 from a baseline
-   rollout (spec §5): append this letter's `done` line with
-   `adopted <baseline>` as its result and go on to letter 17. When it does
-   not know the rollout, no `init` has run yet: go to steps 2 and 3. For a
-   later equipment the engineer may name a baseline in `engineer.toml
-   [rollout] baseline`; then step 3 adds `--baseline <that id>` and the
-   rollout starts at stage 3 (letter 18).
+   `adopted <baseline>`, this is a real equipment's rollout that took
+   stages 1 and 2 from the fixture rollout (spec §5): append this letter's
+   `done` line with `adopted <baseline>` as its result and go on to letter
+   17. When it does not know the rollout, no `init` has run yet: go to
+   steps 2 and 3.
 2. Prerequisite the engineer performs in their own terminal: start the
-   fixtures with `python -m tests.fixtures.serve` (letter 03) and read the
-   printed ports. For FTP on Windows use the local fake proxy, never the office
-   production proxy; see engineer-guide.md §2. You start no server. Both adapters
-   have already passed build tests; this rollout selects one protocol.
-3. Take `id`, `host`, `port` and `roots` from `engineer.toml [equipment]`
-   (or from the engineer in chat) and run
-   `equipment-map init --rollout <id> --equipment-id <id> --host <host> --port <port> --root <r>...`.
-   While the table is missing, append `waiting` asking for `[equipment]`
-   with the check `[ engineer.toml -nt office/progress.md ]` and stop. At
-   stage 1 the host is `localhost` and the port is the fixture's. Budgets
+   fixtures with `python -m tests.fixtures.serve --write <fixture path>`
+   (letter 03), which also writes the fixture's equipment file. For FTP on
+   Windows use the local fake proxy, never the office production proxy; see
+   engineer-guide.md §2. You start no server. Both adapters have already
+   passed build tests; this rollout selects one protocol.
+3. Run `equipment-map init --equipment <engineer.toml [equipment] fixture>`
+   for the fixture rollout, or `--equipment <dir>/<stem>.toml` for a real
+   one (index.md Loop step 1 says which). While `[equipment]` is missing or
+   the file does not exist, append `waiting` naming what is missing with
+   the check `[ engineer.toml -nt office/progress.md ]` and stop. Budgets
    are defaults; the engineer edits `rollout.json` for smaller ones.
 4. `equipment-map preflight --stage 1 --contract 1`, then
    `equipment-map stage 1 plan --rollout <id>`. Report the plan

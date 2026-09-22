@@ -34,13 +34,12 @@ rather than silently inventing a resolution.
 
 Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
 fake tree, then on one approved equipment, and end with the deliverable:
-`rollouts/<id>/data-map/` with `wiki/` and `graph/`. One rollout id runs from
-stage 1 to stage 5; you re-run `init` on it at stage boundaries with the
-values the engineer gives you.
-Every further equipment is a new rollout through 16–20 with the profile
-registered at stage 5 (see letter 13 for profiles); one that adopts stages 1
-and 2 from a baseline rollout (spec §5) passes 16 and 17 at once. Letter 21
-builds an extractor release between rollouts.
+`rollouts/<id>/data-map/` with `wiki/` and `graph/`. One rollout is one
+equipment file (spec §5): the fixture file's rollout runs stages 1–2 once per
+CLI build and is the baseline; every real equipment file's rollout adopts it
+and runs stages 3–5, passing 16 and 17 at once, with the profile registered
+at stage 5 (see letter 13 for profiles). Letter 21 builds an extractor
+release between rollouts.
 
 The operating target is unattended execution **between** human gates: the
 engineer approves roots and budgets, the CLI completes that bounded stage,
@@ -74,11 +73,13 @@ the maintainer's: read it, and report what is wrong here in a problem entry.
 The maintainer never writes in `office/`, so updates leave it untouched.
 
 `engineer.toml` at the repository root is the engineer's answer sheet, the
-way the engineer tells you things between sessions: the rollout and release
-to work on, the equipment for `init` (`[equipment]`: id, host, port, roots),
-and the confirmations letters 14 and 15 wait for. Read it; never write it.
-In an interactive session the engineer may give you the `[equipment]`
-values in chat instead. A missing file or table is an unanswered
+way the engineer tells you things between sessions: where the equipment
+files are (`[equipment] dir`, `fixture`), the release to work on, and the
+confirmations letters 14 and 15 wait for. Read it; never write it. You list
+`dir` for `*.toml` names and pass paths to `init`; you never open an
+equipment file — it holds a password, and the CLI is its only reader. In an
+interactive session the engineer may name a file in chat instead. A missing
+file or table is an unanswered
 question, so a letter that needs one appends `waiting` with the check
 `[ engineer.toml -nt office/progress.md ]` — true once the engineer has
 edited the file since that line — and re-reads it when the check passes.
@@ -95,25 +96,24 @@ edited the file since that line — and re-reads it when the check passes.
   action before ending a session; never bypass a failing gate to make
   progress.
 
-The equipment values you may accept are exactly the `init` flags: an
-equipment id, host, port, protocol and allowed roots, from `engineer.toml
-[equipment]` or from the engineer in chat. They go into `init` and nowhere
-else — not into `office/progress.md`, a problem entry or your output, which
-carry counts and hashes only. Anything else that arrives — an account and
+The only equipment value you handle is a file path: an entry of
+`engineer.toml [equipment] dir`, or a path the engineer names in chat. It
+goes to `init --equipment` and nowhere else — not into `office/progress.md`,
+a problem entry or your output, which carry counts and hashes only. You do
+not open the file. Anything else that arrives — a host, an account and
 password, an LLM key, a budget — you do not act on and do not put in a file
-or command; say once where it belongs (the keystore, the harness
+or command; say once where it belongs (the equipment file, the harness
 environment, a hand edit of `rollout.json`) and continue. Never repeat a
 password back. Tell the engineer to rotate a password that reached you this
 way: it is in a transcript now, wherever that tool keeps one, and no later
 care on your side takes it back.
 
 `rollout.json` is the only input to `plan`, so a value has exactly one
-legitimate route into a run: an `init` flag. Credentials resolve by alias
-from the OS keystore, never from argv or the environment, so a pasted
-password is outside the design the moment it reaches you — the useful reply
-is which alias to store it under, not a way to use it. And a rollout id must
-stay opaque: a tool name is not a rollout id, however convenient the naming
-looks.
+legitimate route into a run: the equipment file `init` reads. Credentials
+go from that file into the OS keystore and resolve by alias, never from
+argv or the environment, so a pasted password is outside the design the
+moment it reaches you — the useful reply is which file it belongs in, not a
+way to use it.
 
 ## Iterative progress to the final letter
 
@@ -142,22 +142,32 @@ letter 00 do not gate it.
 1. Read `office/progress.md` and `engineer.toml`. "Letter" means a row in
    the table at the bottom of this file, so a number with no row (04) is
    skipped, never waited on; a letter's state is its latest line. Letters
-   16–20 belong to one rollout, the one `engineer.toml` names in
-   `[rollout] id`, and letter 21 to one release, `[release] id`. Their lines
-   carry `rollout: <id>` or `release: <id>` right after the date, and only
-   lines with the current id count: a line from an earlier rollout or
-   release never completes this one. Your current letter is the first of:
+   16–20 belong to one rollout and letter 21 to one release, `[release]
+   id`. Their lines carry `rollout: <id>` or `release: <id>` right after
+   the date, and only lines with the current id count: a line from an
+   earlier rollout or release never completes this one.
+
+   The current rollout comes from `engineer.toml [equipment]` and
+   `equipment-map status` (no `--rollout`), which prints the current
+   `code_hash` and whether a baseline rollout for it exists:
+   - no baseline → the fixture rollout: `init --equipment <fixture>` names
+     it (`fixture-<code_hash[:8]>`), letters 16–17, and it is complete
+     after stage 2 result approval;
+   - baseline present → the first `*.toml` in `dir` (sorted by name,
+     names only) whose stem has no stage 5 result approval; its rollout id
+     is that stem, letters 16–20 (16 and 17 record `adopted`);
+   - none left → append
+     `- 16 waiting <UTC date> | rollout: - | add an equipment file to [equipment] dir | [ engineer.toml -nt office/progress.md ]`
+     unless that is already the last line, and stop.
+
+   Your current letter is the first of:
 
    - a letter whose latest line is `wip`, continued from that line, or
      `waiting`, whose check you run — continue only when it passes;
    - the earliest build letter, 01–15, that is `redo` in the check below or
      has no `done` line;
-   - the first of 16–20 with no `done` line for the named rollout;
+   - the first of 16–20 with no `done` line for the current rollout;
    - letter 21, when the named release has no `done` line.
-
-   When there is none, append
-   `- 16 waiting <UTC date> | rollout: - | name the next rollout or release in engineer.toml | [ engineer.toml -nt office/progress.md ]`
-   unless that is already the last line, and stop.
 
    A build letter's `done` line carries the hash of the letter file it
    finished, so re-check them before you choose. A letter whose file no
@@ -363,8 +373,8 @@ the morning: if you can still write, put the cause in
   derives the stage from it. No mutable `state.json`.
 - Outside isolated build tests, approvals stay human: `operator approve-plan`,
   `operator approve-result`, `operator unlock` appear in no skill, no
-  `NEXT:` line, and are never run by you. `init` you run, with the
-  engineer's values as flags.
+  `NEXT:` line, and are never run by you. `init --equipment <file>` you
+  run, passing a path you never open.
 - `rollout.json` is the only input to `plan`: roots, budgets, patterns,
   credential aliases never come from flags.
 - Exit contract: `0` done or safe no-op, `10` await approval, `20` stop,

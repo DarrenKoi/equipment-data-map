@@ -164,9 +164,10 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
   `budgets.llm_max_requests`; 3 all but `next_profile`, and the identity keys
   `equipment_id`, `protocol`, `host`, `port` only while no stage-3
   `next-start` exists; 4 none; 5 `next_profile`. Within the editable set
-  `init` takes only the spec §5 flags, writes the §5 default for any other
-  editable key that is still absent, and copies every other value
-  unchanged; a flag outside the current stage's editable set exits 20
+  a re-`init --equipment` re-reads only the file keys the current stage may
+  change, writes the §5 default for any other editable key that is still
+  absent, and copies every other value unchanged; a file key outside the
+  current stage's editable set that differs from the stored value exits 20
   naming it. `init` while stage 4 is
   current exits 20 without writing.
 - `plan` refuses with exit 20, printing key names but never values, when a
@@ -194,23 +195,27 @@ Baseline adoption (spec §5):
   `[relative POSIX path, sha256(file bytes)]` pairs of every `*.py` file under
   the installed `equipment_map` package directory. Every `next-stop` record
   carries it.
-- Only the `init` that creates a rollout accepts `--baseline <id>`. Adopt
-  only when all of these hold; otherwise print the failed
-  condition's name and exit 20 without writing: the baseline's own ledger has
-  `approve-result` records for stages 1 and 2 (an `adopt` record does not
-  count); both carry this machine's `socket.gethostname()` as `host`; and the
-  completed `next-stop` each of them approved carries the current `code_hash`.
+- The `init` that creates a rollout from a file without `fixture = true`
+  adopts the baseline `fixture-<code_hash[:8]>` for the current `code_hash`.
+  Adopt only when all of these hold; otherwise print the failed condition's
+  name and exit 20 without writing: that rollout exists and its own ledger
+  has `approve-result` records for stages 1 and 2; both carry this
+  machine's `socket.gethostname()` as `host`; and the completed `next-stop`
+  each of them approved carries the current `code_hash`. A file with
+  `fixture = true` creates that baseline itself, starts at stage 1 and is
+  terminal after its stage 2 result approval.
 - On adoption, append `adopt` `{stage: 2, baseline, approvals, code_hash}`,
   where `approvals` holds the payload hashes of the baseline's two
   `approve-result` records. Then write `rollout.json` with the `llm` block
-  copied from the baseline's approved stage-2 plan, the stage-3 equipment
-  flags applied and the rest defaulted as at stage 1, and append `init`
+  copied from the baseline's approved stage-2 plan, the equipment file's
+  keys applied and the rest defaulted as at stage 1, and append `init`
   with `stage: 3`. An `init` on a
   rollout whose ledger ends in `adopt` finishes that adoption after a crash.
 - `status` prints stages 1 and 2 as `adopted <baseline>` and current stage 3.
   Stage 3 `plan` of an adopted rollout puts `adopted: {baseline, adopt_hash}`
-  into its payload, so approving the plan approves the adoption. An adopted
-  rollout never serves as a baseline.
+  into its payload, so approving the plan approves the adoption. `status`
+  without `--rollout` prints the local rollout list, the current
+  `code_hash` and `baseline: <id>` or `baseline: none`.
 
 Fixture approvals are produced only by fake-TTY test calls in temporary roots.
 No code path fabricates human approval for a real rollout. Add tests for every

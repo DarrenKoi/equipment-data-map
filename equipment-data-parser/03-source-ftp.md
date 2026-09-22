@@ -67,10 +67,11 @@ before writing any adapter code. Do not read the whole package.
 - `equipment_map/secrets.py` uses the **Windows Credential Manager**, the
   approved keystore for the engineer PCs. No `waiting` line and no human
   confirmation is needed to start it.
-- `equipment_map/secrets.py`: `lookup(alias)` delegates to one module-level
-  backend chosen by `sys.platform` at import: `win32` → Windows Credential
-  Manager (`ctypes` `CredReadW`, generic credential named
-  `equipment-map/<alias>`);
+- `equipment_map/secrets.py`: `lookup(alias)` and `store(alias, user,
+  password)` delegate to one module-level backend chosen by `sys.platform`
+  at import: `win32` → Windows Credential Manager (`ctypes` `CredReadW` /
+  `CredWriteW`, generic credential named `equipment-map/<alias>`; `store`
+  is what `init --equipment` calls, letter 02);
   every other platform → `UnsupportedKeystore`, which `next` maps to exit
   20 before any connection. `ctypes` is stdlib; no portable fallback and no
   file-based store exists. A maintainer working off-Windows runs the test fake,
@@ -113,10 +114,12 @@ before writing any adapter code. Do not read the whole package.
   someone is tempted to echo the URL they just typed into `.env`.
   This check never contacts equipment, so it stays outside plan approval.
 
-- `tests/fixtures/serve.py`: `python -m tests.fixtures.serve` starts the
-  fake FTP and the local fake proxy on ephemeral ports, prints `FTP_PORT=<n>`
-  and `PROXY_PORT=<n>`, and runs until Ctrl-C. Engineers use it in letter 16;
-  skills never start it.
+- `tests/fixtures/serve.py`: `python -m tests.fixtures.serve --write
+  <path>` starts the fake FTP and the local fake proxy on ephemeral ports,
+  prints `FTP_PORT=<n>` and `PROXY_PORT=<n>`, writes the fixture's
+  equipment file at `<path>` (`fixture = true`, `localhost`, that port, the
+  read-only user and password, `roots = ["/"]`; spec §5), and runs until
+  Ctrl-C. Engineers use it in letter 16; skills never start it.
 - `tests/fixtures/tree.py`: builds a directory tree in a temp dir with
   100 log files differing only by date and lot tokens, 20 CSVs, 5 JSON, 3
   XML, 2 PNG, 1 fixed-seed unknown binary and 1 known encrypted archive fixture, 1 truncated zip, 1 nested
