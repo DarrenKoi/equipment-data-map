@@ -8,12 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo status
 
-Docs, one vendored library (`ftp_handler/`) and `spike.py`; no CLI and no build or lint command. The transport check runs with `python tests/test_ftp_transport.py`. `spike.py` (letter 00, retired — the sequence now starts at letter 01) still runs as `python spike.py equipment.toml`; its local fake check is `uv run --python 3.11 --with pyftpdlib --with flask --with requests python tests/test_spike_fake.py` (fake FTP, real proxy blueprint, fake LLM). `equipment-data-parser/` fixes the letter-execution stack (Python 3.11, pytest), but the `equipment-map` CLI from letter 01 onward is built in the execution model folder and never comes back by git, so this repo gets no pytest suite from it. The maintainer checks are the bare scripts listed in `README.md`. The architecture doc is the spec the letters must lead that build to satisfy.
+Docs and one vendored library (`ftp_handler/`); no CLI and no build or lint command. The transport check runs with `python tests/test_ftp_transport.py`. `spike.py` (letter 00) was removed on 2026-09-22 after its real-equipment runs; the sequence starts at letter 01. `equipment-data-parser/` fixes the letter-execution stack (Python 3.11, pytest), but the `equipment-map` CLI from letter 01 onward is built in the execution model folder and never comes back by git, so this repo gets no pytest suite from it. The maintainer checks are the bare scripts listed in `README.md`. The architecture doc is the spec the letters must lead that build to satisfy.
 
 ## Where things are
 
 `ftp_handler/` is the FTP library copied from `skewnono_v3_nuxt` — the intended FTP
-Source adapter for §4, currently used by `spike.py`. `size_dirs` returns a UTC
+Source adapter for §4 (letter 03). `size_dirs` returns a UTC
 `modified` per file, so the metadata pass gets path, size and mtime in one
 connection on either transport (`tests/test_sizing_mtime.py`); that change is
 already ported to `flask_modules` and `skewnono_v3_nuxt`. `core` (`FtpClient`, one server) and

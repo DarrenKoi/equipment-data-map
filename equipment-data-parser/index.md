@@ -64,11 +64,11 @@ execution-workspace setup, and stop without writing.
 
 Write only in `office/`: `office/progress.md` and
 `office/problems/NN-problems.md`. Historical `office/spike.py`,
-`equipment.toml`, and `out/` files may remain on this PC, but the active
-sequence does not run or change them. The build letters permit their specified
+`equipment.toml`, and `out/` files from the removed letter 00 may remain on
+this PC; never run or change them. The build letters permit their specified
 new files at the repository root.
 Everything else in the
-repository — this folder, `spike.py`, `ftp_handler/`, the maintainer tests — is
+repository — this folder, `ftp_handler/`, the maintainer tests — is
 the maintainer's: read it, and report what is wrong here in a problem entry.
 The maintainer never writes in `office/`, so updates leave it untouched.
 
@@ -131,8 +131,8 @@ verified checkpoints, not through an assumed single uninterrupted run.
 
 ## Loop
 
-The active progression starts at letter 01. Historical letter 00 records do
-not gate it.
+The active progression starts at letter 01. Ledger lines for the removed
+letter 00 do not gate it.
 
 1. Read `office/progress.md` and `engineer.toml`. "Letter" means a row in
    the table at the bottom of this file, so a number with no row (04) is

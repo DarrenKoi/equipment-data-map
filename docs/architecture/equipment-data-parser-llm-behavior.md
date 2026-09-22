@@ -15,7 +15,7 @@
 | 역할 | 무엇인가 | 무엇을 읽나 | 무엇을 쓰나 |
 |---|---|---|---|
 | **에이전트 LLM** | 사무실 PC에서 Claude Code, Codex, OpenCode, pi 등으로 돌아가는 코딩 에이전트. 회사 승인 모델을 뒤에 둔다. | `equipment-data-parser/`의 Markdown 지시, `office/progress.md`, 엔지니어가 쓰는 `engineer.toml` | 코드·테스트(저장소 루트), `office/` 원장과 문제 보고 |
-| **내부 해석 LLM** | 회사망 안의 OpenAI 호환 HTTP endpoint. `spike.py`와 `equipment-map` CLI가 코드로 호출한다. | 코드가 조립한 짧은 프롬프트: 파일군 규칙·통계, 제한된 샘플 발췌, 용어집, sample SHA, pass 2부터 직전 pass의 `prior_inferred`(같은·연결 파일군의 category·description, 인용 불가) | 필드 하나짜리 짧은 답. 파일에 직접 쓰지 않는다. |
+| **내부 해석 LLM** | 회사망 안의 OpenAI 호환 HTTP endpoint. `equipment-map` CLI가 코드로 호출한다. | 코드가 조립한 짧은 프롬프트: 파일군 규칙·통계, 제한된 샘플 발췌, 용어집, sample SHA, pass 2부터 직전 pass의 `prior_inferred`(같은·연결 파일군의 category·description, 인용 불가) | 필드 하나짜리 짧은 답. 파일에 직접 쓰지 않는다. |
 
 에이전트 LLM은 장비 원본이나 추출 내용을 보지 않는다. 내부 해석 LLM은
 지시문을 보지 않고, 명령을 실행하거나 파일을 더 요청할 도구도 없다. 이
@@ -30,7 +30,6 @@
 ```text
 equipment-data-parser/
   index.md                   # 계약이자 루프: 읽는 순서, 쓰기 권한, 체크포인트, 정지 조건
-  00-spike.md                # 완료된 초기 spike의 진단 참고 자료
   01-…-21-*.md               # 현행 CLI 빌드(01–15), 운영(16–20), extractor 릴리스(21) 편지, 번호 순
   spec.md                    # 스펙 스냅샷. docs/ 원본과 다르면 원본이 이긴다
   implementation-reference.md# 편지가 가리키는 절만 읽는 구현 세부
@@ -73,33 +72,11 @@ Markdown 지시가 하는 일과 하지 않는 일:
 
 ## 3. 내부 해석 LLM에 가는 것과 돌아오는 것
 
-### 3.1 완료된 편지 00 — 초기 spike 참고
+편지 00의 `spike.py`(디렉터리마다 `### Observed` 한 절을 묻던 초기 경로)는
+목적을 마치고 2026-09-22에 제거했다. 새 에이전트 실행은 `index.md`에 따라
+편지 01부터 시작한다.
 
-편지 00은 반복된 사무실 검증으로 목적을 달성해 현행 실행 순서에서 제외했다.
-다음 내용은 정식 CLI가 편지 18의 실장비 시범을 통과하기 전까지 남기는 진단
-참고이며, 새 에이전트 실행은 `index.md`에 따라 편지 01부터 시작한다.
-
-먼저 `spike.py --prepare-config equipment.toml`이 없거나 빈 설정 파일에 안전한
-기본값을 채운다. FTP host/user/password는 실제 연결 전에만 필요하다. LLM URL과
-model이 둘 다 비어 있으면 metadata-only 또는 samples-only discovery를 수행하고
-내부 LLM HTTP 요청을 전혀 보내지 않으며 Markdown에 `interpretation not performed`를
-남긴다.
-
-LLM URL과 model이 둘 다 설정된 경우에만 `spike.py`는 파일이 있는 디렉터리마다
-한 번 `POST <url>/v1/chat/completions`를 부른다. 보내는 것은 그 디렉터리의
-증거표(파일명·확장자·크기·mtime·샘플 여부)와 확장자별 최신 파일 한 개의
-앞부분(`sample_bytes`, UTF-8 또는 CP949로 디코딩될 때만)이다. 요구하는 답은
-Markdown이지만 형식이 좁다.
-
-- 정확히 `### Observed` 절 하나. 목록과 샘플에 보이는 이름 규칙, 형식,
-  필드명·값만 적는다.
-- 디렉터리의 용도를 말하지 않는다. `### Inferred` 같은 다른 절이 있으면
-  응답 전체가 무효(`llm_failed`)다. 추론은 여러 디렉터리의 관측을 모은 뒤
-  다음 단계에서 한다.
-- HTTP 400/413은 `request rejected`, timeout은 `call failed: ReadTimeout`로
-  그 디렉터리 파일에 남고 걷기는 계속된다. 재시도 루프는 없다.
-
-### 3.2 편지 11 이후 — `equipment-map` CLI
+### 3.1 편지 11 이후 — `equipment-map` CLI
 
 CLI는 LLM에게 JSON을 만들게 하지 않는다. 필드 하나씩 짧게 묻고, 코드가
 검증하고 조립한다(스펙 §4.6, implementation-reference §8).
@@ -127,20 +104,7 @@ CLI는 LLM에게 JSON을 만들게 하지 않는다. 필드 하나씩 짧게 묻
 
 ## 4. 나오는 Data Map, Markdown과 JSONL
 
-### 4.1 완료된 spike의 Markdown
-
-```text
-out/<equipment name>/<UTC 시각>/
-  index.md                 # 원격 / 페이지: 하위 폴더 링크, 실행 비고
-  <장비 경로>/index.md     # 디렉터리마다 하나: 하위 폴더 표 + 증거표 + "## LLM" 절
-```
-
-폴더 구조는 장비 폴더 구조를 따르고 이름은 스펙 4.7절의 로컬 이름 규칙을 쓴다.
-표는 코드가 만들고, 디렉터리 페이지의 `## LLM` 아래 `### Observed`만
-모델이 쓴 문장이다. 비밀번호와 API 키는 파일에 쓰기 전에 `***`로 지운다.
-`out/`은 사무실 PC에만 남는다.
-
-### 4.2 CLI의 Data Map
+### 4.1 CLI의 Data Map
 
 ```text
 rollouts/<id>/

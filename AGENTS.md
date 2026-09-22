@@ -56,8 +56,8 @@ translate one into the other.
   model works in a plain copy of it with no git inside, one model at a time
   through the whole sequence, and the engineer copies your updates in
   between sessions (`engineer-guide.md` §1).
-- `office/` — the execution agent's ledger (`progress.md`), problem entries and
-  `spike.py` workaround. The name is a repository path, not a location check.
+- `office/` — the execution agent's ledger (`progress.md`) and problem
+  entries. The name is a repository path, not a location check.
   During maintenance, do not create or modify `office/`, or create root-level
   outputs assigned to the execution agent by a build letter. During letter
   execution, the execution agent may create and update files in `office/` and
@@ -66,8 +66,9 @@ translate one into the other.
   Nothing comes back by git; the user relays sanitized
   summaries, and those are the input for fixing a letter or the spec. The
   execution agent does not edit the letters; the maintainer does.
-- `agent_build_steps/` — hands-on course for the maintainer on growing
-  `spike.py` into a harness and then an agent. Korean, like `docs/`: it is
+- `agent_build_steps/` — hands-on course for the maintainer on growing a
+  one-file spike into a harness and then an agent (its subject, `spike.py`,
+  was removed on 2026-09-22; the course stays as history). Korean, like `docs/`: it is
   read by the user, not by the execution agent. It prescribes no behavior; when
   it disagrees with the spec, the spec wins and the course is wrong.
 - `ftp_handler/` — vendored from `skewnono_v3_nuxt`, read-only here. A change

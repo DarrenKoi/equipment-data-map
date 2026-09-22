@@ -13,9 +13,9 @@ office/, the built CLI, its tests, equipment-map-suite/ and rollouts/ survive.
 It prints the tracked files that changed and, among them, the build letters
 that office/progress.md already marks done.
 
---reset is the first setup and the from-scratch restart: it keeps .venv, .env
-and equipment.toml, replaces everything else with the hub's tracked files,
-drops out/ and old office/, and starts a fresh ledger. It is the
+--reset is the first setup and the from-scratch restart: it keeps .venv and
+.env, replaces everything else with the hub's tracked files,
+drops old office/, and starts a fresh ledger. It is the
 engineer-guide.md section 1 setup snippet as one script.
 """
 import re
@@ -27,7 +27,7 @@ from pathlib import Path
 HUB = Path(__file__).resolve().parent.parent
 MODEL_DIR = HUB.parent / "equipment-data-map-qwen3"   # the model folder, beside the hub
 SLUG = "qwen3"                                        # first line of its ledger
-KEEP = {".venv", ".env", "equipment.toml"}
+KEEP = {".venv", ".env"}
 LETTERS = "equipment-data-parser"
 
 

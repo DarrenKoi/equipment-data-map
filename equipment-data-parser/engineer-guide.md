@@ -21,17 +21,16 @@ use normal downloads, including eligible large/unknown-size files, with actual-b
 accounting and best-effort targets. No cap workaround is required. Mock tests
 can guide implementation but cannot waive that blocker.
 
-Letter 00 has completed repeated office validation and is retired. Start the
-active sequence at letter 01. Keep its `spike.py`, `equipment.toml`, and `out/`
-artifacts only as local diagnostic fallback until letter 18 proves the formal
-CLI on one real equipment; do not rerun or modify them in the active sequence.
+Letter 00 (`spike.py`) completed repeated office validation and was removed
+from the repository on 2026-09-22. Start the active sequence at letter 01. An
+`equipment.toml` or `out/` left on the PC is history; delete or ignore it.
 
 ### The hub clone and the model folders
 
 The office PC holds one git clone, the hub: it tracks the maintainer's
 remote, stays on `main`, only ever pulls, and no agent runs in it. Give this
 PC read-only access to the remote so a push fails. The agent never uses git.
-It writes in `office/` (ledger, problem entries, a changed `office/spike.py`)
+It writes in `office/` (ledger, problem entries)
 plus the new files the build letters create, as plain files. Findings travel
 home by hand: relay a sanitized summary of `office/problems/` and the
 `office/progress.md` result to the maintainer, with no equipment addresses,
@@ -61,7 +60,7 @@ out.
 **One hub, one folder per model.** The model that runs the letters gets its
 own plain copy of the hub, `<repo>-<model>/`, with no `.git` inside. When a
 later model is tried it gets a fresh copy, so the two never share a ledger,
-an `office/spike.py`, root build outputs, `out/` or `rollouts/`.
+root build outputs or `rollouts/`.
 The working directory is the whole identity: the prompt never names the
 model, and an agent launched in `<repo>-<model>/` is that model's run. The
 first line of that folder's `office/progress.md` names the agent model, and
@@ -81,15 +80,15 @@ D="../$(basename "$PWD")-$M"
   test "$(git branch --show-current)" = main
   test -z "$(git status --porcelain)"
   git pull --ff-only
-  cp -r . "$D"                                        # .env and equipment.toml travel with it
-  rm -rf "$D/.git" "$D/out"                           # no git in the model folder, no stale results
+  cp -r . "$D"                                        # .env travels with it
+  rm -rf "$D/.git"                                    # no git in the model folder
   mkdir -p "$D/office/problems"
   printf '# Progress\n\nModel: %s. Append-only. Format is in equipment-data-parser/index.md.\n' "$M" > "$D/office/progress.md"
 )
 ```
 
 The same script restarts a model from scratch: first delete everything in
-its folder except `.venv`, `.env` and `equipment.toml`, then run it again.
+its folder except `.venv` and `.env`, then run it again.
 `engineer.toml` goes too: its confirmations belong to the discarded build.
 
 Only the agent writes `office/progress.md`; never add a line to it. When the
@@ -106,9 +105,8 @@ set at the top of the file; two arguments after the flag override them) does
 both the first setup and a restart in one step. Without `--reset` the script
 refreshes instead, which is the between-sessions move below.
 
-Leave the historical `equipment.toml` untouched. Supply internal interpretation
-settings only when the current letter requests them, through the engineer-run
-`init` flow.
+Supply equipment facts only through the engineer-run `init` flow and
+`.env`.
 Launch that model's agent tool, one-shot loop or scheduled task with the
 model folder as the working directory; the letters say "repository root" and
 mean that directory.
@@ -136,10 +134,7 @@ You do not have to pass that list on. Each `done` line carries the hash of the
 letter it finished, so the next session re-checks them, finds the revised ones
 itself and redoes them before moving on (index.md, Loop step 1). The printed
 list only tells you how much work that will be. A hand copy or file-manager
-copy is detected the same way. When the update changed `spike.py` and
-`office/spike.py` exists, compare them in the model folder
-(`diff spike.py office/spike.py`): delete the copy if the maintainer's
-version covers the workaround, otherwise port the new changes into it. Run
+copy is detected the same way. Run
 the home checks in the model folder before restarting the schedule.
 
 ### Before an overnight run

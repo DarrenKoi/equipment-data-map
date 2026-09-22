@@ -86,15 +86,9 @@ FAB 장비의 FTP 파일 구조를 읽기 전용으로 탐색하고, 반복되�
 
 Skill Market에 배포할 단계별 스킬은 rollout 5단계에 대응한다. 런타임 파이프라인은 스킬에 분산하지 않고 단일 CLI가 실행한다. iteration 번호는 rollout 단계·scope·승인 상태를 대신하지 않는다.
 
-### 3.2 초기 spike의 최소 설정
+### 3.2 초기 spike
 
-`equipment-data-parser/00-spike.md`의 초기 탐색은 반복된 실장비 실행으로 목적을 마치고 은퇴했으며, 현행 순서는 letter 01부터 시작한다. 이 절은 남아 있는 `spike.py`의 동작 기록이다. spike는 rollout CLI를 만들기 전의 별도 경량 경로였다. 엔지니어가 로컬 `equipment.toml`에 FTP IP(`equipment.host`), ID(`equipment.user`), PW(`equipment.password`)만 제공하면 시작할 수 있다. 회사 LLM 에이전트는 `spike.py --prepare-config equipment.toml`로 누락된 선택 항목을 채우고, 이후 관측한 디렉터리로 검색 위치를 구체화할 수 있다. 자격 증명을 추측하거나 도구 출력에 노출하지 않으며 기존 값·더 좁은 경로·명시적인 0 budget·빈 목록을 보존한다. 파일이 없거나 완전히 비어 있어도 에이전트가 먼저 생성하고 기본 설정을 채운다. 필수 FTP 값은 빈 문자열로 남기며 `config_ready: false`와 누락된 키 이름만 알린다. 이 경우에도 준비 명령은 exit 0으로 끝나며 로컬 설정 생성은 성공이다. 엔지니어가 세 값을 채우기 전에는 연결하지 않는다. 잘못된 TOML은 빈 파일로 취급하지 않고 exit 1로 중단하며 원본을 보존한다. 이 로컬 준비는 proxy 점검보다 먼저 수행한다.
-
-기본값은 port 21, name `tool`, roots `["/"]`(계정에 보이는 FTP 루트), deny `[]`, 디렉터리 20개, 내용 다운로드 0바이트, sample preview 8192바이트, output `out`이다. 항목별 목록 크기를 제한하는 값은 아니며 실제 미탐색 범위를 출력에 남긴다. LLM endpoint/model이 없으면 호출하지 않고 관측 메타데이터만 발행한다. 알려진 승인 사내 endpoint와 model이 있으면 에이전트가 두 값을 함께 채울 수 있지만 임의로 추측하지 않는다. discovery 성공과 LLM 해석 완료는 별도 체크포인트이며 재실행·기존 범위 확대·수집 budget 증가는 엔지니어 지시를 따른다. 이 초기 설정 예외가 아래 정식 rollout의 계획 승인·keystore·필수 budget 계약을 완화하지 않는다.
-
-초기 spike의 `deny`는 basename, 각 허용 root 기준 상대 경로 또는 `/`로 시작하는 절대 경로 glob을 받는다. basename 패턴은 모든 root에 적용하고 절대 경로 패턴은 여러 root 중 한 대상에만 적용한다. 패턴에 일치한 디렉터리는 그 하위 전체를 제외하며 상위 목록이 하위 경로를 예외적으로 직접 반환해도 같은 규칙을 적용한다. 예를 들어 `MACFILE_*`는 `MACFILE`은 유지하고 모든 root의 backup 이름을 제외하며, `/target-a/MACFILE_*`는 지정한 target에만 적용한다. 실제 장비 경로와 현장별 패턴은 ignored 로컬 설정에만 둔다.
-
-spike는 실행마다 `out/<name>/<UTC 시각>/`에 새로 쓰고 이전 실행의 결과를 재사용하지 않는다. 그 아래 폴더 구조는 장비 폴더 구조를 따르며 방문한 디렉터리마다 `index.md`가 직접 하위 폴더와 파일을 설명한다. 폴더 이름은 4.7절의 로컬 이름 규칙을 쓴다. spike는 표본 앞부분을 메모리에서만 읽고 표본 파일을 저장하지 않는다.
+letter 00의 `spike.py`(FTP → 선택적 LLM → Markdown, 장비 하나)는 반복된 실장비 실행으로 목적을 마쳤고 2026-09-22에 저장소에서 제거했다. 현행 순서는 letter 01부터 시작하며, 사무실 PC에 남은 `equipment.toml`과 `out/`은 실행 순서와 무관한 이력이다.
 
 ### 3.3 역할과 신뢰 경계
 
@@ -898,7 +892,7 @@ equipment-map-suite/
 | 구성 | 이 checkout에서의 상태 | 의미 |
 |---|---|---|
 | 전체 rollout CLI·6개 배포 스킬 | 현행 letter가 구축·검증하도록 정의한 계약 | 설치된 완성 운영 제품으로 간주하지 않음. 회사 복사본의 구현 여부는 별도 확인 |
-| `ftp_handler/`, 은퇴한 `spike.py` | 기존 코드 | 정식 rollout CLI나 재개 가능한 개선 루프의 완료 증거가 아님 |
+| `ftp_handler/` | 기존 코드 | 정식 rollout CLI나 재개 가능한 개선 루프의 완료 증거가 아님 |
 | `wiki_review.publish`, `wiki_review.exploration` | 오프라인 Wiki 생성·SQLite 조사 원장 구현 | `wiki-map-v1` projection 입력, 새 폴더 발행, `approval_verified: false`; FTP·LLM·graph·운영 승인 전이 없음 |
 | 파일 선정 모드·사전 생애주기·의미 검토 iteration | 이 문서의 목표 계약 | schema·validator·원장·실행기·지침 전환 필요 |
 | 사전 제작 배포·최대 8개 HTTP 병렬·claim 응답 통합 | 목표 배포 구조와 검증할 최적화 | 실제 사내 지연/처리량 미측정; 응답 통합은 비교 검증 뒤 채택 |
