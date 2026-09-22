@@ -9,7 +9,7 @@ letter reuses.
 ## Read
 
 `spec.md` §4.1 (the interface and why it has no range read), §4.2 (the
-metadata Inventory needs), §6 (read-only account, concurrency 1, path
+metadata Inventory needs), §6 (read-only account, `max_connections`, path
 escape), §7 (fake trees).
 
 `ftp_handler/__init__.py` and `ftp_handler/core/client.py` — read those two
@@ -26,11 +26,13 @@ before writing any adapter code. Do not read the whole package.
   Direct transport has no proxy connectivity prerequisite.
 
 - `equipment_map/source/base.py`: `Source` with exactly `listdir(path)`,
-  `size(path)`, `download(path)`, `close()`. Entries carry name,
+  `size(path)`, `download(paths)`, `close()`. `download` takes a list of up
+  to `budgets.max_connections` paths and returns one result per path, so the
+  fleet downloader fans the batch out over its connections. Entries carry name,
   is_dir, size, mtime source (`MDTM`, or `none` when the server has no MDTM), UTC
   mtime or `None`. No write method exists, and no range read exists — spec
   §4.1 uses the library's normal whole-file download without a transfer cap.
-- `download(path)` uses the vendor's normal whole-file download. Size is an
+- `download(paths)` uses the vendor's normal whole-file download. Size is an
   estimate for accounting, not a cap: unknown-size and large eligible files
   may be downloaded. Do not add a capped downloader, range-read workaround or
   post-download truncation. Retain successful whole files and actual byte
@@ -44,9 +46,10 @@ before writing any adapter code. Do not read the whole package.
     the Windows engineer PCs have no FTP egress and must go through the
     proxy, and that choice belongs to the machine, not to this module.
   - One `HostSpec` — this is a fleet of one. `listings=[ListDir(dir)]` for
-    `listdir`, `files=[path]` for `download`.
-  - Construct with `max_concurrency=1` and `passive=True` (spec §6 sets the
-    default concurrency to 1; the library's default is 48).
+    `listdir`, `files=paths` for `download`; the library runs one connection
+    per file in the batch.
+  - Construct with `max_concurrency=budgets.max_connections` (1–8, default
+    6; the library's default of 48 is never used) and `passive=True`.
   - Resolve and reject any path outside the allowed roots before building
     the spec, so a bad path never reaches the wire.
   - Never call the downloader's `upload`. The `Source` exposes no path to it.
@@ -132,7 +135,10 @@ before writing any adapter code. Do not read the whole package.
   allow/deny patterns, metadata-derived active candidates, remaining total
   target bytes/files, requests, and time before calling Source. Per-file size
   is advisory, never a rejection condition. Persist the transfer attempt and
-  size estimate before transfer; update actual bytes afterward. Resume never
+  size estimate before transfer; update actual bytes afterward. Files that
+  pass go to `Source.download` in batches of up to `max_connections`; every
+  file in a batch is reserved before the batch starts and settled after, and
+  total-target exhaustion blocks the next batch, not the running one. Resume never
   resets counters. Total target exhaustion stops the next transfer, not the
   file already downloading.
   Completed downloads are reusable by source scope, path, size and mtime.

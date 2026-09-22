@@ -14,11 +14,11 @@ measurement family and one log family with the engineer.
 1. Run `equipment-map status --rollout <id>`. When it shows stage 2
    `adopted <baseline>`, append this letter's `done` line with
    `adopted <baseline>` as its result and go on to letter 18.
-2. Ask the engineer to run `equipment-map init --rollout <id>` again
-   and fill the `llm` block (approved internal endpoint, key alias,
-   glossary path/version, requested model, generation limits, timeouts,
-   elapsed limit, retry settings and `prior_max_bytes` from letter 11). You wait; `stage 2 plan` refuses until it
-   is present.
+2. The `llm` block was copied from `.env` by the `init` that created the
+   rollout (spec §5). Only when `stage 2 plan` in step 3 refuses for a
+   missing `llm` block, ask the engineer to fill `LLM_ENDPOINT`,
+   `LLM_MODEL`, `LLM_KEY_ALIAS` and `LLM_GLOSSARY_PATH` in `.env` and run
+   `equipment-map init --rollout <id>` again; append `waiting` and stop.
 3. `equipment-map preflight --stage 2 --contract 1`, then
    `equipment-map stage 2 plan --rollout <id>`; report the hash and
    append `waiting` until `operator approve-plan`.

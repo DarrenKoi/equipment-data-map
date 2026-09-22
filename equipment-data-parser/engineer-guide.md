@@ -44,27 +44,19 @@ mid-sequence: a half-built CLI or a half-interpreted map from two models cannot
 be reviewed as one result. Comparing models is a later exercise, on a finished
 process.
 
-Parallel letters run as pi subagents: install `pi-subagents` in the model
-folder's pi (`pi install npm:pi-subagents`, then `pi list` to confirm) and the
-agent gets a `subagent` tool whose builtin `worker` role is the one that edits
-files. index.md's **Parallel jobs** section says what may be batched; pi
-decides how to start it. Builtin roles inherit the parent session's model, so
-one model still takes the whole sequence — but confirm that on this PC: no
-`subagents.defaultModel` and no `subagents.agentOverrides.worker.model` in
+How the agent tool splits work across subagents is its own business; the
+letters do not prescribe it. If you install `pi-subagents` in the model
+folder's pi (`pi install npm:pi-subagents`, then `pi list` to confirm), one
+thing still has to hold: builtin roles inherit the parent session's model,
+so confirm on this PC that no `subagents.defaultModel` and no
+`subagents.agentOverrides.worker.model` is set in
 `~/.pi/agent/settings.json` or the project settings, or pin it with
 `"worker": {"model": "inherit"}`. A child on another model breaks the rule
-above silently, in files the parent then reports as done. Where that extension is not available, the same shape
-works with the agent's own shell: one backgrounded `pi -p '<letter job>'` per
-letter from the model folder, which needs nothing installed. Do not use the
+above silently, in files the parent then reports as done. Do not use the
 worktree isolation the extension documents — there is no git in the model
-folder to make a worktree from.
-
-Speed comes from that one model working several letters at once, not from a
-second model or a second folder. The agent starts subagents inside its own
-copy under index.md's **Parallel jobs** rules: one coordinator, one ledger
-writer, and only letters whose `Needs` and files are disjoint. Two agent
-sessions in one folder, or the same letters in two folders, produce a build
-nobody can review — that is still out.
+folder to make a worktree from. Two agent sessions in one folder, or the same
+letters in two folders, produce a build nobody can review — that is still
+out.
 
 **One hub, one folder per model.** The model that runs the letters gets its
 own plain copy of the hub, `<repo>-<model>/`, with no `.git` inside. When a
@@ -150,6 +142,53 @@ copy is detected the same way. When the update changed `spike.py` and
 version covers the workaround, otherwise port the new changes into it. Run
 the home checks in the model folder before restarting the schedule.
 
+### Before an overnight run
+
+An unattended run has nobody to answer a prompt and no memory between runs.
+Everything it will need must be in place before you leave; a run that meets
+a missing piece stops in its first minute and the night is spent. Go through
+this list, in order, in Git Bash at the model folder's root:
+
+1. **Prove one run by hand.** Run the one-shot prompt from index.md
+   ("One-shot sessions") once, non-interactively, and confirm
+   `office/progress.md` grew by a line. A run that hits a tool-approval
+   prompt exits having changed nothing, and it does not look like a failure —
+   it looks like an empty run, repeated all night. Whatever flag or settings
+   allowlist your tool needs for unattended file edits and commands, set it
+   now and keep the exact invocation in your local notes; grant no blanket
+   approval to equipment operations.
+2. **Answer `engineer.toml` for everything the night can ask**: the
+   `[rollout]` or `[release]` table, letter 14's discovery roots. An
+   unanswered question is a `waiting` line, and the loop stops there. Letter
+   15's confirmation and every operating gate need your review, so a night
+   that reaches one ends there; that is expected.
+3. **If the night can reach letters 16–17**, start the fixture server in its
+   own terminal (§2, `python -m tests.fixtures.serve`) and run `init` (§3).
+   The agent starts no server and runs no `init`.
+4. **Bring maintainer updates over first**, never during the run (above).
+5. **Start the loop and leave the window open.** The `until` loop in
+   index.md's "One-shot sessions", run from the model folder's root, is the
+   whole scheduler: it stops itself at a finished rollout or release, at
+   `waiting`/`blocked`, and after a run that added no ledger line. Keep the PC
+   awake and the session logged on — sleep or a session lock that kills the
+   shell ends the loop.
+6. **Task Scheduler, only if you must.** A timer has no `until` loop, so
+   four of its defaults are wrong here: set the start-in directory to the
+   model folder, or every relative path in the letters misses; set it to
+   *not* start a second instance while one runs — a checkpoint can take
+   twenty minutes, and two runs appending at once corrupt the ledger; run it
+   as the account that holds the keystore credentials and the settings you
+   tested in step 1, not "whether the user is logged on or not"; and guard
+   the trigger with the loop's grep on the ledger's last line so a
+   `waiting`/`blocked` ledger costs a grep, not a model run. A wrapper that
+   does that grep, changes directory and invokes the tool is the whole of
+   it; none of this needs a script in the repository.
+
+In the morning: `tail -n 3 office/progress.md` and the newest file under
+`office/problems/`. Two consecutive runs with no new ledger line mean the
+agent is stuck, not slow. Restart only after resolving the recorded
+condition; never delete progress to force a rerun.
+
 Keep a local readiness sheet with these entries:
 
 | Input | Owner / proof required |
@@ -162,7 +201,7 @@ Keep a local readiness sheet with these entries:
 | Proxy HTTP/auth/capabilities | Correct deployment and upstream test evidence; health alone is insufficient |
 | Local storage | Restricted ACL, capacity and approved retention for rollouts, history, samples and diagnostics |
 | Profile/glossary | Local paths, version and checked contents; do not commit equipment-specific values |
-| Scope/budgets/window | Engineer enters them in init; no defaults inferred by the model |
+| Scope/budgets/window | Engineer enters roots and the three hard budgets in init; the CLI writes fixed defaults for the rest (spec §5 table), never the model |
 | Tool discovery/export formats | Verify on the installed pi version before letter 14/15 implementation; the other three tools only when they are brought into scope |
 
 Use `http://` for both the company FTP proxy and the internal LLM endpoint.
@@ -291,10 +330,12 @@ After accepting the current completed result, run:
 equipment-map operator approve-result --rollout <opaque-id>
 ```
 
-Stages 2, 3 and 5 need another human `init` for LLM settings, the real target,
-and next profile respectively; an adopted rollout got the first two at its
-first `init`. `init` asks only for what the current stage may
-change (spec §5 table): stage 2 the `llm` block and `llm_max_requests`, stage 5
+Stages 3 and 5 need another human `init` for the real target and next
+profile respectively; an adopted rollout got the target at its first `init`.
+LLM settings are never prompted: the first `init` copies `LLM_ENDPOINT`,
+`LLM_MODEL`, `LLM_KEY_ALIAS` and `LLM_GLOSSARY_PATH` from `.env`, so fill
+those before that `init` and stage 2 needs no `init` at all. `init` asks
+only for what the current stage may change (spec §5 table), stage 5
 `next_profile`, and at stage 4 it refuses. Before stage-3 result approval you
 may revise that same equipment's scope/budgets with init and a new plan
 approval; it creates a new collection scope. After approval, wider scope

@@ -34,7 +34,17 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   refuses when the fields that stage needs are absent (`llm` from stage 2,
   `next_profile` at stage 5). `retention_location`, when set, must not
   resolve under the rollouts dir.
-- `init --rollout <id>`: interactive prompts filling that schema. Refuse when
+- `init --rollout <id>`: interactive prompts for the keys the spec §5 "묻는
+  키" table lists; every other key is written with the spec §5 default (an
+  empty `allow_patterns` means everything under `allowed_roots`;
+  `glossary_version` defaults to the first 12 hex of the glossary file's
+  SHA-256). The `llm` block is never prompted: `endpoint`, `model`,
+  `key_alias` and `glossary_path` come from `LLM_ENDPOINT`, `LLM_MODEL`,
+  `LLM_KEY_ALIAS`, `LLM_GLOSSARY_PATH` (`.env` via `ftp_handler.load_dotenv`,
+  real env wins) at the `init` that creates the rollout; when any is empty
+  the block is omitted and stage 2 `plan` refuses until an `init` rerun
+  finds them. Defaults land in the file like any other value, so `plan`
+  hashes them and a hand edit changes them. Refuse when
   stdin is not a TTY (exit 20). On an existing rollout it is a
   reconfiguration: refuse when `.lock` exists (exit 20); otherwise prompt
   only for the keys the current stage may change (spec §5 table,

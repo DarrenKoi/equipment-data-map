@@ -254,7 +254,7 @@ Grouping 다음, 내용 다운로드·추출·해석 전에 대상을 줄인다.
 
 세 사유 모두 5.2절의 정상 종료(`completed: true`, exit 0)다. pass 경계마다 감사 기록에 `pass-start`/`pass-end`(pass 번호, prior manifest hash, 선택 목록 hash, 종료 사유)를 남기고, 선택 목록과 prior snapshot은 scope 체크포인트에 보존해 재개 시 검증한다. 재개는 pass 번호와 budget 사용량을 초기화하지 않는다. pass 반복으로 허용 루트·allow/deny·budget을 넓히지 않는다.
 
-모든 내용 다운로드는 Sampling의 `download_guard` 하나를 거친다. 파일군을 메타데이터로 먼저 만들고 최신·실시간·변경 중 후보를 표시한 후에만 표본을 고른다. 허용 루트, allow/deny, `active_candidate`, 남은 전체 목표 바이트·파일 수·요청·시간 budget을 전송 전에 검사한다. 파일별 크기는 참고값으로 기록하며 다운로드 허용 조건으로 사용하지 않는다. 후보가 없으면 메타데이터와 생략 사유를 남긴다. 두 번의 목록이 같다는 사실만으로 최신·실시간 후보가 쓰기 완료됐다고 판단하지 않는다. 안정성을 확인할 근거가 없으면 내용을 받지 않는다.
+모든 내용 다운로드는 Sampling의 `download_guard` 하나를 거친다. 파일군을 메타데이터로 먼저 만들고 최신·실시간·변경 중 후보를 표시한 후에만 표본을 고른다. 허용 루트, allow/deny, `active_candidate`, 남은 전체 목표 바이트·파일 수·요청·시간 budget을 전송 전에 검사한다. 검사를 통과한 파일을 `max_connections`개까지 한 묶음으로 `ftp_handler`에 넘겨 동시에 받으며, 묶음의 파일마다 전송 전 예약과 전송 후 실사용량 기록은 파일 하나일 때와 같다. 전체 목표 도달은 다음 묶음을 막지, 진행 중인 묶음을 끊지 않는다. 파일별 크기는 참고값으로 기록하며 다운로드 허용 조건으로 사용하지 않는다. 후보가 없으면 메타데이터와 생략 사유를 남긴다. 두 번의 목록이 같다는 사실만으로 최신·실시간 후보가 쓰기 완료됐다고 판단하지 않는다. 안정성을 확인할 근거가 없으면 내용을 받지 않는다.
 
 direct와 proxy의 바이트 budget은 best-effort다. 전송 중 성장한 파일이나 크기를
 몰랐던 파일 때문에 실제 전송량이 파일별 참고값 또는 전체 목표를 넘을 수 있다.
@@ -586,6 +586,42 @@ equipment-map status --rollout <ID>
 - prompt/response 보존 위치 식별자(선택, `rollouts/` 밖의 접근 제어된 경로)
 - 5단계에서 등록할 다음 프로필 이름(`next_profile`, 5단계 `plan`부터 필수)
 
+`init`은 엔지니어의 결정이 필요한 키만 묻고, 나머지는 아래 기본값을 `rollout.json`에 직접 쓴다. 기본값도 파일에 있는 값이므로 계획 hash에 똑같이 결합되고, 엔지니어는 파일을 고쳐 바꿀 수 있다. 재설정 `init`은 기존 값을 기본값으로 보여 준다. 기본값이 있는 질문은 Enter로 받아들인다.
+
+| 묻는 키 | 단계 | 보여 주는 기본값 |
+|---|---|---|
+| `equipment_id`, `host`, `allowed_roots`, `profile` | 1·3 | 없음 |
+| `budgets.max_download_files` | 1·3 | 200 |
+| `budgets.max_total_bytes` | 1·3 | 524288000 (500 MiB) |
+| `budgets.max_elapsed_seconds` | 1·3 | 7200 |
+| `next_profile` | 5 | 없음 |
+
+`llm` 블록은 묻지 않는다. endpoint, 모델, 키 별칭, 용어집 경로는 proxy 위치와 같은 기계의 배포 사실이므로 `.env`의 `LLM_ENDPOINT`, `LLM_MODEL`, `LLM_KEY_ALIAS`, `LLM_GLOSSARY_PATH`에서 읽어 rollout을 만드는 `init`이 그대로 `rollout.json`에 복사한다(실제 환경 변수 우선). 네 값이 그때 비어 있었으면 2단계 `plan`이 거부하며, 엔지니어가 `.env`를 채우고 같은 ID로 `init`을 다시 실행한다. 2단계 전용 `init`은 그 경우와 `llm` 값을 바꿀 때만 필요하다.
+
+| 기본값을 쓰는 키 | 기본값 |
+|---|---|
+| `protocol` | `ftp` |
+| `port` | 21 |
+| `realtime_candidates`, `allow_patterns`, `deny_patterns` | `[]` (allow가 비면 허용 루트 전체, deny는 4.4절 공통 content-deny에 추가되는 것) |
+| `budgets.max_file_bytes` | 10485760 |
+| `budgets.max_connections` | 6 (허용 범위 1–8, `ftp_handler`의 `max_concurrency`로 전달) |
+| `budgets.requests_per_second` | 8 (연결 전체 합산) |
+| `budgets.max_entries` | 100000 |
+| `budgets.max_depth` | 8 |
+| `budgets.llm_max_requests` | 2000 |
+| `max_passes` | 1 |
+| `credential_alias` | `equipment_id`와 같은 값 |
+| `access_window` | `always` |
+| `llm.endpoint`, `llm.model`, `llm.key_alias`, `llm.glossary_path` | `.env`의 값 |
+| `llm.glossary_version` | 용어집 파일 내용 SHA-256의 앞 12자리 |
+| `llm.temperature` | 0 |
+| `llm.max_tokens` | 512 |
+| `llm.connect_timeout_seconds`, `llm.request_timeout_seconds` | 10, 120 |
+| `llm.max_elapsed_seconds` | 3600 |
+| `llm.transport_max_attempts`, `llm.retry_backoff_seconds` | 3, 2 |
+| `llm.prior_max_bytes` | 8192 |
+| `llm.retention_location` | 없음 |
+
 `plan`은 이 파일만 입력으로 사용하며 모델이 장비 경로와 budget을 command flag로 만들 수 없게 한다. 각 단계의 `plan`은 그 단계에 필요한 필드가 없으면 거부한다.
 
 하나의 rollout ID는 1단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(1단계 가짜 트리에서 3단계 실장비로 전환, LLM endpoint 추가, 5단계 프로필 등록) 엔지니어가 같은 ID로 `init`을 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
@@ -689,7 +725,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 
 - 장비와 허용 루트 경로를 allowlist로 제한
 - 읽기 전용 계정 사용
-- 기본 동시 연결 수 1
+- 기본 동시 연결 수 6, 최대 8 (`budgets.max_connections`)
 - 명시적인 다운로드/시간 budget 없이는 실행 거부
 - 정규화된 실행 계획의 hash에 승인을 결합하고 실행 직전에 다시 대조
 - 승인 후 계획, 대상, 경로 또는 budget이 바뀌면 재승인 요구

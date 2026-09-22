@@ -43,7 +43,10 @@ required values. `port` is an integer 1–65535. No secret values in config.
 `access_window` is `always` or UTC timestamps `{start, end}` with start < end;
 interval semantics are start inclusive, end exclusive, not a recurring schedule.
 
-Budget keys and units (all required; no implicit operational defaults):
+Budget keys and units (all required in the file; `init` asks only for
+`max_download_files`, `max_total_bytes` and `max_elapsed_seconds`, each with
+the spec §5 default offered, and writes the §5 defaults for the rest — the
+validator never fills a missing key itself):
 
 | Key | Type | Meaning and exhaustion |
 |---|---|---|
@@ -51,7 +54,7 @@ Budget keys and units (all required; no implicit operational defaults):
 | `max_file_bytes` | integer >= 0 | Advisory size for overrun reporting only; never rejects a file |
 | `max_total_bytes` | integer >= 0 | Best-effort target; actual completed bytes reaching it stop new transfers |
 | `max_elapsed_seconds` | finite > 0 | Cumulative active stage execution including waits; stop remote work |
-| `max_connections` | integer, exactly 1 | One equipment connection; reject another value in version 1 |
+| `max_connections` | integer 1–8 | Simultaneous equipment connections; passed to `ftp_handler` as `max_concurrency` and the download batch size |
 | `requests_per_second` | finite > 0 | Pace every remote operation, including metadata and reconnects |
 | `max_entries` | integer >= 0 | Listing entries observed, including both passes and failed-directory retries |
 | `max_depth` | integer >= 0 | Allowed root is depth 0; retain unvisited frontier at limit |
@@ -161,8 +164,10 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
 - Editable keys by current stage: 1 all but `next_profile`; 2 `llm` and
   `budgets.llm_max_requests`; 3 all but `next_profile`, and the identity keys
   `equipment_id`, `protocol`, `host`, `port` only while no stage-3
-  `next-start` exists; 4 none; 5 `next_profile`. `init` prompts for exactly
-  those and copies every other value unchanged. `init` while stage 4 is
+  `next-start` exists; 4 none; 5 `next_profile`. Within the editable set
+  `init` prompts only for the spec §5 "묻는 키", writes the §5 default for
+  any other editable key that is still absent, and copies every other value
+  unchanged. `init` while stage 4 is
   current exits 20 without writing.
 - `plan` refuses with exit 20, printing key names but never values, when a
   non-editable key differs from its baseline. Stages 2, 4 and 5 compare with
@@ -198,8 +203,9 @@ Baseline adoption (spec §5):
 - On adoption, append `adopt` `{stage: 2, baseline, approvals, code_hash}`,
   where `approvals` holds the payload hashes of the baseline's two
   `approve-result` records. Then write `rollout.json` with the `llm` block
-  copied from the baseline's approved stage-2 plan, prompting for every other
-  key but `next_profile`, and append `init` with `stage: 3`. An `init` on a
+  copied from the baseline's approved stage-2 plan, prompting for the stage-3
+  "묻는 키" and defaulting the rest as at stage 1, and append `init` with
+  `stage: 3`. An `init` on a
   rollout whose ledger ends in `adopt` finishes that adoption after a crash.
 - `status` prints stages 1 and 2 as `adopted <baseline>` and current stage 3.
   Stage 3 `plan` of an adopted rollout puts `adopted: {baseline, adopt_hash}`
