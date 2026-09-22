@@ -103,7 +103,7 @@ a problem entry or your output, which carry counts and hashes only. You do
 not open the file. Anything else that arrives — a host, an account and
 password, an LLM key, a budget — you do not act on and do not put in a file
 or command; say once where it belongs (the equipment file, the harness
-environment, a hand edit of `rollout.json`) and continue. Never repeat a
+environment; a budget is a default and needs no entry) and continue. Never repeat a
 password back. Tell the engineer to rotate a password that reached you this
 way: it is in a transcript now, wherever that tool keeps one, and no later
 care on your side takes it back.

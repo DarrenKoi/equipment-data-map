@@ -821,7 +821,7 @@ FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검�
 
 ### 3단계: 승인된 장비 1대에서 읽기 전용 시범 운영
 
-에이전트가 실장비의 장비 파일로 `init --equipment`를 실행해 기준 rollout을 채택한 새 rollout을 만든다. 작은 budget과 실시간 데이터 후보 경로는 엔지니어가 `rollout.json`을 직접 고쳐 넣는다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
+에이전트가 실장비의 장비 파일로 `init --equipment`를 실행해 기준 rollout을 채택한 새 rollout을 만든다. budget, 패턴, 프로필, 시간대는 5장의 기본값 그대로이며 아무도 손으로 적지 않는다. 엔지니어가 더 좁은 실행을 원할 때만 `rollout.json`의 해당 값을 고치고 `plan`을 다시 받는다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
 
 3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. `max_passes`가 1보다 크면 4.4.1절의 pass 반복이 같은 `next` 안에서 이어진다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
 

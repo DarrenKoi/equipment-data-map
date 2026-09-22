@@ -20,11 +20,11 @@ Rules from letter 16 apply.
 2. This rollout was created by letter 16's `init --equipment
    <dir>/<stem>.toml`, which adopted the fixture baseline and wrote the
    real host, port, roots and credential alias; `status` shows stages 1
-   and 2 `adopted`. Nothing to run here. Real-time candidate paths,
-   allow/deny patterns, smaller budgets, `max_passes`, profile and access
-   window are the engineer's hand edits to `rollout.json` before `plan`;
-   tell them so once. Their credential is already in the keystore from the
-   equipment file.
+   and 2 `adopted`. Nothing to run here: budgets, patterns, `max_passes`,
+   profile and access window are the spec §5 defaults, and the credential
+   is already in the keystore from the equipment file. Only if the engineer
+   asks for a narrower run do they change a value in `rollout.json` before
+   `plan`; you never suggest it.
 3. `equipment-map preflight --stage 3 --contract 1`, then
    `equipment-map stage 3 plan --rollout <id>`. Report the hash and
    the window it includes; append `waiting` until `operator approve-plan`.

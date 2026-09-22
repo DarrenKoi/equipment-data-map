@@ -69,8 +69,8 @@ Markdown 지시가 하는 일과 하지 않는 일:
   코드가 fail-closed로 막는다. 프롬프트의 문장은 어떤 권한도 부여하지 못한다.
 - 엔지니어가 준 장비 ID·host·port·허용 루트는 에이전트가 `init` flag로만
   넘긴다. 계정·비밀번호·예산·LLM 키는 프롬프트에 들어와도 쓰지 않는다:
-  비밀번호는 keystore, 예산은 `rollout.json` 손편집, LLM 접속은 harness
-  환경(`OPENAI_BASE_URL` 등)의 몫이다.
+  비밀번호는 장비 파일을 거쳐 keystore로, 예산은 CLI 기본값으로(스펙 §5, 누구도
+  적지 않는다), LLM 접속은 harness 환경(`OPENAI_BASE_URL` 등)의 몫이다.
 
 ## 3. 내부 해석 LLM에 가는 것과 돌아오는 것
 

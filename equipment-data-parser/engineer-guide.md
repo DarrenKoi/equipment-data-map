@@ -100,8 +100,9 @@ names the letter that reads it. Editing the file is what clears such a
 `waiting` line. Its `[equipment]` table names the folder of equipment
 files and the fixture file (§3); the agent lists that folder and passes
 paths to `init`, never reading a file. No budget or LLM setting goes in
-`engineer.toml` — budgets are defaults you edit in `rollout.json`, LLM
-access is your agent harness's own configuration.
+`engineer.toml` — budgets, patterns, profile and window are CLI defaults
+(spec §5) you never write, LLM access is your agent harness's own
+configuration.
 
 `python tools/reset_model_folder.py --reset` from the hub (folder and slug are
 set at the top of the file; two arguments after the flag override them) does

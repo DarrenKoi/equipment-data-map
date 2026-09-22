@@ -60,8 +60,9 @@ history, so approval of stage 1 may show current stage 2.
    for the fixture rollout, or `--equipment <dir>/<stem>.toml` for a real
    one (index.md Loop step 1 says which). While `[equipment]` is missing or
    the file does not exist, append `waiting` naming what is missing with
-   the check `[ engineer.toml -nt office/progress.md ]` and stop. Budgets
-   are defaults; the engineer edits `rollout.json` for smaller ones.
+   the check `[ engineer.toml -nt office/progress.md ]` and stop. Budgets,
+   patterns, profile and window are the spec §5 defaults; nothing is edited
+   by hand.
 4. `equipment-map preflight --stage 1 --contract 1`, then
    `equipment-map stage 1 plan --rollout <id>`. Report the plan
    hash. Append `waiting` until the engineer has run `operator approve-plan`.
