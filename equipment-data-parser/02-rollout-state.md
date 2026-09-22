@@ -32,15 +32,15 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   (optional). Missing budgets fail validation (§6 "no budget, no run").
   `init` requires everything except `llm` and `next_profile`; `stage N plan`
   refuses when the fields that stage needs are absent (`llm` from stage 2,
-  `next_profile` at stage 5). `retention_location`, when set, must not
+  or stage 3 on a rollout that starts there; `next_profile` at stage 5). `retention_location`, when set, must not
   resolve under the rollouts dir.
 - `equipment template <path>`: write the commented blank equipment file
-  (`host`, `port`, `user`, `password`, `roots`, `next_profile`, `fixture`)
-  and exit 0; exit 20 without writing when the file exists and is not
+  (`host`, `port`, `user`, `password`, `roots`, `next_profile`) and exit 0; exit 20 without writing when the file exists and is not
   empty.
 - `init --equipment <path>`: the rollout id is the file's stem (spec §5.1
-  regex, else exit 20; `fixture-<code_hash[:8]>` when the file has
-  `fixture = true`). Parse the file with `tomllib`; missing `host`, `user`
+  regex, else exit 20). The new rollout starts at stage 3 (its `init`
+  record carries `stage: 3`); only a test file with `fixture = true` starts
+  one at stage 1 (spec §5). Parse the file with `tomllib`; missing `host`, `user`
   or `password` exits 20 naming the key. Store `user`/`password` in the
   keystore under the stem via `secrets.store` and write `rollout.json`
   with `equipment_id` and `credential_alias` = stem, `host`, `port`
@@ -120,11 +120,9 @@ Read implementation-reference.md §2–3 before defining schemas or state.
   `data-map/` to `work/history/<old scope[:12]>/`, resumably; old audit
   approvals remain intact. A process restart alone changes neither scope nor
   cumulative budgets.
-- Baseline adoption (spec §5): every `next-stop` carries `code_hash`; the
-  fixture file's rollout `fixture-<code_hash[:8]>` is the baseline, and the
-  `init` that creates a real equipment's rollout adopts its stages 1 and 2
-  automatically, starting the new one at stage 3. `code_hash`, the three adoption
-  conditions, the `adopt` record and the stage 3 binding are pinned in
+- Stages 1 and 2 are build tests (spec §5): a rollout from a file without
+  `fixture = true` starts at stage 3, needs no stage 1 or 2 approval, and
+  `status` and `REPORT.md` show stages 1 and 2 as `build`. Pinned in
   implementation-reference.md §3.
 
 ## Done when
@@ -156,9 +154,9 @@ plan/init/approval; and repeated plan preserving a valid approval when unchanged
 Also cover the equipment file: `equipment template` writes a file that
 `init` rejects only for the three empty required keys, and refuses to
 overwrite a non-empty file; `init --equipment fx.toml` with `fixture =
-true` creates `fixture-<code_hash[:8]>`, and with a full file
-`etch-03.toml` (after that baseline is approved) creates `etch-03` at stage
-3 with every spec §5 default in place, the password in the fake keystore
+true` creates `fx` at stage 1, and with a full file `etch-03.toml`
+creates `etch-03` at stage 3, with no other rollout present, with every
+spec §5 default in place, the password in the fake keystore
 under `etch-03` and nowhere on disk or stdout, never printing `missing
 required value` or `missing budget`; a file missing `host` exits 20 naming
 `host`; a stem with upper case or 33 characters exits 20; with
@@ -174,13 +172,9 @@ the stage 1 scope ID; a stage 3 re-`init` yields a new one; a crash after the
 `data-map/` move but before `work/scope.json` is written resumes without a
 second move; a rollout id with `/`, `..`, upper case or 33 characters exits 20.
 
-Also cover adoption, with `code_hash` and host injected: with
-`fixture-<code_hash[:8]>` result-approved through stage 2 on this host, a
-real equipment file yields a rollout whose `status` shows both stages
-`adopted` and current stage 3, with the baseline's `llm` block in
-`rollout.json` and the adoption in the stage 3 plan payload. No fixture
-rollout for the current `code_hash`, one missing its stage 2 approval, or
-one approved on another host makes `init` exit 20 naming the condition and
-leaves no rollout directory. `status` without `--rollout` prints the
-`code_hash` and `baseline: <id>` or `baseline: none`. A re-`init` on an
-existing rollout never adopts again.
+Also cover the stage 3 start: a rollout from a file without `fixture =
+true` shows stages 1 and 2 as `build` and current stage 3 in `status`;
+its stage 3 `plan` needs no stage 1 or 2 approval and refuses while `llm`
+is absent; `stage 1 next` or `stage 2 plan` on it is a past-stage call
+(no-op or refusal, never a write); `status` without `--rollout` lists
+local rollouts only.

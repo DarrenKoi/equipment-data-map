@@ -8,7 +8,7 @@ the engineer the finished data map.
 ## Read
 
 `spec.md` §8 stage 4, §4.7, §1 (questions the map must answer), §5 outbound
-summary paragraph. Rules from letter 16 apply.
+summary paragraph. Rules from letter 18 apply.
 
 ## Steps
 

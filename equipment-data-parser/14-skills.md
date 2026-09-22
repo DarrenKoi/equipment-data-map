@@ -2,7 +2,7 @@
 
 ## Goal
 
-The six `SKILL.md` files, the suite layout, and the two installers, with a
+The four `SKILL.md` files, the suite layout, and the two installers, with a
 lint test that proves each skill uses only its allowed commands.
 
 ## Read
@@ -39,7 +39,7 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
   descriptions name stage number, role, and unique task; only
   `equipment-map-run` is broad. A skill never names or shows
   `operator`, `approve-plan`, `approve-result`, `unlock`, or `workbench`;
-  it says "human gate" instead. The stage 1, 3 and 5 skills run
+  it says "human gate" instead. The stage 3 and 5 skills run
   `init --equipment <path>` with a path from `engineer.toml [equipment]`
   (spec §9 table) and never read that file.
 - Discovery roots are suite-version contract values stored in
@@ -65,7 +65,7 @@ status listing without a rollout. Do not apply stage-only flags to that skill.
   `equipment-map ...` invocation, assert it is in that skill's §9 row and
   carries `--rollout "$ROLLOUT"` where the row has `--rollout`; assert none
   contains `operator`, `approve`, `unlock`, or `workbench`, and that `init`
-  appears only in the stage 1, 3 and 5 skills; assert
+  appears only in the stage 3 and 5 skills; assert
   no skill mentions another skill by name; assert the nine headings above
   appear in order and `What you read` contains the sentence quoted above.
 

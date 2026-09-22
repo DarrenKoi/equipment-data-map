@@ -4,7 +4,7 @@ Problem entries live in the repository-root `office/problems/` folder in the
 execution workspace. The letter-execution contract and progress format are in
 [index.md](index.md).
 
-One file per letter, `office/problems/NN-problems.md` (`16-problems.md` for letter 16), created
+One file per letter, `office/problems/NN-problems.md` (`18-problems.md` for letter 18), created
 the first time that letter meets something the letters did not anticipate:
 the available network, system image, credentials, FTP behaviour, equipment
 directory habits, file formats, the local LLM endpoint, or an instruction that

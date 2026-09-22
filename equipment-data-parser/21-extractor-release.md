@@ -65,6 +65,5 @@ python -c "import json,tomllib; t=tomllib.load(open('engineer.toml','rb'))['rele
 
 That match is the review: the module reproduces the proven result on the
 real sample without the sample reaching you. Record the extractor name and
-the new CLI version in the `done` line. The release changes the CLI code, so
-the next rollout cannot adopt a baseline and runs stages 1 and 2 again
-(spec §5).
+the new CLI version in the `done` line. The release changes the CLI code, and its
+test run is what stands for stages 1 and 2 on the next rollout (spec §5).

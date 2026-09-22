@@ -98,7 +98,7 @@ validation result (letter 15), the rollout to operate, an extractor release
 folder's root. Copy `engineer.toml.example` there once; each table in it
 names the letter that reads it. Editing the file is what clears such a
 `waiting` line. Its `[equipment]` table names the folder of equipment
-files and the fixture file (§3); the agent lists that folder and passes
+files (§3); the agent lists that folder and passes
 paths to `init`, never reading a file. No budget or LLM setting goes in
 `engineer.toml` — budgets, patterns, profile and window are CLI defaults
 (spec §5) you never write, LLM access is your agent harness's own
@@ -160,18 +160,14 @@ this list, in order, in Git Bash at the model folder's root:
    unanswered question is a `waiting` line, and the loop stops there. Letter
    15's confirmation and every operating gate need your review, so a night
    that reaches one ends there; that is expected.
-3. **If the night can reach letters 16–17**, start the fixture server in its
-   own terminal with `python -m tests.fixtures.serve --write <fixture
-   path>` (§2) and point `engineer.toml [equipment] fixture` at that path
-   (§3). The agent starts no server; it runs `init` from that file.
-4. **Bring maintainer updates over first**, never during the run (above).
-5. **Start the loop and leave the window open.** The `until` loop in
+3. **Bring maintainer updates over first**, never during the run (above).
+4. **Start the loop and leave the window open.** The `until` loop in
    index.md's "One-shot sessions", run from the model folder's root, is the
    whole scheduler: it stops itself at a finished rollout or release, at
    `waiting`/`blocked`, and after a run that added no ledger line. Keep the PC
    awake and the session logged on — sleep or a session lock that kills the
    shell ends the loop.
-6. **Task Scheduler, only if you must.** A timer has no `until` loop, so
+5. **Task Scheduler, only if you must.** A timer has no `until` loop, so
    four of its defaults are wrong here: set the start-in directory to the
    model folder, or every relative path in the letters misses; set it to
    *not* start a second instance while one runs — a checkpoint can take
@@ -193,7 +189,7 @@ Keep a local readiness sheet with these entries:
 | Input | Owner / proof required |
 |---|---|
 | Internal agent model endpoint | Engineer verifies the agent uses it; no external session for operating letters |
-| Internal interpretation endpoint | Required and verified before stage 2 interpretation |
+| Internal interpretation endpoint | Required and verified before stage 3 interpretation |
 | Equipment read-only account | Site owner confirms account restrictions and access approval |
 | Credential/LLM-key aliases | Engineer stores them in the approved OS keystore, never in a prompt |
 | Keystore backend | Confirm actual supported platform; Linux is unsupported until a reviewed backend exists |
@@ -214,28 +210,17 @@ The instructions' minimum-model label is a validation target, not proof of a
 particular backend. Record the served model identity/settings locally. If the
 named deployment is unavailable, record the gap; do not substitute silently.
 
-## 2. Fake transport setup
+## 2. Fake transport
 
-The fixture server built in letter 03 must provide a local fake FTP and fake
-proxy, print their ports and run until stopped. Never use production
-credentials. Start it in your own terminal:
-
-```sh
-python -m tests.fixtures.serve
-```
-
-On Windows, the agent defaults to proxy. Its stage-1 proxy must be the local
-fake proxy on this PC, pointing at the local fake FTP, with a synthetic token.
-Sending `localhost` to the office proxy instead points to that proxy host and
-does not test this PC's fixture. Set fake transport environment before launching
-the CLI/agent; importing the vendor caches its settings. Use a separate terminal
-process for later production settings. Do not rewrite shared production `.env`
-for the fixture test, and do not put token values in command arguments.
-
-Both adapters are tested during build. A rollout chooses one protocol in stage
-1; an additional protocol trial uses another rollout, not an overwritten stage-1
-approval. No multi-PC workaround is implied. If local fake FTP is prohibited on
-this PC, stop and have the maintainer revise the harness deployment explicitly.
+The fake FTP, fake proxy and fake LLM exist only inside the build tests
+(letters 03–13). Each test starts them on loopback with ephemeral ports and
+synthetic credentials and stops them when it ends. You start no fixture
+server and type no fake host, port, user or token; stages 1 and 2 are
+those tests, not rollouts you operate (spec §5, §8). `ftp_handler` and its
+proxy are already in production use elsewhere, so the first FTP session
+you supervise is stage 3 on a real equipment. Do not rewrite the shared
+production `.env` for a test. If loopback servers are prohibited on this
+PC, stop and have the maintainer revise the harness deployment explicitly.
 
 ## 3. Begin or resume a rollout
 
@@ -258,25 +243,18 @@ roots = ["/HITACHI", "/public"]   # only these are listed or downloaded
 # next_profile = ""       # stage 5: the profiles/<type>.json to register
 ```
 
-The fake tree for stages 1–2 is a file too; `python -m tests.fixtures.serve
---write C:/equipment/fixture.toml` writes it (§2). Then point the agent at
-both in `engineer.toml`:
+Then point the agent at the folder in `engineer.toml`:
 
 ```toml
 [equipment]
-dir = "C:/equipment"                  # one <name>.toml per equipment
-fixture = "C:/equipment/fixture.toml"  # stages 1-2 baseline, once per CLI build
+dir = "C:/equipment"   # one <name>.toml per equipment
 ```
 
 You do not run `init`; the agent does, passing a path and never reading the
-file. It runs the fixture rollout first (stages 1–2, once per installed CLI
-build) and then each real file in name order, starting each at stage 3 by
-adopting that baseline. After any CLI code change — a maintainer update that
-made the agent redo a letter, or a letter 21 release — the agent runs the
-fixture rollout again before the next equipment. Adding a file to the folder
-is how you queue the next equipment; in an interactive session you may name
-a file in chat instead. Reuse the built CLI; retain prior letter history and
-all earlier rollout directories.
+file. It takes each file in name order and starts its rollout at stage 3.
+Adding a file to the folder is how you queue the next equipment; in an
+interactive session you may name a file in chat instead. Reuse the built
+CLI; retain prior letter history and all earlier rollout directories.
 
 Use this agent prompt:
 
@@ -323,9 +301,7 @@ commands, reaching equipment or changing files.
 
 | Stage | Review evidence | Acceptance decision |
 |---|---|---|
-| 1 | Fixture inventory, evidence, unreadable, coverage and test results | No real access; guards and resume pass; each omission explained |
-| 2 | One measurement and one log family against samples, LLM provenance, coverage | Units/meanings have evidence; unknowns retained; exact model recorded |
-| 3 | Roots/frontier, family rules, selected samples, active/denied metadata, equipment load, interpretation coverage | Approved equipment only; no unexplained gaps or unacceptable load; partial coverage explicitly accepted or scope revised |
+| 3 | Roots/frontier, family rules, selected samples, active/denied metadata, equipment load, interpretation coverage; first one measurement and one log family against samples, and LLM provenance | Approved equipment only; no unexplained gaps or unacceptable load; partial coverage explicitly accepted or scope revised; units/meanings have evidence, unknowns retained, exact model recorded |
 | 4 | Wiki pages (Fields examples included), graph nodes/edges, manifest, REPORT | Each question answered or unknown; inference not fact; Wiki citations and graph endpoints resolve in the current scope; examples show no secrets; no raw log/FDC/measurement rows; REPORT contains only allowed summary |
 | 5 | Next profile schema/mapping, extractor requests, REPORT | Existing extractor names only; missing formats queued for separate release |
 
@@ -344,8 +320,8 @@ A real equipment's rollout starts at stage 3 from its file, so stage 3 needs
 no `init` of yours. Stage 5 needs one re-`init`, which the agent runs once
 you have added `next_profile` to that equipment's file. LLM access is your
 harness's own configuration (`OPENAI_BASE_URL`, `OPENAI_API_KEY`,
-`OPENAI_MODEL` in the agent's environment); nothing in this kit stores it,
-and stage 2 needs no `init`. A re-`init` re-reads only the file keys the
+`OPENAI_MODEL` in the agent's environment); nothing in this kit stores it.
+A re-`init` re-reads only the file keys the
 current stage may change (spec §5 table), and at stage 4 it refuses. Before stage-3 result approval you
 may revise that same equipment's scope/budgets with init and a new plan
 approval; it creates a new collection scope. After approval, wider scope

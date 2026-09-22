@@ -32,14 +32,14 @@ architecture document is available and differs,
 `docs/architecture/equipment-data-map.md` wins, and you report the conflict
 rather than silently inventing a resolution.
 
-Letters 01–15 build the CLI. Letters 16–20 operate it with the engineer on a
-fake tree, then on one approved equipment, and end with the deliverable:
-`rollouts/<id>/data-map/` with `wiki/` and `graph/`. One rollout is one
-equipment file (spec §5): the fixture file's rollout runs stages 1–2 once per
-CLI build and is the baseline; every real equipment file's rollout adopts it
-and runs stages 3–5, passing 16 and 17 at once, with the profile registered
-at stage 5 (see letter 13 for profiles). Letter 21 builds an extractor
-release between rollouts.
+Letters 01–15 build the CLI; their tests over the fake FTP, fake proxy and
+fake LLM are rollout stages 1 and 2 (spec §5, §8), so no rollout runs on a
+fake tree. Letters 18–20 operate the CLI with the engineer on one approved
+equipment and end with the deliverable: `rollouts/<id>/data-map/` with
+`wiki/` and `graph/`. One rollout is one equipment file (spec §5): it starts
+at stage 3 and runs stages 3–5, with the profile registered at stage 5 (see
+letter 13 for profiles). Letter 21 builds an extractor release between
+rollouts.
 
 The operating target is unattended execution **between** human gates: the
 engineer approves roots and budgets, the CLI completes that bounded stage,
@@ -74,7 +74,7 @@ The maintainer never writes in `office/`, so updates leave it untouched.
 
 `engineer.toml` at the repository root is the engineer's answer sheet, the
 way the engineer tells you things between sessions: where the equipment
-files are (`[equipment] dir`, `fixture`), the release to work on, and the
+files are (`[equipment] dir`), the release to work on, and the
 confirmations letters 14 and 15 wait for. Read it; never write it. You list
 `dir` for `*.toml` names and pass paths to `init`; you never open an
 equipment file — it holds a password, and the CLI is its only reader. In an
@@ -88,7 +88,7 @@ edited the file since that line — and re-reads it when the check passes.
 
 - Letters 01–15 and 21: implement and test the CLI and skills. Preserve
   unrelated changes; stage only the current build item's files.
-- Letters 16–20: run only the permitted CLI commands, `init` included when
+- Letters 18–20: run only the permitted CLI commands, `init` included when
   the letter says so. The engineer supplies the equipment values, credentials
   and approvals. Never run `operator` commands or the workbench on their
   behalf, or write in `engineer.toml`.
@@ -140,24 +140,20 @@ The active progression starts at letter 01. Ledger lines for the removed
 letter 00 do not gate it.
 
 1. Read `office/progress.md` and `engineer.toml`. "Letter" means a row in
-   the table at the bottom of this file, so a number with no row (04) is
-   skipped, never waited on; a letter's state is its latest line. Letters
-   16–20 belong to one rollout and letter 21 to one release, `[release]
+   the table at the bottom of this file, so a number with no row (04, 16,
+   17) is skipped, never waited on; a letter's state is its latest line.
+   Letters 18–20 belong to one rollout and letter 21 to one release, `[release]
    id`. Their lines carry `rollout: <id>` or `release: <id>` right after
    the date, and only lines with the current id count: a line from an
    earlier rollout or release never completes this one.
 
    The current rollout comes from `engineer.toml [equipment]` and
-   `equipment-map status` (no `--rollout`), which prints the current
-   `code_hash` and whether a baseline rollout for it exists:
-   - no baseline → the fixture rollout: `init --equipment <fixture>` names
-     it (`fixture-<code_hash[:8]>`), letters 16–17, and it is complete
-     after stage 2 result approval;
-   - baseline present → the first `*.toml` in `dir` (sorted by name,
-     names only) whose stem has no stage 5 result approval; its rollout id
-     is that stem, letters 16–20 (16 and 17 record `adopted`);
+   `equipment-map status` (no `--rollout`, the local rollout list):
+   - the first `*.toml` in `dir` (sorted by name, names only) whose stem
+     has no stage 5 result approval; its rollout id is that stem, letters
+     18–20;
    - none left → append
-     `- 16 waiting <UTC date> | rollout: - | add an equipment file to [equipment] dir | [ engineer.toml -nt office/progress.md ]`
+     `- 18 waiting <UTC date> | rollout: - | add an equipment file to [equipment] dir | [ engineer.toml -nt office/progress.md ]`
      unless that is already the last line, and stop.
 
    Your current letter is the first of:
@@ -166,7 +162,7 @@ letter 00 do not gate it.
      `waiting`, whose check you run — continue only when it passes;
    - the earliest build letter, 01–15, that is `redo` in the check below or
      has no `done` line;
-   - the first of 16–20 with no `done` line for the current rollout;
+   - the first of 18–20 with no `done` line for the current rollout;
    - letter 21, when the named release has no `done` line.
 
    A build letter's `done` line carries the hash of the letter file it
@@ -182,7 +178,7 @@ letter 00 do not gate it.
    current text and running its **Done when** again — keep what still
    passes, and never rebuild a module from scratch to satisfy an addition.
    Nobody has to tell you a letter changed; this check is how you find out.
-   A revised letter 16–21 never reopens a finished rollout or release: its
+   A revised letter 18–21 never reopens a finished rollout or release: its
    new text applies from the next one.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
    the source of truth; the letter only orders the work.
@@ -218,7 +214,7 @@ in `office/problems/NN-problems.md`.
 - NN done <UTC date> | <test or status command> | <result, e.g. 12 passed> | letter: <first 12 hex of sha256 of that letter file>
 ```
 
-Lines of letters 16–20 put `rollout: <id> | ` right after the date, and
+Lines of letters 18–20 put `rollout: <id> | ` right after the date, and
 letter 21 puts `release: <id> | ` there:
 `- 18 waiting 2026-09-20 | rollout: r7 | approve the stage 3 plan | equipment-map status --rollout r7`.
 
@@ -342,7 +338,7 @@ the newest file under `office/problems/`.
 ## Unattended runs
 
 The engineer sets an overnight run up before leaving — tool permissions,
-the loop above, the fixture server, `engineer.toml` — by the checklist in
+the loop above, `engineer.toml` — by the checklist in
 [engineer-guide.md](engineer-guide.md) §1 "Before an overnight run". Nobody
 is there to answer you, so two things are yours to keep:
 
@@ -453,9 +449,7 @@ fake tree, not about live equipment or model accuracy.
 | 13 | Equipment profiles, access window, stage 3 and 5 | 3, 5 | 09, 11 |
 | 14 | Skill suite and installers | all | 01 |
 | 15 | Cross-tool scenario validation | all | 02, 11, 14 |
-| 16 | Operate: stage 1 on the fake tree | 1 | 01–15 |
-| 17 | Operate: stage 2 with the local LLM | 2 | 16 |
-| 18 | Operate: stage 3 pilot on one equipment | 3 | 17 |
+| 18 | Operate: stage 3 pilot on one equipment | 3 | 01–15 |
 | 19 | Operate: stage 4 publish, the deliverable | 4 | 18 |
 | 20 | Operate: stage 5 register the next profile | 5 | 19 |
 | 21 | Extractor release | — | 01–15 |
@@ -464,3 +458,9 @@ Letter 04 was SMB. There is no SMB at this site yet, so it was removed rather
 than built ahead of a need; number 04 stays vacant so every later letter keeps
 the number `office/progress.md` already refers to. Adding SMB later means a new letter
 behind the same `Source` interface, not a renumbering.
+
+Letters 16 and 17 operated stages 1 and 2 on a fake tree the engineer
+served by hand. The build tests already cover those stages, so they were
+removed and a real rollout starts at stage 3 (spec §5); numbers 16 and 17
+stay vacant for the same reason as 04. Their old `done` lines count for
+nothing.

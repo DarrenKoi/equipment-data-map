@@ -5,11 +5,10 @@
 # No host, password or budget goes here: those live in the equipment files
 # (engineer-guide.md §3), the OS keystore and rollout.json.
 
-# Letters 16-20: where the equipment files are. The agent lists `dir` and
+# Letters 18-20: where the equipment files are. The agent lists `dir` and
 # passes paths to `equipment-map init --equipment`; it never reads a file.
 # [equipment]
 # dir = ""              # folder of <name>.toml files, one per equipment
-# fixture = ""          # the file `python -m tests.fixtures.serve --write` wrote
 
 # Letter 14: skill discovery roots, relative to your home folder.
 # [discovery]

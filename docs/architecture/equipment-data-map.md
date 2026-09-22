@@ -80,11 +80,11 @@ FAB 장비의 FTP 파일 구조를 읽기 전용으로 탐색하고, 반복되�
 파이프라인 단계, rollout 단계, pass와 iteration을 구분한다.
 
 - 위 흐름의 6단계는 한 번의 분석 실행 안에서 반복되는 **런타임 파이프라인**이다.
-- 8장의 5단계는 장비, 현장 또는 버전별로 담당 운영자가 수행하고 승인하는 **rollout 단계**다.
+- 8장의 5단계는 장비, 현장 또는 버전별로 담당 운영자가 수행하고 승인하는 **rollout 단계**다. 실장비 rollout은 3단계에서 시작하고 1·2단계는 CLI build의 시험이 맡는다.
 - **pass**는 같은 수집 scope와 누적 budget 안에서 미탐색 frontier·표본 없는 파일군을 처리하는 내부 반복이다(4.4.1절).
 - **iteration**은 지도 초안의 질문을 검토하고 추가 근거·사전 교정을 반영한 새 검토 결과를 만드는 외부 반복이다(4.8절). 하나의 iteration은 여러 pass를 포함할 수 있으며, 검토 사본만 새로 생성했다고 새 관측이나 정확도 개선이 생기지는 않는다.
 
-Skill Market에 배포할 단계별 스킬은 rollout 5단계에 대응한다. 런타임 파이프라인은 스킬에 분산하지 않고 단일 CLI가 실행한다. iteration 번호는 rollout 단계·scope·승인 상태를 대신하지 않는다.
+Skill Market에 배포할 단계별 스킬은 엔지니어가 운영하는 3~5단계에 대응한다. 런타임 파이프라인은 스킬에 분산하지 않고 단일 CLI가 실행한다. iteration 번호는 rollout 단계·scope·승인 상태를 대신하지 않는다.
 
 ### 3.2 초기 spike
 
@@ -569,17 +569,17 @@ equipment-map stage <N> next --rollout <ID>
 equipment-map status [--rollout <ID>]
 ```
 
-장비 하나는 **장비 파일** 하나다: 엔지니어가 고른 폴더에 두는 `<이름>.toml`이며 `host`, `user`, `password`, 선택으로 `port`(기본 21), `roots`(기본 `["/"]`), `next_profile`(5단계)을 담는다. 파일 이름의 stem이 rollout ID다(`[a-z0-9][a-z0-9-]{0,31}`). `equipment template <FILE>`은 주석이 달린 빈 파일을 써 주고, 이미 내용이 있으면 exit 20이다. `tests.fixtures.serve --write <FILE>`은 1·2단계용 가짜 트리의 장비 파일을 `fixture = true`와 함께 쓴다.
+장비 하나는 **장비 파일** 하나다: 엔지니어가 고른 폴더에 두는 `<이름>.toml`이며 `host`, `user`, `password`, 선택으로 `port`(기본 21), `roots`(기본 `["/"]`), `next_profile`(5단계)을 담는다. 파일 이름의 stem이 rollout ID다(`[a-z0-9][a-z0-9-]{0,31}`). `equipment template <FILE>`은 주석이 달린 빈 파일을 써 주고, 이미 내용이 있으면 exit 20이다.
 
 `init --equipment <FILE>`은 에이전트가 실행하되 파일은 CLI만 읽는다. CLI는 `user`/`password`를 OS keystore에 stem을 별칭으로 저장하고, `rollout.json`에는 별칭만 남긴다. 에이전트는 폴더의 파일 이름만 보고 경로를 넘기며 파일 내용을 열지 않으므로 비밀번호가 에이전트의 문맥에 들어가지 않는다. LLM 키는 어느 경로로도 받지 않는다. 같은 파일로 다시 실행하면 그 단계에서 바꿀 수 있는 키만 파일에서 다시 읽는 재설정이다. 다음을 `rollout.json`에 저장한다.
 
 - 장비 식별자, 프로토콜, 접속 정보(host, port)
 - 허용 루트, 실시간 데이터 후보 경로, 샘플 allow/deny 패턴
 - 4.4절의 모든 budget과 LLM 요청 수 budget
-- `max_passes`(4.4.1절)와 `prior_max_bytes`(4.6절, 2단계 `plan`부터 필수)
+- `max_passes`(4.4.1절)와 `prior_max_bytes`(4.6절, 2단계 또는 실장비 rollout의 3단계 `plan`부터 필수)
 - 자격 증명 별칭, 장비 접근 허용 시간대(`always` 또는 UTC 구간)
 - 장비 프로필 이름(`profile`)
-- LLM endpoint URL, 키 별칭, 용어집 경로와 버전 및 4.6절의 모델·생성·timeout·재시도 설정(2단계 `plan`부터 필수)
+- LLM endpoint URL, 키 별칭, 용어집 경로와 버전 및 4.6절의 모델·생성·timeout·재시도 설정(2단계 또는 실장비 rollout의 3단계 `plan`부터 필수)
 - prompt/response 보존 위치 식별자(선택, `rollouts/` 밖의 접근 제어된 경로)
 - 5단계에서 등록할 다음 프로필 이름(`next_profile`, 5단계 `plan`부터 필수)
 
@@ -593,11 +593,11 @@ equipment-map status [--rollout <ID>]
 | `port` | `port` | 1·3 | 21 |
 | `roots` | `allowed_roots` | 1·3 | `["/"]` |
 | `next_profile` | `next_profile` | 5 | 5단계 `plan` 거부 |
-| `fixture` | (rollout ID를 `fixture-<code_hash 앞 8자리>`로) | 1 | `false` |
+| `fixture` | (`true`면 1단계에서 시작, build 시험 전용) | 1 | `false` |
 
-이 키 밖의 것으로 `init`이 "missing required value"나 "missing budget"을 내면 그것은 `init`의 결함이다. 엔지니어는 장비 파일이 모인 폴더와 가짜 트리 파일의 경로를 `engineer.toml`의 `[equipment]` 표(`dir`, `fixture`)에 적는다.
+이 키 밖의 것으로 `init`이 "missing required value"나 "missing budget"을 내면 그것은 `init`의 결함이다. 엔지니어는 장비 파일이 모인 폴더를 `engineer.toml`의 `[equipment] dir`에 적는다.
 
-LLM endpoint와 키는 이 kit의 어디에도 두지 않는다. 그것은 pi 같은 에이전트 harness가 관리하는 실행 환경의 사실이므로 CLI의 LLM 클라이언트는 실행 환경의 `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`을 그대로 쓴다. `init`은 `OPENAI_MODEL`을 `llm.model`로 복사해 계획 hash에 넣고, 4.6절대로 서버가 돌려준 실제 모델 ID를 provenance에 남긴다. `OPENAI_BASE_URL`이 비어 있으면 2단계 `preflight`가 exit 30이다.
+LLM endpoint와 키는 이 kit의 어디에도 두지 않는다. 그것은 pi 같은 에이전트 harness가 관리하는 실행 환경의 사실이므로 CLI의 LLM 클라이언트는 실행 환경의 `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`을 그대로 쓴다. `init`은 `OPENAI_MODEL`을 `llm.model`로 복사해 계획 hash에 넣고, 4.6절대로 서버가 돌려준 실제 모델 ID를 provenance에 남긴다. `OPENAI_BASE_URL`이 비어 있으면 2·3단계 `preflight`가 exit 30이다.
 
 | 기본값을 쓰는 키 | 기본값 |
 |---|---|
@@ -628,15 +628,9 @@ LLM endpoint와 키는 이 kit의 어디에도 두지 않는다. 그것은 pi �
 
 `plan`은 이 파일만 입력으로 사용하며 모델이 장비 경로와 budget을 command flag로 만들 수 없게 한다. 각 단계의 `plan`은 그 단계에 필요한 필드가 없으면 거부한다.
 
-하나의 rollout ID는 1단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(1단계 가짜 트리에서 3단계 실장비로 전환, LLM endpoint 추가, 5단계 프로필 등록) 에이전트가 같은 장비 파일로 `init --equipment`를 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
+하나의 rollout ID는 시작한 단계부터 5단계까지 유지한다. 단계 경계에서 설정을 바꿔야 하면(시험 rollout의 1단계 가짜 트리에서 3단계로 전환, LLM endpoint 추가, 5단계 프로필 등록) 에이전트가 같은 장비 파일로 `init --equipment`를 다시 실행한다. 재설정은 `.lock`이 없을 때만 허용되며 이전·새 `rollout.json`의 hash를 `init` 감사 기록에 남긴다.
 
-1·2단계는 장비가 아니라 이 PC에 설치된 CLI 코드, 전송 경로와 LLM 설정을 가짜 트리로 검증하므로 장비마다 반복하지 않는다. 그 두 단계는 **기준 rollout** `fixture-<code_hash 앞 8자리>` 하나가 맡는다: `fixture = true`인 장비 파일로 만든 rollout이며 2단계 결과 승인으로 끝난다(3단계 이후 없음). 실장비 파일로 만드는 새 rollout은 현재 `code_hash`의 기준 rollout을 자동으로 채택하며, CLI는 다음을 모두 만족할 때만 채택한다.
-
-- 기준 rollout이 1·2단계 결과 승인을 직접 가진다. 채택으로 얻은 단계는 기준이 되지 않는다.
-- 두 결과 승인이 이 호스트에서 기록되었다.
-- 두 승인이 가리키는 완료 `next-stop` 기록의 `code_hash`가 현재 CLI의 `code_hash`와 같다. `code_hash`는 설치된 `equipment_map` 패키지의 모든 `.py` 파일에 대한 정렬된 상대 경로와 바이트 hash의 canonical hash이며 모든 `next-stop` 기록에 남는다.
-
-채택하면 기준 rollout의 2단계 승인 계획에서 `llm` 블록을 복사하고, 기준 ID와 두 결과 승인 기록의 hash, `code_hash`를 담은 `adopt` 감사 기록을 남긴 뒤 장비 파일의 3단계 키를 쓴다. 현재 단계는 3단계이고, `status`와 `REPORT.md`는 1·2단계를 기준 ID와 함께 `adopted`로 표시한다. 3단계 계획은 `adopt` 기록을 입력으로 결합하므로 계획 승인이 채택도 확인한다. 현재 `code_hash`의 기준 rollout이 없거나 조건이 어긋나면 `init`은 어긋난 조건을 출력하고 아무것도 쓰지 않은 채 exit 20으로 끝나며, 에이전트가 먼저 가짜 트리 파일로 기준 rollout을 만들어 1·2단계를 마친다. `status`(`--rollout` 없이)는 현재 `code_hash`와 그 기준 rollout의 유무를 출력한다. CLI 코드가 바뀌면 `code_hash`가 바뀌므로 새 기준 rollout이 필요하다.
+1·2단계는 엔지니어가 운영하지 않는다. 수집기(1단계)와 LLM 연결(2단계)은 CLI build의 시험이 임시 root에서 `fixture = true`인 합성 장비 파일로 만든 rollout으로 검증하며, 가짜 FTP·가짜 proxy·가짜 LLM과 가짜 TTY 승인을 시험이 스스로 준비한다(7장). `fixture = true`가 없는 장비 파일로 만든 rollout은 `init` 기록에 `stage: 3`을 남기고 3단계에서 시작하며, 1·2단계 결과 승인을 요구하지 않는다. `status`와 `REPORT.md`는 그 rollout의 1·2단계를 `build`로 표시한다. `ftp_handler`의 direct·proxy 전송은 다른 프로젝트의 운영에서 이미 쓰이고 있어, 엔지니어 PC에서 가짜 FTP rollout을 다시 돌리지 않는다.
 
 `init`이 바꿀 수 있는 키는 현재 단계가 정한다. `init`은 그 키만 묻고 나머지 값은 그대로 둔다. `plan`은 바꿀 수 없는 키가 기준 계획과 다르면 exit 20으로 거부하며, 손으로 고친 `rollout.json`도 같은 검사를 받는다. 2·4·5단계의 기준 계획은 직전 단계의 마지막 계획 승인 기록이고, 3단계 장비 정체성의 기준은 3단계 첫 `next-start`가 실행한 계획이다.
 
@@ -648,13 +642,13 @@ LLM endpoint와 키는 이 kit의 어디에도 두지 않는다. 그것은 pi �
 | 4 | 없음 | `init` exit 20 |
 | 5 | `next_profile` | 5단계 `plan` exit 20 |
 
-현재 단계는 결과 승인되거나 채택된 가장 높은 단계의 다음 단계다. 각 `init` 기록은 현재 단계의 새 **epoch**을 연다. `status`는 현재 단계의 `plan`, `approve-plan`, `next-*` 기록 중 최신 `init`보다 앞선 것을 stale로 보고 무시하므로, 재설정 뒤에는 그 단계의 `plan`, 계획 승인, `next`를 다시 거친다. 결과 승인된 단계는 어떤 `init`으로도 무효가 되지 않는다. 승인된 범위를 넓히려면 새 rollout을 시작한다.
+현재 단계는 결과 승인된 가장 높은 단계의 다음 단계이며, 실장비 rollout에서는 적어도 3단계다. 각 `init` 기록은 현재 단계의 새 **epoch**을 연다. `status`는 현재 단계의 `plan`, `approve-plan`, `next-*` 기록 중 최신 `init`보다 앞선 것을 stale로 보고 무시하므로, 재설정 뒤에는 그 단계의 `plan`, 계획 승인, `next`를 다시 거친다. 결과 승인된 단계는 어떤 `init`으로도 무효가 되지 않는다. 승인된 범위를 넓히려면 새 rollout을 시작한다.
 
 실행 전 계획 승인과 실행 후 결과 승인은 엔지니어가 직접 수행한다. 승인·결과 승인·stale lock 해제 명령은 어떤 `SKILL.md`에도 넣지 않고 CLI의 다음 명령으로도 출력하지 않는다. 비대화형 stdin에서는 거부하며 OS 사용자, 호스트, UTC 시각, 계획 hash 또는 결과 manifest hash를 감사 기록에 남긴다. 이는 전자서명이 아니라 운영자 자기확인임을 명시한다.
 
 엔지니어 전용 명령은 `equipment-map operator approve-plan`, `equipment-map operator approve-result`, `equipment-map operator unlock`과 4.5절의 `equipment-map workbench`다. 이 명령은 LLM에 대한 보안 경계가 아니라 사람의 운영 절차다. 스킬이 대신 호출하면 시나리오 검증 실패로 처리한다.
 
-`next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 4.4.1절의 pass 반복은 이 한 호출 안에서 끝나며 pass마다 호출을 끊는 별도 프로토콜은 없다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다. 1·2단계의 결과 승인은 채택으로 대신할 수 있다.
+`next`는 현재 rollout 단계가 완료되거나 budget·오류·승인 대기 조건으로 중단될 때까지 실행한다. 4.4.1절의 pass 반복은 이 한 호출 안에서 끝나며 pass마다 호출을 끊는 별도 프로토콜은 없다. 완료된 단계에서 다시 호출하면 작업 없이 성공하고 현재 결과 승인 상태만 출력한다. 다음 rollout 단계의 `plan`은 이전 단계 결과 승인이 없으면 거부한다. 실장비 rollout의 3단계 `plan`은 1·2단계 결과 승인을 요구하지 않는다.
 
 CLI 종료 코드와 마지막 출력 행은 고정한다.
 
@@ -667,7 +661,7 @@ CLI 종료 코드와 마지막 출력 행은 고정한다.
 
 stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 경로만 출력한다. `status`는 `REPORT.md`의 존재 여부와 SHA-256도 한 줄로 출력한다. 샘플 내용, 장비 경로, 파일명, 자격 증명, LLM 입력·출력은 파일에만 기록하며 출력하지 않는다. 대화 세션이나 특정 LLM이 이전 상태를 기억한다고 가정하지 않는다. `preflight`는 CLI가 없거나 스킬이 요구한 계약 버전을 지원하지 않으면 실행을 거부하고 설치 또는 갱신 안내만 출력한다. `preflight`는 이 기계가 사용할 전송 방식도 함께 확인한다. 선택된 방식과 그 근거(platform 추정 또는 `FTP_TRANSPORT`)를 출력하고, proxy면 health endpoint를 호출한 뒤 목록 route에도 빈 대상으로 요청한다. health endpoint는 도달 여부만 증명하기 때문이다. token이 비어 있으면 인증 없는 요청이 200이어야 한다. token이 설정되어 있으면 인증 없는 요청이 401인지 확인한 다음, 설정한 token으로 요청해 200인지 확인한다. 이때 인증 없는 요청의 401은 기대 결과이고 token을 보낸 요청의 401은 실패다. token을 설정했는데 인증 없는 요청이 성공하면 설정과 배포가 어긋난 것이므로 exit 30으로 멈추며, 도달하지 못해도 exit 30으로 멈춘다. 설정된 사내 `http://` URL을 먼저 확인하고 redirect를 거부한다. 운영 proxy와 loopback fixture 모두 HTTP를 사용하며 HTTPS/TLS를 요구하지 않는다. 빈 대상이므로 장비에는 접속하지 않는다. 이 확인은 장비에 접속하지 않으므로 계획 승인을 필요로 하지 않으며, 장비 접속을 대신 증명하지도 않는다. stdout에는 전송 방식 이름과 도달 여부만 출력하고 proxy URL, host와 token은 출력하지 않는다.
 
-초기 검증은 한 엔지니어의 PC와 로컬 rollout 디렉터리에서 수행한다. Skill Market 배포 후에도 rollout 하나는 한 엔지니어가 자기 PC에서 1~5단계를 끝까지 수행한다. 다른 엔지니어는 자기 장비와 별도 rollout ID로 독립 실행한다.
+초기 검증은 한 엔지니어의 PC와 로컬 rollout 디렉터리에서 수행한다. Skill Market 배포 후에도 rollout 하나는 한 엔지니어가 자기 PC에서 3~5단계를 끝까지 수행한다. 다른 엔지니어는 자기 장비와 별도 rollout ID로 독립 실행한다.
 
 회사망 밖으로 전달할 수 있는 상태 요약은 rollout ID, 단계 번호, 성공·생략·실패 건수와 CLI·계약 버전으로 제한한다. 장비 식별자, 경로, 파일명, 파일군명, 오류 원문, 분석 내용, 모델 ID와 serving 설정은 포함하지 않는다. 이 요약은 4단계 `next`가 `rollouts/<rollout-id>/REPORT.md`로 생성하며 사람이나 스킬이 직접 쓰지 않는다. 모델 ID와 설정은 `data-map/`의 LLM 유래 필드에만 남는다.
 
@@ -675,7 +669,7 @@ stdout에는 rollout ID, 단계, 집계 건수, hash, 상태와 로컬 결과 �
 
 상태의 기준은 채팅 기록이 아니라 rollout 작업 디렉터리다.
 
-한 rollout ID는 정확히 장비 하나를 다룬다. `init` 재실행은 같은 장비의 단계 경계 설정 변경에만 쓰며, 다른 장비는 승인 계보를 섞지 않기 위해 새 rollout ID로 시작한다. 5장의 기준 rollout 채택은 장비가 아니라 설치된 CLI와 LLM 설정에 대한 가짜 트리 검증만 가져오므로 장비 승인 계보를 섞지 않는다.
+한 rollout ID는 정확히 장비 하나를 다룬다. `init` 재실행은 같은 장비의 단계 경계 설정 변경에만 쓰며, 다른 장비는 승인 계보를 섞지 않기 위해 새 rollout ID로 시작한다.
 
 rollout ID는 장비 파일의 stem이며 `[a-z0-9][a-z0-9-]{0,31}`에 맞아야 한다. stdout이 rollout 디렉터리 경로를 출력하므로 파일 이름에는 host·IP·계정을 넣지 않고 엔지니어의 장비 라벨만 쓴다.
 
@@ -694,7 +688,7 @@ rollout 단계·승인 상태의 진실 원천은 `audit.jsonl`이며 `status`�
 
 자격 증명, LLM 비밀 설정과 허용 범위를 넘는 원본 파일은 rollout 디렉터리에 넣지 않는다. 자격 증명은 `rollout.json`의 별칭으로만 참조하며 CLI가 OS의 승인된 비밀 저장소에서 직접 조회한다. command argument, 환경 변수와 stdout으로 전달하지 않는다. 민감한 대표 샘플을 포함해야 하면 회사 내부 접근 권한과 보존 기간이 적용되는 로컬 위치만 사용한다. Skill Market은 rollout 데이터를 배포하지 않는다.
 
-collection scope는 수집 단계(1 또는 3), 그 단계가 현재 단계일 때 기록된 최신 `init`의 epoch(rollout을 만든 `init`은 1단계 것, 채택한 rollout에서는 3단계 것), 정규화된 source 설정 hash로 식별하며 scope ID는 이 세 값 배열의 canonical hash다. source 설정 hash는 `equipment_id`·`protocol`·`host`·`port`·`allowed_roots`·`realtime_candidates`·`allow_patterns`·`deny_patterns`·`profile` 이름과 profile 파일 내용 hash로 만든다. 따라서 2·4·5단계의 `init`은 수집 scope를 바꾸지 않는다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트와 4.4.1절의 pass 선택 목록·prior snapshot은 모두 이 scope에 속한다. 1·3단계의 새 수집이나 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. 2·4·5단계는 수집하지 않고 직전 단계의 결과 승인 기록이 가리키는 scope와 manifest hash를 계획에 입력으로 결합한다(2단계는 1단계, 4단계는 3단계, 5단계는 4단계의 결과 승인). 새 scope의 첫 `next`는 이전 scope의 `data-map/`을 `work/history/<scope 앞 12자>/`로 옮긴 뒤 새 지도를 시작하고, 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
+collection scope는 수집 단계(1 또는 3), 그 단계가 현재 단계일 때 기록된 최신 `init`의 epoch(시험 rollout은 1단계 것, 실장비 rollout은 3단계 것), 정규화된 source 설정 hash로 식별하며 scope ID는 이 세 값 배열의 canonical hash다. source 설정 hash는 `equipment_id`·`protocol`·`host`·`port`·`allowed_roots`·`realtime_candidates`·`allow_patterns`·`deny_patterns`·`profile` 이름과 profile 파일 내용 hash로 만든다. 따라서 2·4·5단계의 `init`은 수집 scope를 바꾸지 않는다. inventory의 디렉터리 및 pass, grouping, sampling, extraction 체크포인트와 4.4.1절의 pass 선택 목록·prior snapshot은 모두 이 scope에 속한다. 1·3단계의 새 수집이나 재설정은 새 scope를 사용하며 이전 가짜 장비나 이전 scope의 완료 표시·샘플·해석을 재사용하지 않는다. 2·4·5단계는 수집하지 않고 직전 단계의 결과 승인 기록이 가리키는 scope와 manifest hash를 계획에 입력으로 결합한다(2단계는 1단계, 4단계는 3단계, 5단계는 4단계의 결과 승인). 새 scope의 첫 `next`는 이전 scope의 `data-map/`을 `work/history/<scope 앞 12자>/`로 옮긴 뒤 새 지도를 시작하고, 새 지도에는 현재 scope 자료만 포함한다. 이 전환은 중단 후에도 재개 가능해야 한다. 이전 감사·승인 기록은 보존한다. 단순 프로세스 재시작은 scope나 budget을 새로 만들지 않는다.
 
 ### 5.2 상태 전이와 결과 무결성
 
@@ -702,7 +696,7 @@ collection scope는 수집 단계(1 또는 3), 그 단계가 현재 단계일 �
 과거 단계의 `next`는 쓰기 없는 no-op만 허용하고 미래 단계 실행은 거부한다.
 완료된 단계의 결과 승인 대기는 `status`로 확인하며 `next`를 반복 호출하지 않는다.
 5단계 결과 승인 뒤에는 terminal complete이고 `init` 재설정도 거부한다.
-1·2단계의 가짜 source에서 3단계의 장비 하나로 바꾸는 것은 허용하되,
+시험 rollout에서 1·2단계의 가짜 source를 3단계의 source로 바꾸는 것은 허용하되,
 3단계 첫 `next-start` 뒤 장비 정체성을 바꾸는 재설정은 새 rollout을 요구한다(5장의 단계별 `init` 표).
 
 계획·실행·설정·승인은 같은 rollout의 원자적 잠금으로 직렬화한다. stale lock을 제거하는 엔지니어 전용 unlock은 아래의 복구 절차를 사용하는 예외다. 잠금을
@@ -745,7 +739,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 
 ## 7. 검증 전략
 
-실장비 연결 전에 회사 PC에서 작은 가짜 FTP 트리를 사용해 다음을 검증한다.
+실장비 연결 전에 CLI build의 시험이 작은 가짜 FTP 트리로 다음을 검증한다. 시험은 가짜 FTP·가짜 proxy·가짜 LLM을 스스로 띄우고 합성 값만 쓰므로 엔지니어가 서버를 띄우거나 값을 입력하지 않는다.
 
 - 쓰기 동작이 존재하지 않는지
 - 이름이 반복되는 파일이 같은 패턴 파일군으로 묶이고, 이름 규칙을 공유하지 않는 파일은 디렉터리·확장자별 느슨한 묶음이 되며, 묶는 동안 내용 요청이 0건인지
@@ -767,7 +761,7 @@ symlink/reparse point는 거부한다. 다음 단계의 계획과 첫 실행도 
 - 실행 결과 승인 없이 다음 rollout 단계에 진입할 수 없는지
 - CLI가 없거나 계약 버전이 맞지 않을 때 스킬이 실행을 계속하지 않는지
 
-추가 필수 시나리오: sample 경로에서 보호 파일 내용 요청 0건, 단계별 `init` 표 밖의 키 변경과 3단계 실행 뒤 장비 정체성 변경의 거부, 원격 이름의 금지 문자·`%`·예약 이름·장치 이름 변환, 대소문자 충돌과 120자 경로 상한에 걸린 항목의 로컬 조회·다운로드 전 제외, 기록과 맞지 않는 evidence 파일을 덮어쓰지 않는 중단, 같은 scope 재개에서 이미 받은 표본의 재전송 없음, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분, 기준 rollout 채택이 다른 호스트·다른 `code_hash`·채택으로 얻은 단계·2단계 결과 승인이 없는 기준을 거부하고 채택한 rollout이 3단계에서 시작하며 `status`와 `REPORT.md`에 기준 ID를 드러내는지를 검증한다.
+추가 필수 시나리오: sample 경로에서 보호 파일 내용 요청 0건, 단계별 `init` 표 밖의 키 변경과 3단계 실행 뒤 장비 정체성 변경의 거부, 원격 이름의 금지 문자·`%`·예약 이름·장치 이름 변환, 대소문자 충돌과 120자 경로 상한에 걸린 항목의 로컬 조회·다운로드 전 제외, 기록과 맞지 않는 evidence 파일을 덮어쓰지 않는 중단, 같은 scope 재개에서 이미 받은 표본의 재전송 없음, 전송 중 성장 파일의 전체 다운로드와 실제 초과량 기록, 동일 rollout의 fake→real 전환과 재설정 후 stale 자료 배제, metadata-only 지도 발행, 요청 예약·응답 수신·결과 커밋 경계에서 종료 후 재개, 429/503/timeout 뒤 회복과 영구 장애의 유한 종료, 요청·시간 budget의 재개 보존, 불완전 inventory와 의미 해석 coverage의 구분, `fixture = true`가 없는 장비 파일의 rollout이 1·2단계 승인 없이 3단계에서 시작하고 1·2단계 명령을 과거 단계로 다루며 `status`와 `REPORT.md`가 1·2단계를 `build`로 표시하는지를 검증한다.
 
 pass 반복은 다음을 검증한다. pass 경계에서 강제 종료한 뒤 재개해도 중복 전송·중복 LLM 요청이 없고 pass 번호와 budget이 초기화되지 않는지, 적격 대상 소진이 `no-eligible-work`로 끝나고 `max_passes`·budget 도달이 각각의 사유로 끝나는지, 세 종료 모두 `completed: true`·exit 0이고 `NEXT: STOP`이 아닌지, `confidence` 값을 바꿔도 선택 순서가 변하지 않는지, 연결 파일군의 Observed가 바뀌면 재호출하고 prior만 바뀌면 재호출하지 않는지, `prior_inferred` 항목을 evidence로 인용한 응답이 거부되는지, 그리고 의도적으로 틀린 prior와 반대되는 Observed를 넣었을 때 결과가 `inferred`로 남고 관측 fact가 바뀌지 않는지다. 라벨이 pass 사이에 안정됐다는 사실을 정확도 증명으로 보고하지 않는다.
 
@@ -802,28 +796,28 @@ LLM 설명의 정확성은 사람이 대표 파일과 근거를 함께 검토한
 
 ## 8. Rollout 단계별 운영
 
-다음 5단계는 3장의 런타임 파이프라인과 별개다. 3~5단계는 장비마다 새 rollout에서 반복한다. 1·2단계는 PC, CLI 코드 또는 LLM 설정이 바뀔 때 반복하고, 그대로면 5장의 기준 rollout 채택으로 대신한다. 한 엔지니어가 자기 PC에서 모든 단계를 수행한다. 각 단계에서 실행 전 계획과 실행 후 결과를 확인해야 다음 단계로 넘어간다. 승인 기록은 해당 단계의 정규화된 계획 hash 또는 결과 manifest hash를 포함한다.
+다음 5단계는 3장의 런타임 파이프라인과 별개다. 1·2단계는 CLI build의 시험이며 엔지니어가 운영하지 않는다(5장). 3~5단계는 장비마다 새 rollout에서 반복하며 한 엔지니어가 자기 PC에서 수행한다. 각 단계에서 실행 전 계획과 실행 후 결과를 확인해야 다음 단계로 넘어간다. 승인 기록은 해당 단계의 정규화된 계획 hash 또는 결과 manifest hash를 포함한다.
 
-### 1단계: 로컬 가짜 장비로 수집기 검증
+### 1단계: 가짜 장비로 수집기 검증 (build 시험)
 
-설치된 CLI로 가짜 FTP의 목록 수집, 파일군 분류, 제한 샘플링과 `data-map/` 생성을 실행·검증한다. LLM 없이도 전체 흐름이 동작해야 한다.
+CLI build의 시험이 가짜 FTP의 목록 수집, 파일군 분류, 제한 샘플링과 `data-map/` 생성을 실행·검증한다. LLM 없이도 전체 흐름이 동작해야 한다.
 
-실장비 주소와 자격 증명을 사용하지 않은 가짜 트리 결과만 승인 대상으로 삼는다.
-Windows의 가짜 FTP 검증은 같은 PC의 가짜 proxy와 가짜 FTP를 함께 사용한다.
+실장비 주소와 자격 증명을 사용하지 않는다.
+Windows의 가짜 FTP 검증은 같은 시험 프로세스의 가짜 proxy와 가짜 FTP를 함께 사용한다.
 회사 운영 proxy에 `localhost`를 보내면 엔지니어 PC가 아니라 proxy 서버를
 가리키므로 허용하지 않는다. 시험용 설정은 별도 프로세스 환경에만 적용한다.
-FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검증하고 rollout 하나의 1단계는
+FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검증하고 시험 rollout 하나의 1단계는
 선택한 protocol 하나만 사용한다.
 
-### 2단계: 회사 로컬 LLM 연결
+### 2단계: LLM 연결 검증 (build 시험)
 
-대표 샘플 분석 결과를 필드별로 받아 CLI가 구조화된 JSON으로 조립하고 검증한다. 한 종류의 측정 데이터와 한 종류의 로그 파일로 정확도를 확인한다.
+가짜 LLM의 대표 샘플 분석 결과를 필드별로 받아 CLI가 구조화된 JSON으로 조립하고 검증하는지 build 시험으로 확인한다. 사내 LLM의 실제 해석 정확도는 3단계 결과 검토에서 확인한다.
 
 ### 3단계: 승인된 장비 1대에서 읽기 전용 시범 운영
 
-에이전트가 실장비의 장비 파일로 `init --equipment`를 실행해 기준 rollout을 채택한 새 rollout을 만든다. budget, 패턴, 프로필, 시간대는 5장의 기본값 그대로이며 아무도 손으로 적지 않는다. 엔지니어가 더 좁은 실행을 원할 때만 `rollout.json`의 해당 값을 고치고 `plan`을 다시 받는다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
+에이전트가 실장비의 장비 파일로 `init --equipment`를 실행해 3단계에서 시작하는 새 rollout을 만든다. budget, 패턴, 프로필, 시간대는 5장의 기본값 그대로이며 아무도 손으로 적지 않는다. 엔지니어가 더 좁은 실행을 원할 때만 `rollout.json`의 해당 값을 고치고 `plan`을 다시 받는다. 장비 부하, 파일군 정확도, 샘플 대표성과 운영자 검토 결과를 기록한다. 접근 허용 시간대가 없으면 계획에 `always`를 명시해 승인 hash에 포함한다.
 
-3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. `max_passes`가 1보다 크면 4.4.1절의 pass 반복이 같은 `next` 안에서 이어진다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
+3단계 `next`는 1단계와 같은 파이프라인을 실장비에 실행한 뒤, 2단계와 같은 필드별 LLM 해석을 아직 해석이 없는 파일군에만 수행한다. 사내 LLM의 첫 실제 해석이므로 결과 검토에서 측정 데이터 한 종류와 로그 파일 한 종류의 해석 정확도를 먼저 확인한다. LLM 호출은 `rollout.json`의 LLM 요청 수 budget으로 제한하며, budget에 걸려 해석하지 못한 파일군은 `unresolved: budget`으로 남긴다. `max_passes`가 1보다 크면 4.4.1절의 pass 반복이 같은 `next` 안에서 이어진다. 4단계는 모든 파일군에 해석 또는 `unresolved` 기록이 있어야 진행한다.
 
 방화벽과 접속 승인은 스킬 외부의 선행조건이다. 스킬은 방화벽 변경이나 승인 시스템 조회를 시도하지 않는다. 연결되지 않으면 원인을 단정하거나 우회하지 않고 진단 결과를 남긴 후 중단한다.
 
@@ -837,14 +831,12 @@ FTP adapter를 direct·proxy 두 전송 방식 모두 build 시나리오로 검�
 
 ## 9. Skill Market 배포 구조
 
-공통 Agent Skills 형식의 단일 원본으로 다음 6개 스킬을 관리한다. Skill Market에는 6개 스킬과 공통 CLI를 하나의 버전된 suite로 배포하되 각 스킬은 개별 호출할 수 있다.
+공통 Agent Skills 형식의 단일 원본으로 다음 4개 스킬을 관리한다. Skill Market에는 4개 스킬과 공통 CLI를 하나의 버전된 suite로 배포하되 각 스킬은 개별 호출할 수 있다.
 
 ```text
 equipment-map-suite/
   skills/
     equipment-map-run/SKILL.md
-    equipment-map-stage1-harness/SKILL.md
-    equipment-map-stage2-llm/SKILL.md
     equipment-map-stage3-pilot/SKILL.md
     equipment-map-stage4-publish/SKILL.md
     equipment-map-stage5-expand/SKILL.md
@@ -860,7 +852,7 @@ equipment-map-suite/
 - 각 `SKILL.md`에는 분기, 상태 머신, JSON 조립 또는 다른 스킬 호출을 넣지 않는다.
 - `equipment-map-common` 스킬은 만들지 않는다. 공통 로직은 단일 CLI에만 둔다.
 - 공통 frontmatter에는 이식 가능한 `name`과 `description`만 필수로 사용한다. 플랫폼 전용 metadata는 공통 동작에 필요할 때만 설치 과정에서 추가한다.
-- 5개 단계 description은 단계 번호, 담당 역할과 고유 작업을 명시해 서로 겹치지 않게 한다. `equipment-map-run`만 일반적인 요청을 받는 넓은 description을 사용한다.
+- 3개 단계 description은 단계 번호, 담당 역할과 고유 작업을 명시해 서로 겹치지 않게 한다. `equipment-map-run`만 일반적인 요청을 받는 넓은 description을 사용한다.
 - 각 스킬은 실행 전에 자신의 CLI 계약 버전을 `preflight`로 검사한다.
 - 설치기는 도구별 discovery 경로에 스킬을 배치하고 공통 CLI를 사용자 PATH에 한 번 설치한다. Windows는 PowerShell 설치기, macOS/Linux는 shell 설치기를 사용한다.
 - suite 버전과 CLI의 지원 계약 버전은 별도로 기록한다. 스킬은 `--contract <VERSION>`을 넘기고 CLI는 지원 목록에 없는 계약이면 중단한다.
@@ -870,8 +862,6 @@ equipment-map-suite/
 | 스킬 | 허용된 CLI 호출 |
 |---|---|
 | `equipment-map-run` | `preflight`, `status` (`--rollout` 생략 시 로컬 목록) |
-| `equipment-map-stage1-harness` | `init --equipment`, `preflight --stage 1`, `stage 1 plan`, `stage 1 next`, `status` |
-| `equipment-map-stage2-llm` | `preflight --stage 2`, `stage 2 plan`, `stage 2 next`, `status` |
 | `equipment-map-stage3-pilot` | `init --equipment`, `preflight --stage 3`, `stage 3 plan`, `stage 3 next`, `status` |
 | `equipment-map-stage4-publish` | `preflight --stage 4`, `stage 4 plan`, `stage 4 next`, `status` |
 | `equipment-map-stage5-expand` | `init --equipment`, `preflight --stage 5`, `stage 5 plan`, `stage 5 next`, `status` |
@@ -891,9 +881,9 @@ equipment-map-suite/
 - 실행 budget과 읽기 전용 제약을 자동 검사한다.
 - 검토된 지도에서 장비 폴더 구조를 따르고 Obsidian에서 읽히며 항목마다 근거를 추적할 수 있는 Markdown Wiki와 vendor-neutral graph JSONL을 생성한다.
 - 필드마다 이름, 관측 자료형, 숫자 범위와 예시 값이 Wiki에 드러나고, 이름에 비밀정보를 나타내는 문자열이 든 필드의 값은 가려진다.
-- 6개 스킬이 pi에서 같은 CLI 계약으로 동작한다. 나머지 세 도구는 같은 기준을 통과한 뒤에 지원 목록에 들어간다.
+- 4개 스킬이 pi에서 같은 CLI 계약으로 동작한다. 나머지 세 도구는 같은 기준을 통과한 뒤에 지원 목록에 들어간다.
 - 전용 Qwen3.8-27B 배포의 정확한 모델·serving 설정으로 실행한 기준 시나리오에서 승인 우회, 자유형 JSON 작성과 대화 상태 의존 없이 rollout을 재개한다.
-- 한 엔지니어가 로컬 rollout 상태만으로 중단 후 1~5단계를 재개한다.
+- 한 엔지니어가 로컬 rollout 상태만으로 중단 후 3~5단계를 재개한다.
 
 ## 11. 구현 상태와 계약 전환
 
@@ -901,7 +891,7 @@ equipment-map-suite/
 
 | 구성 | 이 checkout에서의 상태 | 의미 |
 |---|---|---|
-| 전체 rollout CLI·6개 배포 스킬 | 현행 letter가 구축·검증하도록 정의한 계약 | 설치된 완성 운영 제품으로 간주하지 않음. 회사 복사본의 구현 여부는 별도 확인 |
+| 전체 rollout CLI·4개 배포 스킬 | 현행 letter가 구축·검증하도록 정의한 계약 | 설치된 완성 운영 제품으로 간주하지 않음. 회사 복사본의 구현 여부는 별도 확인 |
 | `ftp_handler/` | 기존 코드 | 정식 rollout CLI나 재개 가능한 개선 루프의 완료 증거가 아님 |
 | `wiki_review.publish`, `wiki_review.exploration` | 오프라인 Wiki 생성·SQLite 조사 원장 구현 | `wiki-map-v1` projection 입력, 새 폴더 발행, `approval_verified: false`; FTP·LLM·graph·운영 승인 전이 없음 |
 | 파일 선정 모드·사전 생애주기·의미 검토 iteration | 이 문서의 목표 계약 | schema·validator·원장·실행기·지침 전환 필요 |
@@ -915,9 +905,9 @@ equipment-map-suite/
 2. **지도·사전·질문 계약을 함께 구현한다.** 사전 snapshot/검토 이력, 질문과 의미 판정, 회차 입력/manifest·내부 보고서를 버전된 schema로 추가한다. 오프라인 원장을 재사용하고 승인된 map과 분리한다. 기존 지도·projection에는 명시적인 adapter/버전 검사를 적용한다.
 3. **선정과 자동 재해석을 연결한다.** medium의 내용 수집 전 확인, light의 범위 제한, 질문별 작업 키·누적 budget·재개를 검증한다. 엔지니어 승인 경계를 지키며 새로운 모델 판단이 download guard를 우회하지 않게 한다.
 4. **측정 뒤 병렬·호출 축소를 적용한다.** 동일한 로컬 패킷으로 기준선을 만들고 동시성을 비교한다. claim 응답 통합은 별도 품질 시험 뒤 채택한다. 실제 장비를 반복 수집해 성능 비교용 입력을 만들지 않는다.
-5. **최소 모델·운영 환경에서 검증한다.** pi와 지정 Qwen 프로필, Windows/proxy, 승인된 좁은 장비 범위를 순서대로 검증한다. scope·코드·모델 변경 시 5장의 기준 rollout 채택 조건을 다시 검사한다.
+5. **최소 모델·운영 환경에서 검증한다.** pi와 지정 Qwen 프로필, Windows/proxy, 승인된 좁은 장비 범위를 순서대로 검증한다. 코드·모델이 바뀌면 build 시험을 다시 통과한 뒤 새 rollout을 시작한다.
 
-각 릴리스는 이 문서와 `spec.md`뿐 아니라 `index.md`, implementation-reference, 해당 letter, schema/validator, 고정 CLI 명령, 시험을 함께 갱신한다. 선정은 Letters 06–07, LLM/사전/재개는 11, 발행은 12, 패키지/스킬/검증은 02·14–15와 운영 16–20을 대조한다. 새 스킬 명령·medium 확인 전이·자동 재해석 명령은 구현 계약 검토 전에 존재하는 명령처럼 문서에 넣지 않는다. 배포 역할을 바꿀 때 maintainer의 파일 소유권 규칙도 명시적으로 정비한다. 이 문서 통합만으로 현재 AGENTS의 쓰기 권한을 확대하지 않는다.
+각 릴리스는 이 문서와 `spec.md`뿐 아니라 `index.md`, implementation-reference, 해당 letter, schema/validator, 고정 CLI 명령, 시험을 함께 갱신한다. 선정은 Letters 06–07, LLM/사전/재개는 11, 발행은 12, 패키지/스킬/검증은 02·14–15와 운영 18–20을 대조한다. 새 스킬 명령·medium 확인 전이·자동 재해석 명령은 구현 계약 검토 전에 존재하는 명령처럼 문서에 넣지 않는다. 배포 역할을 바꿀 때 maintainer의 파일 소유권 규칙도 명시적으로 정비한다. 이 문서 통합만으로 현재 AGENTS의 쓰기 권한을 확대하지 않는다.
 
 기존 실행에는 새 동시성·시간 차감·선정·사전 schema를 소급 적용하지 않는다. 현재 승인된 버전으로 마치거나 정식 중단하고, 새 계약 버전의 preflight·가짜 시험·계획 승인 뒤 시작한다. 10장의 현행 완료 기준에 더해, 목표 계약을 지원한다고 선언하려면 7.1절의 관련 시나리오도 통과해야 한다.
 

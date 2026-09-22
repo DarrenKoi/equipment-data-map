@@ -30,7 +30,7 @@
 ```text
 equipment-data-parser/
   index.md                   # 계약이자 루프: 읽는 순서, 쓰기 권한, 체크포인트, 정지 조건
-  01-…-21-*.md               # 현행 CLI 빌드(01–15), 운영(16–20), extractor 릴리스(21) 편지, 번호 순
+  01-…-21-*.md               # 현행 CLI 빌드(01–15), 운영(18–20), extractor 릴리스(21) 편지, 번호 순
   spec.md                    # 스펙 스냅샷. docs/ 원본과 다르면 원본이 이긴다
   implementation-reference.md# 편지가 가리키는 절만 읽는 구현 세부
   engineer-guide.md          # 사람(엔지니어)용. 에이전트는 읽지 않는다

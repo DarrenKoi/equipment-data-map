@@ -119,7 +119,8 @@ Lock release verifies ownership; an unsuccessful acquisition cannot unlink it.
 Audit records include `seq`, `ts`, `event`, `stage`, `epoch`, and where relevant
 `plan_hash`, `scope`, `manifest_hash`, `completed`, `reason`, `counts`. Epoch is
 an incrementing init sequence, not a wall-clock comparison. Enforce contiguous
-approvals for stages 1–5; an `adopt` record stands for those of stages 1 and 2. Refuse malformed/truncated audit records and impossible
+approvals from the stage a rollout starts at (1 for a `fixture = true` test
+rollout, 3 otherwise) through 5. Refuse malformed/truncated audit records and impossible
 sequences; do not repair or ignore them automatically.
 
 | Ledger state for current stage | Allowed action | Outcome |
@@ -177,7 +178,7 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
   whose hash that `next-start` names. Stage 1 has no baseline.
 - Scope ID is `sha256([collection_stage, epoch, source_hash])`. `epoch` is
   that of the latest `init` record whose `stage` is the collection stage (the
-  rollout-creating `init` is stage 1, or stage 3 in an adopted rollout). `source_hash` is `sha256([equipment_id,
+  rollout-creating `init` is stage 1 in a test rollout, stage 3 otherwise). `source_hash` is `sha256([equipment_id,
   protocol, host, port, allowed_roots, realtime_candidates, allow_patterns,
   deny_patterns, profile, sha256(profile file bytes)])`. Stages 1 and 3 compute
   their own. Stages 2, 4 and 5 put `input: {scope, manifest_hash}` from the
@@ -189,33 +190,22 @@ Per-stage `init` and collection scope (spec §5 table, §5.1):
   between the two steps resumes cleanly: with no `data-map/` there is nothing
   to move. `work/scope.json` is a pipeline checkpoint, not stage state.
 
-Baseline adoption (spec §5):
+Starting stage (spec §5):
 
-- `code_hash` is the compact canonical hash of the sorted
-  `[relative POSIX path, sha256(file bytes)]` pairs of every `*.py` file under
-  the installed `equipment_map` package directory. Every `next-stop` record
-  carries it.
 - The `init` that creates a rollout from a file without `fixture = true`
-  adopts the baseline `fixture-<code_hash[:8]>` for the current `code_hash`.
-  Adopt only when all of these hold; otherwise print the failed condition's
-  name and exit 20 without writing: that rollout exists and its own ledger
-  has `approve-result` records for stages 1 and 2; both carry this
-  machine's `socket.gethostname()` as `host`; and the completed `next-stop`
-  each of them approved carries the current `code_hash`. A file with
-  `fixture = true` creates that baseline itself, starts at stage 1 and is
-  terminal after its stage 2 result approval.
-- On adoption, append `adopt` `{stage: 2, baseline, approvals, code_hash}`,
-  where `approvals` holds the payload hashes of the baseline's two
-  `approve-result` records. Then write `rollout.json` with the `llm` block
-  copied from the baseline's approved stage-2 plan, the equipment file's
-  keys applied and the rest defaulted as at stage 1, and append `init`
-  with `stage: 3`. An `init` on a
-  rollout whose ledger ends in `adopt` finishes that adoption after a crash.
-- `status` prints stages 1 and 2 as `adopted <baseline>` and current stage 3.
-  Stage 3 `plan` of an adopted rollout puts `adopted: {baseline, adopt_hash}`
-  into its payload, so approving the plan approves the adoption. `status`
-  without `--rollout` prints the local rollout list, the current
-  `code_hash` and `baseline: <id>` or `baseline: none`.
+  appends `init` with `stage: 3`; nothing is looked up in other rollouts.
+  Its stage 3 `plan` requires the fields stage 2 would (`llm`,
+  `prior_max_bytes`) and no stage 1 or 2 approval. `preflight --stage 3`
+  exits 30 when `OPENAI_BASE_URL` is empty.
+- A file with `fixture = true` creates a test rollout at stage 1. Only
+  build tests in temporary roots make one; the equipment template has no
+  `fixture` key.
+- `status` prints stages 1 and 2 of a stage-3 rollout as `build`. On such a
+  rollout `stage 1|2 next` is a past-stage no-op and `stage 1|2 plan` exits
+  20. `status` without `--rollout` prints the local rollout list.
+- A rollout made by an earlier build may hold an `adopt` record before its
+  stage 3 `init`. Accept it as a no-op, never write one, and start that
+  rollout at stage 3 like any other.
 
 Fixture approvals are produced only by fake-TTY test calls in temporary roots.
 No code path fabricates human approval for a real rollout. Add tests for every
