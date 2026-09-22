@@ -53,12 +53,10 @@ unresolved interpretations; inspect coverage before calling the map complete.
 Your working directory is a plain copy of the repository with no git in it;
 never run git here. The whole sequence runs in this one copy
 ([engineer-guide.md](engineer-guide.md) §1); another model gets another copy
-only after this one is finished. Inside it you may work on several letters at
-once through subagents you start yourself — see **Parallel jobs** — but there
-is only ever one copy and one ledger. Your working directory is your whole
-identity: never read or write in another copy, and never take a model name
-from the prompt. The maintainer's updates arrive only when the engineer
-copies them in between sessions.
+only after this one is finished. There is only ever one copy and one ledger.
+Your working directory is your whole identity: never read or write in
+another copy, and never take a model name from the prompt. The maintainer's
+updates arrive only when the engineer copies them in between sessions.
 
 Before any other step, `office/progress.md` must exist in the working
 directory. When it does not, print one line asking the engineer to run the
@@ -171,8 +169,6 @@ not gate it.
    Nobody has to tell you a letter changed; this check is how you find out.
    A revised letter 16–21 never reopens a finished rollout or release: its
    new text applies from the next one.
-
-   When more than one letter is ready at once, see **Parallel jobs** below.
 2. Read the current letter, then the `spec.md` sections it names. The spec is
    the source of truth; the letter only orders the work.
 3. Do the **Build** items in order. After each item run the checkpoint
@@ -197,39 +193,6 @@ attempts; the letter conflicts with `spec.md`; a step needs a credential,
 real equipment, or a human decision that is not yet given. Record the reason
 in `office/progress.md` with a sanitized error code, one line, and put safe detail
 in `office/problems/NN-problems.md`.
-
-## Parallel jobs
-
-Letters that need different files may run at the same time. You are the
-coordinator: you choose the ready letters, start one subagent per letter, and
-stay the only writer of `office/progress.md`.
-
-1. A letter is ready when every letter in its **Needs** column has a current
-   `done` line. Start at most three at once.
-2. One subagent per letter, never two inside one letter: a letter is the
-   smallest unit that has a **Done when**.
-3. Append one `wip` line per letter before the batch starts, so a session that
-   dies leaves the batch visible to the next one. Give each subagent its letter
-   number, the files that letter names, and nothing else to do. A subagent
-   writes no ledger line and starts no subagent of its own.
-4. A job writes only the files its letter names, plus its own test module.
-   `equipment_map/cli.py` and `pyproject.toml` belong to letter 01; letters 03
-   and 08 also edit `cli.py`, so those two never share a batch.
-   Every job runs in this same folder. There is no git here, so there is no
-   worktree, branch or clone to isolate a job in; file ownership is the whole
-   of the isolation, which is why the rule above is the one that matters.
-5. When the batch is in, run every finished letter's **Done when** again,
-   together, in the shared tree. Those runs earn the `done` lines: a letter
-   that passed inside its own job proves nothing about the package. Fix a
-   failure here yourself, one letter at a time, before the next batch.
-6. If two jobs edited the same file, leave both `wip` and redo them one after
-   the other.
-
-Letters 16–21 never share a batch: each waits on the previous stage's human
-approval, one rollout has one state, and a release changes the code a
-rollout runs. Running letters one at a time is
-always allowed and never wrong — fan out when the **Needs** column says you
-can, not because a letter looks long.
 
 ## office/progress.md format
 
@@ -337,7 +300,7 @@ In a one-shot run:
 - Assume nothing survives the run: no environment variables you exported, no
   background process, no shell state. Anything the next run needs is on disk.
 
-The repeated-run loop and scheduler below apply to the active letters 01–21.
+The repeated-run loop below applies to the active letters 01–21.
 Historical letter 00 records do not block them.
 
 Drive every build, rollout and release from the repository root, one run per
@@ -361,13 +324,12 @@ A run that changes nothing — no new `office/progress.md` line — means
 the agent is stuck; stop the loop and read the last lines of `office/progress.md` and
 the newest file under `office/problems/`.
 
-## Unattended runs on Windows
+## Unattended runs
 
-The engineer PCs are Windows, and a scheduler (Task Scheduler, or anything
-that fires a command on a timer) has no memory between runs and nobody to
-answer a prompt. Five things decide whether such a run does real work or
-quietly does nothing. If any of them bites here, that is a problem entry —
-`office/problems/NN-problems.md`, and say which one.
+The engineer sets an overnight run up before leaving — tool permissions,
+the loop above, the fixture server, `engineer.toml` — by the checklist in
+[engineer-guide.md](engineer-guide.md) §1 "Before an overnight run". Nobody
+is there to answer you, so two things are yours to keep:
 
 **Every command in these letters is bash.** `printf`, `date -u +%FT%TZ`,
 `grep -c`, `$(...)`, heredocs. Git for Windows ships all of them: run in Git
@@ -377,37 +339,13 @@ line into another shell's quoting — Loop step 1, the loop above and several
 merely close breaks them. If bash is genuinely unavailable on a PC, stop and
 write the problem entry rather than inventing a second ledger format.
 
-**Non-interactive tool permissions.** A one-shot run that hits a
-tool-approval prompt exits having changed nothing, and it does not look like
-a failure — it looks like an empty run, repeated forever. Before scheduling
-anything, run the prompt once by hand and confirm a new `office/progress.md` line appears. Whatever
-flag or settings allowlist your tool needs for unattended file edits and
-commands, set it, and record the exact invocation in `office/progress.md` the way
-letter 01 records the pip install line.
-
-**Scheduler settings that are wrong by default.** The start-in directory is
-not the repository — set it to the repository root (that model's folder), or
-every relative path in these letters misses. Set the task to *not* start a second instance while one
-is running: a checkpoint can take twenty minutes, and two runs appending at
-once corrupt the ledger. Run it as the account that actually holds the CLI
-credentials; a task set to run
-whether the user is logged on or not gets a different environment than the
-one you tested in.
-
-**Guard the trigger, not the prompt.** A schedule has no `until` loop, so
-once the ledger's last line is `waiting` or `blocked` every later trigger
-spends a whole model run to re-read `office/progress.md` and stop. Check first with
-the grep the loop above runs on the last ledger line — a finished rollout or
-release, or `waiting`/`blocked` — and skip the run when it hits. A grep is free; a
-model run is not.
-
-**Watch for empty runs.** Two consecutive triggers with no
-new `office/progress.md` line mean the agent is stuck, not slow. Stop the schedule
-and read the tail of `office/progress.md` and the newest file under `office/problems/`.
-
-None of this needs a script in this repository. If the engineer wants one, a
-wrapper that does the two greps, changes directory, and invokes the tool is
-the whole of it.
+**A run that can do nothing stops, and says why.** A `waiting` or `blocked`
+line ends the night; that is the design, not a failure. Never poll, never
+answer an engineer question yourself, never loosen a gate to keep the loop
+alive. When a tool-approval prompt, a missing tool or a missing bash stops a
+run before it can write anything, an empty run is all the engineer sees in
+the morning: if you can still write, put the cause in
+`office/problems/NN-problems.md` and name which one.
 
 ## Invariants (hold in every file you write)
 
@@ -482,8 +420,6 @@ fake tree, not about live equipment or model accuracy.
 ## Letters
 
 `Needs` is what must carry a current `done` line before that letter starts.
-Letters with disjoint needs and disjoint files are the ones **Parallel jobs**
-lets you batch.
 
 | NN | Title | Rollout stage | Needs |
 |---|---|---|---|
